@@ -1,0 +1,7 @@
+[package]
+name = "bbc-x"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pom = { path = "../pom/", features = [ "trace" ] }

@@ -1,7 +1,6 @@
 # bbc-x
 
-[![MIT License](https://img.shields.io/github/license/nigeleke/bbc-x?style=plastic)](https://github.com/nigeleke/bbc-x/blob/main/LICENCE.md)
-![Language](https://img.shields.io/badge/language-BBC-X-blue.svg?style=plastic)
+![[Language](https://img.shields.io/badge/language-macro10-BBC-X-blue.svg?style=plastic)](https://github.com/nigeleke/bbc-x)
 [![Build](https://img.shields.io/github/actions/workflow/status/nigeleke/bbc-x/acceptance.yml?style=plastic)](https://github.com/nigeleke/bbc-x/actions/workflows/acceptance.yml)
 [![Coverage](https://img.shields.io/codecov/c/github/nigeleke/bbc-x?style=plastic)](https://codecov.io/gh/nigeleke/bbc-x)
 ![Version](https://img.shields.io/github/v/tag/nigeleke/bbc-x?style=plastic)
@@ -9,6 +8,8 @@
   [Site](https://nigeleke.github.io/bbc-x) \| [GitHub](https://github.com/nigeleke/bbc-x) \| [API](https://nigeleke.github.io/bbc-x/api/bbc-x/index.html) \| [Coverage Report](https://nigeleke.github.io/bbc-x/coverage/index.html)
 
 Resurrection of the educational BBC-X assembler language used at Hatfield Polytechnic.
+
+**This project is very likely absolutely no use to anyone at all in any way shape or form.**
 
 ## Motivation
 
@@ -18,7 +19,7 @@ I'm now having a nostalgic recreation of some of the programs that I wrote durin
 
 During those years we were taught a pseudo-assembly language known as BBC-X, to teach us low-level programming. This repository started as a "simple" store for my BBC-X programs, to run to run on a [PiDP-10](https://obsolescence.wixsite.com/obsolescence/pidp10), which is a 2/3 scale replica of a PDP-10 KA emulated with [SIMH](https://github.com/open-simh/simh) running on a [Raspberry Pi](https://www.raspberrypi.com/).
 
-A Google search for *BBC-X* did not uncover very much either in terms of fundamental documentation, or existing emulators, so my project changed to correct that oversight. It's now become and assembler / interpreter for BBC-X source code.
+A Google search for *BBC-X* did not uncover very much either in terms of fundamental documentation, or existing emulators, so my project changed to correct that oversight. It's now become and assembler / interpreter for BBC-X source code; there is no longer any dependence on the [PiDP-10](https://obsolescence.wixsite.com/obsolescence/pidp10) / [Raspberry Pi](https://www.raspberrypi.com/). 
 
 ## History
 
@@ -53,8 +54,8 @@ The BBC had a TV series about computing, but both BBC-X & BBC-10 seem to have be
 
 ## Acknowledgements
 
-  1. First and foremost, [Clare Tagg](https://www.claretagg.net/), for providing me the background information on her and her father's work on BBC-X, enabling me to create this project.
-  1. Simon Trainis, current head of Dept of Computer Science at [University of Hertfordshire](https://www.herts.ac.uk/), who dived into his personal archives and helped immensely with follow-up contacts
+  1. First and foremost, [Clare Tagg](https://www.claretagg.net/), for providing me the background information on her and her father's work on BBC-3, enabling me to create this project.
+  1. Simon Trainis, current head of Dept of Computer Science at [University of Hertfordshire](https://www.herts.ac.uk/), who dived into his personal archives and helped immensely with follow-up contacts.
   2. There are many others too that responded to direct and indirect requests for information; your input, advice and leads are very much appreciated.
 
 ## Project
@@ -64,7 +65,7 @@ There are a few points which lead to a different implementation here to that des
   1. The thesis refers to *major modifications planned for BBC-10* and that *the Hatfield Polytechnic Computer Centre intend that an extended form of the BBC will be implemented on the PDP-10 configuration*.
   2. The assembly listings (not original source code) imply a slightly different source syntax for the simulator used on the PDP-10.
 
-Given that, some changes have been implemented here. Note, however, that at this stage the PDP-10 documentation is not (yet) available so I've nothing to confirm whether these are true to the original, or otherwise. If I do find out otherwise I will endeavour to update the project.
+Given that, some changes have been implemented here. Note, however, that at this stage the BBC-X documentation is not (yet) available so I've nothing to confirm whether these are true to the original, or otherwise. If I do find out otherwise I will endeavour to update the project.
 
   1. Source `Location`s will be symbolic.
   2. `Location` definition will be, optional, and labelled with a `:`.
@@ -72,7 +73,7 @@ Given that, some changes have been implemented here. Note, however, that at this
   4. Accumulators 0..7 allowed.
   5. Comments will start with a `;`.
   6. Indices will use `LOCATION(index)` format rather than `LOCATION:index`.
-  7. Instructions found existing source code (`MOCP`, `TTYP`, others...?), but not in the thesis, require interpretation to something *sensible*.
+  7. Instructions have been found existing source code (`MOCP`, `TTYP`, others...?), but not in the thesis, and will require interpretation to something *sensible*.
 
 ## Timeline
 
@@ -81,4 +82,5 @@ Given that, some changes have been implemented here. Note, however, that at this
 | 23-Jan-2024 | Reach out to [University of Hertfordshire](https://www.herts.ac.uk/) with a general query if they had anything in their archives. | Nothing found, but a lot of interesting leads were provided and followed up.                                 |
 | 12-Feb-2024 | Reach out on the [Hatfield Polytechnic Group](https://www.facebook.com/groups/2042375999327304) Facebook page.                    | A response led direct contact with the Tagg family.                                                          |
 | 12-Feb-2024 | Reach to out [Tagg Furntiture]()                                                                                                  | Details passed to [Clare Tagg](https://www.claretagg.net/)                                                   |
-| 14-Feb-2024 | -                                                                                                                                 | [Clare Tagg](https://www.claretagg.net/) confirmed her and her father's background, which is recorded below. |
+| 14-Feb-2024 | -                                                                                                                                 | [Clare Tagg](https://www.claretagg.net/) confirmed her and her father's background, which is recorded here. |
+| 01-Mar-2024 | BBC-X parser released.                                                                                                            |                                                                                                              |

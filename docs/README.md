@@ -1,6 +1,6 @@
 # bbc-x
 
-![[Language](https://img.shields.io/badge/language-macro10-BBC--X-blue.svg?style=plastic)](https://github.com/nigeleke/bbc-x)
+[![Language](https://img.shields.io/badge/language-BBC--X-blue.svg?style=plastic)](https://github.com/nigeleke/bbc-x)
 [![Build](https://img.shields.io/github/actions/workflow/status/nigeleke/bbc-x/acceptance.yml?style=plastic)](https://github.com/nigeleke/bbc-x/actions/workflows/acceptance.yml)
 [![Coverage](https://img.shields.io/codecov/c/github/nigeleke/bbc-x?style=plastic)](https://codecov.io/gh/nigeleke/bbc-x)
 ![Version](https://img.shields.io/github/v/tag/nigeleke/bbc-x?style=plastic)

@@ -427,7 +427,7 @@ fn exponent_part<'a>() -> Parser<'a, u8, String> {
 fn sign<'a>() -> Parser<'a, u8, String> {
     (   sym(b'+') |
         sym(b'-')
-    ).repeat(..=1)
+    ).repeat(..2) // TODO: Use RangeToInclusive (..1)
      .convert(String::from_utf8)
      .name("sign")
 }

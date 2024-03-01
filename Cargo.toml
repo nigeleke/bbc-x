@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-pom = { path = "../pom/", features = [ "trace" ] }
+pom = "3.3"

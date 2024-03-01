@@ -1,5 +1,13 @@
 # bbc-x
 
+[![MIT License](https://img.shields.io/github/license/nigeleke/bbc-x?style=plastic)](https://github.com/nigeleke/bbc-x/blob/main/LICENCE.md)
+![Language](https://img.shields.io/badge/language-BBC-X-blue.svg?style=plastic)
+[![Build](https://img.shields.io/github/actions/workflow/status/nigeleke/bbc-x/acceptance.yml?style=plastic)](https://github.com/nigeleke/bbc-x/actions/workflows/acceptance.yml)
+[![Coverage](https://img.shields.io/codecov/c/github/nigeleke/bbc-x?style=plastic)](https://codecov.io/gh/nigeleke/bbc-x)
+![Version](https://img.shields.io/github/v/tag/nigeleke/bbc-x?style=plastic)
+
+  [Site](https://nigeleke.github.io/bbc-x) \| [GitHub](https://github.com/nigeleke/bbc-x) \| [API](https://nigeleke.github.io/bbc-x/api/bbc-x/index.html) \| [Coverage Report](https://nigeleke.github.io/bbc-x/coverage/index.html)
+
 Resurrection of the educational BBC-X assembler language used at Hatfield Polytechnic.
 
 ## Motivation

@@ -46,7 +46,7 @@ The BBC had a TV series about computing, but both BBC-X & BBC-10 seem to have be
 ## Acknowledgements
 
   1. First and foremost, [Clare Tagg](https://www.claretagg.net/), for providing me the background information on her and her father's work on BBC-X, enabling me to create this project.
-  1. Simon Trainis, from the [University of Hertfordshire](https://www.herts.ac.uk/), who dived into the Uni's archives and help immensely with follow-up contacts.
+  1. Simon Trainis, current head of Dept of Computer Science at [University of Hertfordshire](https://www.herts.ac.uk/), who dived into his personal archives and helped immensely with follow-up contacts
   2. There are many others too that responded to direct and indirect requests for information; your input, advice and leads are very much appreciated.
 
 ## Project

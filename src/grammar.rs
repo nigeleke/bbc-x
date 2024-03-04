@@ -72,7 +72,7 @@ fn comment<'a>() -> Parser<'a, u8, Comment> {
 // Amended: SWord delimited by new quote/unquote ('"', rather than '<' and '>').
 fn sword<'a>() -> Parser<'a, u8, SWord> {
     (   sym(b'"') +
-        actual_character().repeat(1..5) +  // TODO: Inclusive range (1..=4)
+        actual_character().repeat(1..=4) +
         sym(b'"')
     ).convert(|((_, cs), _)| SWord::from_utf8(cs))
      .name("sword")
@@ -221,7 +221,7 @@ fn actual_character<'a>() -> Parser<'a, u8, Character> {
 // <alpha character> ::= A | B | C | D | E | F | G | H | I | J | K| L |M | N | O | P |
 //                       Q | R | S | T | V | W | X | Y | Z
 fn alpha_character<'a>() -> Parser<'a, u8, u8>  {
-    one_of(b"ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    one_of(&(b'A'..=b'Z'))
 }
 
 // <numeric character> ::= <digit> | + | - | <subscript 10> | .
@@ -247,7 +247,7 @@ fn digit<'a>() -> Parser<'a, u8, u8>  {
 
 // <oct.dig> ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 fn oct_dig<'a>() -> Parser<'a, u8, u8>  {
-    one_of(b"01234567")
+    one_of(&(b'0'..=b'7'))
 }
 
 // Added: ++
@@ -360,7 +360,7 @@ fn relative_address<'a>() -> Parser<'a, u8, RelativeRef> {
 // <index> ::= <digit> | <digit><digit>
 fn index<'a>() -> Parser<'a, u8, Index> {
     digit()
-        .repeat(1..3) // TODO: Prefer 0..=2
+        .repeat(1..=2)
         .convert(String::from_utf8)
         .convert(|s| Index::from_str(&s))
         .name("index")
@@ -427,7 +427,7 @@ fn exponent_part<'a>() -> Parser<'a, u8, String> {
 fn sign<'a>() -> Parser<'a, u8, String> {
     (   sym(b'+') |
         sym(b'-')
-    ).repeat(..2) // TODO: Use RangeToInclusive (..1)
+    ).repeat(..=1)
      .convert(String::from_utf8)
      .name("sign")
 }

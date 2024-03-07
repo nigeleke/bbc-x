@@ -1,4 +1,4 @@
-use clap::{Args as ClapArgs, Parser as ClapParser, Subcommand, ValueEnum};
+use clap::{Parser as ClapParser};
 #[cfg(test)]
 use clap::error::Error as ClapError;
 
@@ -43,6 +43,10 @@ pub(crate) struct Args {
 impl Args {
     pub(crate) fn from(args: Vec<String>) -> Self {
         Args::parse_from(args)
+    }
+
+    pub(crate) fn files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+        self.files.iter().cloned()
     }
 
     #[cfg(test)]

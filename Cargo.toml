@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-pom = { path = "../pom" }
+pom = "3.4"

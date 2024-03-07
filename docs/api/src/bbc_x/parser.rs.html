@@ -585,34 +585,81 @@
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
 <a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ast::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::grammar::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::result::{Error, <span class="prelude-ty">Result</span>};
 
-<span class="kw">struct </span>Parser;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>LineNumber = usize;
+
+<span class="attr">#[derive(Debug, PartialEq)]
+</span><span class="kw">pub struct </span>ParsedLine {
+    line_number: LineNumber,
+    parse_result: <span class="prelude-ty">Result</span>&lt;SourceProgramLine&gt;,
+}
+
+<span class="kw">impl </span>ParsedLine {
+    <span class="kw">fn </span>new(line_number: LineNumber, parse_result: <span class="prelude-ty">Result</span>&lt;SourceProgramLine&gt;) -&gt; <span class="self">Self </span>{
+        ParsedLine { line_number, parse_result }
+    }
+}
+
+<span class="kw">pub struct </span>Parser;
 
 <span class="kw">impl </span>Parser {
-    <span class="kw">fn </span>parse(program: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;SourceProgram&gt; {
-        <span class="kw">let </span>lines = program.lines().enumerate();
-        
-        <span class="kw">let </span>non_empty_line =
-            |(<span class="kw">_</span>, line): <span class="kw-2">&amp;</span>(usize, <span class="kw-2">&amp;</span>str)| !line.trim().is_empty();
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse(program: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;SourceProgram&gt; {
+        <span class="kw">let </span>lines = program.lines();
+        <span class="kw">let </span>lines_count = lines.clone().count();
+        <span class="kw">let </span>lines = lines.enumerate();
         
         <span class="kw">let </span>parse_line =
-            |(i, line): (usize, <span class="kw-2">&amp;</span>str)| <span class="kw">match </span>Grammar::bbcx_line().parse(line.as_bytes()) {
-                <span class="prelude-val">Ok</span>(parsed_line) =&gt; <span class="prelude-val">Ok</span>(parsed_line),
-                <span class="prelude-val">Err</span>(error) =&gt; <span class="prelude-val">Err</span>(Error::InvalidLine(i+<span class="number">1</span>, line.trim().to_string(), error.to_string()))
-            };
+            |(i, line): (LineNumber, <span class="kw-2">&amp;</span>str)|
+                <span class="kw">match </span>Grammar::bbcx_line()
+                    .parse(line.as_bytes()) {
+                        <span class="prelude-val">Ok</span>(line) =&gt; ParsedLine::new(i+<span class="number">1</span>, <span class="prelude-val">Ok</span>(line)),
+                        <span class="prelude-val">Err</span>(error) =&gt; ParsedLine::new(i+<span class="number">1</span>, <span class="prelude-val">Err</span>(Error::InvalidLine(line.trim().to_string(), error.to_string())))
+                    };
         
-        <span class="kw">let </span>(good, bad): (Vec&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>&gt;&gt;, Vec&lt;<span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>&gt;&gt;) = lines
-            .filter(non_empty_line)
-            .map(parse_line)
-            .partition(Result::is_ok);
+        <span class="kw">let </span>all_results = lines.map(parse_line);
+        <span class="kw">let </span>ok_results = all_results.clone()
+            .filter(|l| l.parse_result.is_ok())
+            .map(|l| l.parse_result.unwrap())
+            .collect::&lt;SourceProgram&gt;();
 
-        <span class="kw">if </span>bad.is_empty() {
-            <span class="prelude-val">Ok</span>(good.into_iter().filter_map(Result::ok).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;())
+        <span class="kw">let </span>all_ok = lines_count == ok_results.len();
+
+        <span class="kw">if </span>all_ok {
+            <span class="prelude-val">Ok</span>(ok_results)
         } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(Error::InvalidInput(bad.into_iter().filter_map(Result::err).collect()))
+            <span class="prelude-val">Err</span>(Error::InvalidInput(all_results.collect()))
         }
     }
 }
@@ -627,7 +674,10 @@
 
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
-        <span class="kw">let </span>expected = <span class="macro">vec!</span>[];
+        <span class="kw">let </span>expected = <span class="macro">vec!</span>[
+            SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
+            SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
+        ];
         <span class="macro">assert_eq!</span>(program, expected);
     }
 
@@ -645,6 +695,7 @@ LABEL4: "L4C4"      ; Comment 4
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>expected = <span class="macro">vec!</span>[
+            SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>),
             SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="string">""</span>.into())),
             SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="string">" Comment 1"</span>.into())),
             SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::SWord(<span class="string">"    "</span>.into())), <span class="prelude-val">None</span>),
@@ -653,7 +704,8 @@ LABEL4: "L4C4"      ; Comment 4
             SourceProgramLine::new(<span class="prelude-val">Some</span>(<span class="string">"LABEL2"</span>.into()), <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="string">" Comment 3"</span>.into())),
             SourceProgramLine::new(<span class="prelude-val">Some</span>(<span class="string">"LABEL3"</span>.into()), <span class="prelude-val">Some</span>(SourceProgramWord::SWord(<span class="string">"L3  "</span>.into())), <span class="prelude-val">None</span>),
             SourceProgramLine::new(<span class="prelude-val">Some</span>(<span class="string">"LABEL4"</span>.into()), <span class="prelude-val">Some</span>(SourceProgramWord::SWord(<span class="string">"L4C4"</span>.into())), <span class="prelude-val">Some</span>(<span class="string">" Comment 4"</span>.into())),
-        ];
+        ].into_iter()
+         .collect::&lt;SourceProgram&gt;();
         <span class="macro">assert_eq!</span>(program, expected);
     }
 
@@ -664,7 +716,8 @@ LABEL4: "L4C4"      ; Comment 4
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>expected = <span class="macro">vec!</span>[
             SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::SWord(<span class="string">"TEXT"</span>.into())), <span class="prelude-val">None</span>),
-        ];
+        ].into_iter()
+         .collect::&lt;SourceProgram&gt;();
         <span class="macro">assert_eq!</span>(program, expected)
     }
 
@@ -691,7 +744,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(p.clone())), <span class="prelude-val">None</span>))
             .collect::&lt;SourceProgram&gt;();
-        <span class="macro">assert_eq!</span>(program, expected)
+        <span class="macro">assert_eq!</span>(program[<span class="number">1</span>..], expected)
     }
 
     <span class="attr">#[test]
@@ -717,7 +770,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(p.clone())), <span class="prelude-val">None</span>))
             .collect::&lt;SourceProgram&gt;();
-        <span class="macro">assert_eq!</span>(program, expected)
+        <span class="macro">assert_eq!</span>(program[<span class="number">1</span>..], expected)
     }
 
     <span class="attr">#[test]
@@ -737,7 +790,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(p.clone())), <span class="prelude-val">None</span>))
             .collect::&lt;SourceProgram&gt;();
-        <span class="macro">assert_eq!</span>(program, expected)
+        <span class="macro">assert_eq!</span>(program[<span class="number">1</span>..], expected)
     }
 
     <span class="attr">#[test]
@@ -755,7 +808,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(p.clone())), <span class="prelude-val">None</span>))
             .collect::&lt;SourceProgram&gt;();
-        <span class="macro">assert_eq!</span>(program, expected)
+        <span class="macro">assert_eq!</span>(program[<span class="number">1</span>..], expected)
     }
 
     <span class="attr">#[test]
@@ -775,7 +828,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(p.clone())), <span class="prelude-val">None</span>))
             .collect::&lt;SourceProgram&gt;();
-        <span class="macro">assert_eq!</span>(program, expected)
+        <span class="macro">assert_eq!</span>(program[<span class="number">1</span>..], expected)
     }
 
     <span class="attr">#[test]
@@ -819,7 +872,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(p.clone())), <span class="prelude-val">None</span>))
             .collect::&lt;SourceProgram&gt;();
-        <span class="macro">assert_eq!</span>(program, expected)
+        <span class="macro">assert_eq!</span>(program[<span class="number">1</span>..], expected)
     }
 
     <span class="attr">#[test]
@@ -859,7 +912,7 @@ LABEL4: "L4C4"      ; Comment 4
             SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::Octal(Octal::F(<span class="number">0o55554444</span>))), <span class="prelude-val">None</span>),
             SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::Octal(Octal::I(<span class="number">0o77776666</span>))), <span class="prelude-val">None</span>),
         ];
-        <span class="macro">assert_eq!</span>(program, expected)
+        <span class="macro">assert_eq!</span>(program[<span class="number">1</span>..], expected)
     }
 
     <span class="attr">#[test]
@@ -911,7 +964,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(p.clone())), <span class="prelude-val">None</span>))
             .collect::&lt;SourceProgram&gt;();
-        <span class="macro">assert_eq!</span>(program, expected)
+        <span class="macro">assert_eq!</span>(program[<span class="number">1</span>..], expected)
     }
 
     <span class="attr">#[test]
@@ -1146,8 +1199,8 @@ LABEL4: "L4C4"      ; Comment 4
             .map(|p| SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(p.clone())), <span class="prelude-val">None</span>))
             .collect::&lt;SourceProgram&gt;();
         
-        <span class="macro">assert_eq!</span>(program.len(), expected.len());
-        <span class="kw">let </span>results = program.iter().zip(expected.iter());
+        <span class="macro">assert_eq!</span>(program.len(), expected.len() + <span class="number">1</span>);
+        <span class="kw">let </span>results = program.iter().skip(<span class="number">1</span>).zip(expected.iter());
         <span class="kw">for </span>(line, expected) <span class="kw">in </span>results { <span class="comment">// Line by line assert easier to detect errors.
             </span><span class="macro">assert_eq!</span>(line, expected)
         }
@@ -1163,12 +1216,17 @@ LABEL4: "L4C4"      ; Comment 4
 
         Invalid Two
 "#</span>;
-        <span class="kw">let </span>errors = Parser::parse(program).err().unwrap();
+        <span class="kw">let </span>results = Parser::parse(program).err().unwrap();
         <span class="kw">let </span>expected = Error::InvalidInput(<span class="macro">vec!</span>[
-            Error::InvalidLine(<span class="number">3</span>, <span class="string">"Invalid One"</span>.into(), <span class="string">"failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)"</span>.into()),
-            Error::InvalidLine(<span class="number">7</span>, <span class="string">"Invalid Two"</span>.into(), <span class="string">"failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)"</span>.into())
+            ParsedLine::new(<span class="number">1</span>, <span class="prelude-val">Ok</span>(SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>))),
+            ParsedLine::new(<span class="number">2</span>, <span class="prelude-val">Ok</span>(SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>))),
+            ParsedLine::new(<span class="number">3</span>, <span class="prelude-val">Err</span>(Error::InvalidLine(<span class="string">"Invalid One"</span>.into(), <span class="string">"failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)"</span>.into()))),
+            ParsedLine::new(<span class="number">4</span>, <span class="prelude-val">Ok</span>(SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>))),
+            ParsedLine::new(<span class="number">5</span>, <span class="prelude-val">Ok</span>(SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(SourceProgramWord::PWord(PWord::LibraryMnemonic(Mnemonic::SQRT))), <span class="prelude-val">Some</span>(<span class="string">" Valid"</span>.into())))),
+            ParsedLine::new(<span class="number">6</span>, <span class="prelude-val">Ok</span>(SourceProgramLine::new(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>))),
+            ParsedLine::new(<span class="number">7</span>, <span class="prelude-val">Err</span>(Error::InvalidLine(<span class="string">"Invalid Two"</span>.into(), <span class="string">"failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)"</span>.into()))),
         ]);
-        <span class="macro">assert_eq!</span>(errors, expected)
+        <span class="macro">assert_eq!</span>(results, expected)
     }
 }
 </code></pre></div></section></main></body></html>

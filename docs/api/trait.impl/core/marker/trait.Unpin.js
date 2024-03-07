@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"bbc_x":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.76.0/core/marker/trait.Unpin.html\" title=\"trait core::marker::Unpin\">Unpin</a> for <a class=\"enum\" href=\"bbc_x/result/enum.Error.html\" title=\"enum bbc_x::result::Error\">Error</a>",1,["bbc_x::result::Error"]]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

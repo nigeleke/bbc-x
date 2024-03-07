@@ -694,8 +694,8 @@
 // Amended: SWord delimited by new quote/unquote ('"', rather than '&lt;' and '&gt;').
 </span><span class="kw">fn </span>sword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, SWord&gt; {
     (   sym(<span class="string">b'"'</span>) +
-        actual_character().repeat(<span class="number">1</span>..<span class="number">5</span>) +  <span class="comment">// TODO: Inclusive range (1..=4)
-        </span>sym(<span class="string">b'"'</span>)
+        actual_character().repeat(<span class="number">1</span>..=<span class="number">4</span>) +
+        sym(<span class="string">b'"'</span>)
     ).convert(|((<span class="kw">_</span>, cs), <span class="kw">_</span>)| SWord::from_utf8(cs))
      .name(<span class="string">"sword"</span>)
 }
@@ -843,7 +843,7 @@
 <span class="comment">// &lt;alpha character&gt; ::= A | B | C | D | E | F | G | H | I | J | K| L |M | N | O | P |
 //                       Q | R | S | T | V | W | X | Y | Z
 </span><span class="kw">fn </span>alpha_character&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, u8&gt;  {
-    one_of(<span class="string">b"ABCDEFGHIJKLMNOPQRSTUVWXYZ"</span>)
+    one_of(<span class="kw-2">&amp;</span>(<span class="string">b'A'</span>..=<span class="string">b'Z'</span>))
 }
 
 <span class="comment">// &lt;numeric character&gt; ::= &lt;digit&gt; | + | - | &lt;subscript 10&gt; | .
@@ -869,7 +869,7 @@
 
 <span class="comment">// &lt;oct.dig&gt; ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 </span><span class="kw">fn </span>oct_dig&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, u8&gt;  {
-    one_of(<span class="string">b"01234567"</span>)
+    one_of(<span class="kw-2">&amp;</span>(<span class="string">b'0'</span>..=<span class="string">b'7'</span>))
 }
 
 <span class="comment">// Added: ++
@@ -982,8 +982,8 @@
 <span class="comment">// &lt;index&gt; ::= &lt;digit&gt; | &lt;digit&gt;&lt;digit&gt;
 </span><span class="kw">fn </span>index&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Index&gt; {
     digit()
-        .repeat(<span class="number">1</span>..<span class="number">3</span>) <span class="comment">// TODO: Prefer 0..=2
-        </span>.convert(String::from_utf8)
+        .repeat(<span class="number">1</span>..=<span class="number">2</span>)
+        .convert(String::from_utf8)
         .convert(|s| Index::from_str(<span class="kw-2">&amp;</span>s))
         .name(<span class="string">"index"</span>)
 }
@@ -1049,8 +1049,8 @@
 </span><span class="kw">fn </span>sign&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, String&gt; {
     (   sym(<span class="string">b'+'</span>) |
         sym(<span class="string">b'-'</span>)
-    ).repeat(..<span class="number">2</span>) <span class="comment">// TODO: Use RangeToInclusive (..1)
-     </span>.convert(String::from_utf8)
+    ).repeat(..=<span class="number">1</span>)
+     .convert(String::from_utf8)
      .name(<span class="string">"sign"</span>)
 }
 

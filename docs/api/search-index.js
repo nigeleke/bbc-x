@@ -1,5 +1,5 @@
 var searchIndex = new Map(JSON.parse('[\
-["bbc_x",{"doc":"","t":"C","n":["result"],"q":[[0,"bbc_x"]],"d":[""],"i":[0],"f":[0],"c":[],"p":[],"b":[]}]\
+["bbc_x",{"doc":"","t":"HCPPGPPPINNNNNNNNN","n":["bbc_x","result","CannotReadFile","Err","Error","InvalidInput","InvalidLine","Ok","Result","borrow","borrow_mut","eq","fmt","from","into","try_from","try_into","type_id"],"q":[[0,"bbc_x"],[2,"bbc_x::result"],[18,"alloc::string"],[19,"alloc::vec"],[20,"core::fmt"],[21,"core::fmt"],[22,"core::any"]],"d":["","","","Contains the error value","","","","Contains the success value","","","","","","Returns the argument unchanged.","Calls <code>U::from(self)</code>.","","",""],"i":[0,0,5,4,0,5,5,4,0,5,5,5,5,5,5,5,5,5],"f":[[[[2,[1]]],[[4,[3]]]],0,0,0,0,0,0,0,0,[-1,-2,[],[]],[-1,-2,[],[]],[[5,5],6],[[5,7],8],[-1,-1,[]],[-1,-2,[],[]],[-1,[[9,[-2]]],[],[]],[-1,[[9,[-2]]],[],[]],[-1,10,[]]],"c":[],"p":[[5,"String",18],[5,"Vec",19],[1,"tuple"],[8,"Result",2],[6,"Error",2],[1,"bool"],[5,"Formatter",20],[8,"Result",20],[6,"Result",21],[5,"TypeId",22]],"b":[]}]\
 ]'));
 if (typeof exports !== 'undefined') exports.searchIndex = searchIndex;
 else if (window.initSearch) window.initSearch(searchIndex);

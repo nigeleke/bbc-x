@@ -2,30 +2,48 @@ use crate::ast::*;
 use crate::grammar::*;
 use crate::result::{Error, Result};
 
-struct Parser;
+pub(crate) type LineNumber = usize;
+
+#[derive(Debug, PartialEq)]
+pub struct ParsedLine {
+    line_number: LineNumber,
+    parse_result: Result<SourceProgramLine>,
+}
+
+impl ParsedLine {
+    fn new(line_number: LineNumber, parse_result: Result<SourceProgramLine>) -> Self {
+        ParsedLine { line_number, parse_result }
+    }
+}
+
+pub struct Parser;
 
 impl Parser {
-    fn parse(program: &str) -> Result<SourceProgram> {
-        let lines = program.lines().enumerate();
-        
-        let non_empty_line =
-            |(_, line): &(usize, &str)| !line.trim().is_empty();
+    pub(crate) fn parse(program: &str) -> Result<SourceProgram> {
+        let lines = program.lines();
+        let lines_count = lines.clone().count();
+        let lines = lines.enumerate();
         
         let parse_line =
-            |(i, line): (usize, &str)| match Grammar::bbcx_line().parse(line.as_bytes()) {
-                Ok(parsed_line) => Ok(parsed_line),
-                Err(error) => Err(Error::InvalidLine(i+1, line.trim().to_string(), error.to_string()))
-            };
+            |(i, line): (LineNumber, &str)|
+                match Grammar::bbcx_line()
+                    .parse(line.as_bytes()) {
+                        Ok(line) => ParsedLine::new(i+1, Ok(line)),
+                        Err(error) => ParsedLine::new(i+1, Err(Error::InvalidLine(line.trim().to_string(), error.to_string())))
+                    };
         
-        let (good, bad): (Vec<Result<_>>, Vec<Result<_>>) = lines
-            .filter(non_empty_line)
-            .map(parse_line)
-            .partition(Result::is_ok);
+        let all_results = lines.map(parse_line);
+        let ok_results = all_results.clone()
+            .filter(|l| l.parse_result.is_ok())
+            .map(|l| l.parse_result.unwrap())
+            .collect::<SourceProgram>();
 
-        if bad.is_empty() {
-            Ok(good.into_iter().filter_map(Result::ok).collect::<Vec<_>>())
+        let all_ok = lines_count == ok_results.len();
+
+        if all_ok {
+            Ok(ok_results)
         } else {
-            Err(Error::InvalidInput(bad.into_iter().filter_map(Result::err).collect()))
+            Err(Error::InvalidInput(all_results.collect()))
         }
     }
 }
@@ -40,7 +58,10 @@ mod test {
 
 "#;
         let program = Parser::parse(program).unwrap();
-        let expected = vec![];
+        let expected = vec![
+            SourceProgramLine::new(None, None, None),
+            SourceProgramLine::new(None, None, None),
+        ];
         assert_eq!(program, expected);
     }
 
@@ -58,6 +79,7 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let expected = vec![
+            SourceProgramLine::new(None, None, None),
             SourceProgramLine::new(None, None, Some("".into())),
             SourceProgramLine::new(None, None, Some(" Comment 1".into())),
             SourceProgramLine::new(None, Some(SourceProgramWord::SWord("    ".into())), None),
@@ -66,7 +88,8 @@ LABEL4: "L4C4"      ; Comment 4
             SourceProgramLine::new(Some("LABEL2".into()), None, Some(" Comment 3".into())),
             SourceProgramLine::new(Some("LABEL3".into()), Some(SourceProgramWord::SWord("L3  ".into())), None),
             SourceProgramLine::new(Some("LABEL4".into()), Some(SourceProgramWord::SWord("L4C4".into())), Some(" Comment 4".into())),
-        ];
+        ].into_iter()
+         .collect::<SourceProgram>();
         assert_eq!(program, expected);
     }
 
@@ -77,7 +100,8 @@ LABEL4: "L4C4"      ; Comment 4
         let program = Parser::parse(program).unwrap();
         let expected = vec![
             SourceProgramLine::new(None, Some(SourceProgramWord::SWord("TEXT".into())), None),
-        ];
+        ].into_iter()
+         .collect::<SourceProgram>();
         assert_eq!(program, expected)
     }
 
@@ -104,7 +128,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(None, Some(SourceProgramWord::PWord(p.clone())), None))
             .collect::<SourceProgram>();
-        assert_eq!(program, expected)
+        assert_eq!(program[1..], expected)
     }
 
     #[test]
@@ -130,7 +154,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(None, Some(SourceProgramWord::PWord(p.clone())), None))
             .collect::<SourceProgram>();
-        assert_eq!(program, expected)
+        assert_eq!(program[1..], expected)
     }
 
     #[test]
@@ -150,7 +174,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(None, Some(SourceProgramWord::PWord(p.clone())), None))
             .collect::<SourceProgram>();
-        assert_eq!(program, expected)
+        assert_eq!(program[1..], expected)
     }
 
     #[test]
@@ -168,7 +192,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(None, Some(SourceProgramWord::PWord(p.clone())), None))
             .collect::<SourceProgram>();
-        assert_eq!(program, expected)
+        assert_eq!(program[1..], expected)
     }
 
     #[test]
@@ -188,7 +212,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(None, Some(SourceProgramWord::PWord(p.clone())), None))
             .collect::<SourceProgram>();
-        assert_eq!(program, expected)
+        assert_eq!(program[1..], expected)
     }
 
     #[test]
@@ -232,7 +256,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(None, Some(SourceProgramWord::PWord(p.clone())), None))
             .collect::<SourceProgram>();
-        assert_eq!(program, expected)
+        assert_eq!(program[1..], expected)
     }
 
     #[test]
@@ -272,7 +296,7 @@ LABEL4: "L4C4"      ; Comment 4
             SourceProgramLine::new(None, Some(SourceProgramWord::Octal(Octal::F(0o55554444))), None),
             SourceProgramLine::new(None, Some(SourceProgramWord::Octal(Octal::I(0o77776666))), None),
         ];
-        assert_eq!(program, expected)
+        assert_eq!(program[1..], expected)
     }
 
     #[test]
@@ -324,7 +348,7 @@ LABEL4: "L4C4"      ; Comment 4
             .iter()
             .map(|p| SourceProgramLine::new(None, Some(SourceProgramWord::PWord(p.clone())), None))
             .collect::<SourceProgram>();
-        assert_eq!(program, expected)
+        assert_eq!(program[1..], expected)
     }
 
     #[test]
@@ -559,8 +583,8 @@ LABEL4: "L4C4"      ; Comment 4
             .map(|p| SourceProgramLine::new(None, Some(SourceProgramWord::PWord(p.clone())), None))
             .collect::<SourceProgram>();
         
-        assert_eq!(program.len(), expected.len());
-        let results = program.iter().zip(expected.iter());
+        assert_eq!(program.len(), expected.len() + 1);
+        let results = program.iter().skip(1).zip(expected.iter());
         for (line, expected) in results { // Line by line assert easier to detect errors.
             assert_eq!(line, expected)
         }
@@ -576,11 +600,16 @@ LABEL4: "L4C4"      ; Comment 4
 
         Invalid Two
 "#;
-        let errors = Parser::parse(program).err().unwrap();
+        let results = Parser::parse(program).err().unwrap();
         let expected = Error::InvalidInput(vec![
-            Error::InvalidLine(3, "Invalid One".into(), "failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)".into()),
-            Error::InvalidLine(7, "Invalid Two".into(), "failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)".into())
+            ParsedLine::new(1, Ok(SourceProgramLine::new(None, None, None))),
+            ParsedLine::new(2, Ok(SourceProgramLine::new(None, None, None))),
+            ParsedLine::new(3, Err(Error::InvalidLine("Invalid One".into(), "failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)".into()))),
+            ParsedLine::new(4, Ok(SourceProgramLine::new(None, None, None))),
+            ParsedLine::new(5, Ok(SourceProgramLine::new(None, Some(SourceProgramWord::PWord(PWord::LibraryMnemonic(Mnemonic::SQRT))), Some(" Valid".into())))),
+            ParsedLine::new(6, Ok(SourceProgramLine::new(None, None, None))),
+            ParsedLine::new(7, Err(Error::InvalidLine("Invalid Two".into(), "failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)".into()))),
         ]);
-        assert_eq!(errors, expected)
+        assert_eq!(results, expected)
     }
 }

@@ -5,7 +5,7 @@ use crate::result::{Error, Result};
 pub(crate) type LineNumber = usize;
 
 #[derive(Debug, PartialEq)]
-pub struct ParsedLine {
+pub(crate) struct ParsedLine {
     line_number: LineNumber,
     parse_result: Result<SourceProgramLine>,
 }
@@ -16,7 +16,7 @@ impl ParsedLine {
     }
 }
 
-pub struct Parser;
+pub(crate) struct Parser;
 
 impl Parser {
     pub(crate) fn parse(program: &str) -> Result<SourceProgram> {
@@ -59,8 +59,8 @@ mod test {
 "#;
         let program = Parser::parse(program).unwrap();
         let expected = vec![
-            SourceProgramLine::new(None, None, None),
-            SourceProgramLine::new(None, None, None),
+            SourceProgramLine::default(),
+            SourceProgramLine::default(),
         ];
         assert_eq!(program, expected);
     }
@@ -79,7 +79,7 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let expected = vec![
-            SourceProgramLine::new(None, None, None),
+            SourceProgramLine::default(),
             SourceProgramLine::new(None, None, Some("".into())),
             SourceProgramLine::new(None, None, Some(" Comment 1".into())),
             SourceProgramLine::new(None, Some(SourceProgramWord::SWord("    ".into())), None),
@@ -602,12 +602,12 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let results = Parser::parse(program).err().unwrap();
         let expected = Error::InvalidInput(vec![
-            ParsedLine::new(1, Ok(SourceProgramLine::new(None, None, None))),
-            ParsedLine::new(2, Ok(SourceProgramLine::new(None, None, None))),
+            ParsedLine::new(1, Ok(SourceProgramLine::default())),
+            ParsedLine::new(2, Ok(SourceProgramLine::default())),
             ParsedLine::new(3, Err(Error::InvalidLine("Invalid One".into(), "failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)".into()))),
-            ParsedLine::new(4, Ok(SourceProgramLine::new(None, None, None))),
+            ParsedLine::new(4, Ok(SourceProgramLine::default())),
             ParsedLine::new(5, Ok(SourceProgramLine::new(None, Some(SourceProgramWord::PWord(PWord::LibraryMnemonic(Mnemonic::SQRT))), Some(" Valid".into())))),
-            ParsedLine::new(6, Ok(SourceProgramLine::new(None, None, None))),
+            ParsedLine::new(6, Ok(SourceProgramLine::default())),
             ParsedLine::new(7, Err(Error::InvalidLine("Invalid Two".into(), "failed to parse source_program_line at 0, (inner: Mismatch at 8: expect end of input, found: 73)".into()))),
         ]);
         assert_eq!(results, expected)

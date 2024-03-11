@@ -97,7 +97,6 @@ fn generate_code(program: &SourceProgram) -> Code {
         .into_iter()
         .filter(|l| l.source_program_word().is_some())
         .map(|l| l.source_program_word().as_ref().unwrap().clone())
-        .enumerate()
         .collect::<Code>()
 }
 

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 pub(crate) type SymbolTable = HashMap<Identifier, MemoryAddress>;
 
-pub(crate) type Code = HashMap<MemoryAddress, WordContent>;
+pub(crate) type Code = Vec<WordContent>;
 
 pub(crate) type MemoryAddress = usize;
 
@@ -31,6 +31,6 @@ impl Assembly {
 
     #[cfg(test)]
     pub(crate) fn content(&self, address: MemoryAddress) -> Option<SourceProgramWord> {
-        self.code.get(&address).map(|w| w.clone())
+        self.code.get(address).map(|w| w.clone())
     }
 }

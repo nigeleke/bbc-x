@@ -14,13 +14,21 @@ impl SourceProgramLine {
         comment: Option<Comment>) -> Self {
         Self { location, source_program_word, comment }
     }
+
+    pub(crate) fn location(&self) -> &Option<Location> {
+        &self.location
+    }
+
+    pub(crate) fn source_program_word(&self) -> &Option<SourceProgramWord> {
+        &self.source_program_word
+    }
 }
 
 pub(crate) type Location = Identifier;
 
 pub(crate) type Identifier = String;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) enum SourceProgramWord {
     SWord(SWord),
     PWord(PWord),
@@ -39,6 +47,19 @@ pub(crate) enum PWord {
     LoadRConst(Option<Acc>, ConstOperand, Index),
     LoadR(Option<Acc>, SimpleAddressOperand, Index),
     LibraryMnemonic(Mnemonic),
+}
+
+impl PWord {
+    pub(crate) fn identifier(&self) -> Option<Identifier> {
+        match self {
+            PWord::TakeType(_, _, o) => o.identifier(),
+            PWord::PutType(_, _, o) => o.identifier(),
+            PWord::LoadN(_, o, _) => o.identifier(),
+            PWord::LoadRConst(_, _, _) => None,
+            PWord::LoadR(_, o, _) => o.identifier(),
+            PWord::LibraryMnemonic(_) => None,
+        }        
+    }
 }
 
 pub(crate) type Acc = u8;
@@ -74,6 +95,15 @@ pub(crate) enum GeneralOperand {
     ConstOperand(ConstOperand),
 }
 
+impl GeneralOperand {
+    pub(crate) fn identifier(&self) -> Option<Identifier> {
+        match self {
+            GeneralOperand::AddressOperand(ao) => ao.identifier(),
+            GeneralOperand::ConstOperand(_) => None,
+        }        
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct AddressOperand {
     address: SimpleAddressOperand,
@@ -85,6 +115,10 @@ impl AddressOperand {
         address: SimpleAddressOperand,
         index:  Option<Index>) -> Self {
         Self { address, index }
+    }
+
+    pub(crate) fn identifier(&self) -> Option<Identifier> {
+        self.address.identifier()
     }
 }
 
@@ -102,11 +136,30 @@ pub(crate) enum SimpleAddressOperand {
     IndirectAddress(Address)
 }
 
+impl SimpleAddressOperand {
+    pub(crate) fn identifier(&self) -> Option<Identifier> {
+        match self {
+            SimpleAddressOperand::DirectAddress(a) => a.identifier(),
+            SimpleAddressOperand::IndirectAddress(a) => a.identifier(),
+        }        
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Address {
-    Identifier(String),
+    Identifier(Identifier),
     NumericAddress(NumericAddress),
 }
+
+impl Address {
+    pub(crate) fn identifier(&self) -> Option<Identifier> {
+        match self {
+            Address::Identifier(i) => Some(i.into()),
+            Address::NumericAddress(_) => None,
+        }        
+    }
+}
+
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum NumericAddress {

@@ -24,14 +24,18 @@
 <a href="#23" id="23">23</a>
 <a href="#24" id="24">24</a>
 <a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::args::Args;
+<span class="kw">use </span><span class="kw">crate</span>::assembler::Assembler;
+<span class="kw">use </span><span class="kw">crate</span>::assembly::Assembly;
 <span class="kw">use </span><span class="kw">crate</span>::ast::SourceProgram;
 <span class="kw">use </span><span class="kw">crate</span>::parser::Parser;
 <span class="kw">use </span><span class="kw">crate</span>::result::{Error, <span class="prelude-ty">Result</span>};
 
 <span class="kw">use </span>std::path::PathBuf;
 
-<span class="kw">pub fn </span>bbc_x(args: <span class="kw-2">&amp;</span>Args) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; { 
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>bbc_x(args: <span class="kw-2">&amp;</span>Args) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; { 
     <span class="kw">for </span>file <span class="kw">in </span>args.files() {
         <span class="kw">let </span>source_program = parse(<span class="kw-2">&amp;</span>file)<span class="question-mark">?</span>;
         <span class="kw">let </span>assembled_program = assemble(<span class="kw-2">&amp;</span>source_program)<span class="question-mark">?</span>;
@@ -46,6 +50,7 @@
     Parser::parse(<span class="kw-2">&amp;</span>content)
 }
 
-<span class="kw">fn </span>assemble(_source: <span class="kw-2">&amp;</span>SourceProgram) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="prelude-val">Ok</span>(())
-}</code></pre></div></section></main></body></html>
+<span class="kw">fn </span>assemble(source: <span class="kw-2">&amp;</span>SourceProgram) -&gt; <span class="prelude-ty">Result</span>&lt;Assembly&gt; {
+    Assembler::assemble(source)
+}
+</code></pre></div></section></main></body></html>

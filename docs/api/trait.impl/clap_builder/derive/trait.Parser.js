@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"bbc_x":[["impl Parser for <a class=\"struct\" href=\"bbc_x/args/struct.Args.html\" title=\"struct bbc_x::args::Args\">Args</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

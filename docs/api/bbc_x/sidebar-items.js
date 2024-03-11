@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["bbc_x"],"mod":["result"]};
+window.SIDEBAR_ITEMS = {"fn":["bbc_x","main"],"mod":["args","assembler","assembly","ast","bbc_x","grammar","parser","result"]};

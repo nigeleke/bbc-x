@@ -7,6 +7,7 @@ pub(crate) enum Error {
      InvalidLine(String, String),
      UndefinedSymbols(Vec<String>),
      DuplicatedSymbols(Vec<String>),
+     BuildErrors(Vec<Error>),
 }
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;

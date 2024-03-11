@@ -34,8 +34,7 @@ impl Parser {
         
         let all_results = lines.map(parse_line);
         let ok_results = all_results.clone()
-            .filter(|l| l.parse_result.is_ok())
-            .map(|l| l.parse_result.unwrap())
+            .filter_map(|l| l.parse_result.ok())
             .collect::<SourceProgram>();
 
         let all_ok = lines_count == ok_results.len();

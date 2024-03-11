@@ -21,7 +21,7 @@ impl Assembler {
     pub(crate) fn assemble(program: &SourceProgram) -> Result<Assembly> {
         let symbol_table = get_definitions(program)?;
         let references = get_references(program);
-        _ = confirm_all_references_defined(&references, &symbol_table)?;
+        confirm_all_references_defined(&references, &symbol_table)?;
 
         let code = generate_code(program);
 
@@ -57,10 +57,10 @@ fn get_definitions(program: &SourceProgram) -> Result<SymbolTable> {
         .map(|(i, _)| i)
         .collect::<Vec<Identifier>>();
 
-    if counted.len() > 0 {
-        Err(Error::DuplicatedSymbols(counted))
-    } else {
+    if counted.is_empty() {
         Ok(definitions.into_iter().collect())
+    } else {
+        Err(Error::DuplicatedSymbols(counted))
     }
 }
 
@@ -78,23 +78,23 @@ fn get_references(program: &SourceProgram) -> Vec<Identifier> {
     references
 }
 
-fn confirm_all_references_defined(references: &Vec<Identifier>, symbol_table: &SymbolTable) -> Result<()> {
+fn confirm_all_references_defined(references: &[Identifier], symbol_table: &SymbolTable) -> Result<()> {
     let undefined = references
         .iter()
         .filter(|&k| !symbol_table.contains_key(k))
         .cloned()
         .collect::<Vec<String>>();
     
-    if undefined.len() > 0 {
-        Err(Error::UndefinedSymbols(undefined))
-    } else {
+    if undefined.is_empty() {
         Ok(())
+    } else {
+        Err(Error::UndefinedSymbols(undefined))
     }
 }
 
 fn generate_code(program: &SourceProgram) -> Code {
     program
-        .into_iter()
+        .iter()
         .filter(|l| l.source_program_word().is_some())
         .map(|l| l.source_program_word().as_ref().unwrap().clone())
         .collect::<Code>()

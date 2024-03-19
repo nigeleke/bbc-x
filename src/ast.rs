@@ -107,16 +107,16 @@ impl std::fmt::Display for PWord {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Acc(Option<u8>);
+pub(crate) struct Acc(Option<char>);
 
-impl From<u8> for Acc {
-    fn from(a: u8) -> Self {
+impl From<char> for Acc {
+    fn from(a: char) -> Self {
         Self(Some(a))
      }
 }
 
-impl From<Option<u8>> for Acc {
-    fn from(a: Option<u8>) -> Self {
+impl From<Option<char>> for Acc {
+    fn from(a: Option<char>) -> Self {
         Self(a)
      }
 }
@@ -283,10 +283,10 @@ impl std::fmt::Display for NumericAddress {
     }
 }
 
-pub(crate) type TypeDesignator = u8;
-pub(crate) type Character = u8;
-pub(crate) type NumericCharacter = u8;
-pub(crate) type Punctuation = u8;
+pub(crate) type TypeDesignator = char;
+pub(crate) type Character = char;
+pub(crate) type NumericCharacter = char;
+pub(crate) type Punctuation = char;
 pub(crate) type IntType = i32;
 pub(crate) type FloatType = f32;
 pub(crate) type AddressRef = usize;

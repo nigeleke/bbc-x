@@ -124,11 +124,11 @@ LABEL4: "L4C4"      ; Comment 4
         let pwords = vec![
             PWord::TakeType(Mnemonic::ADD, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::ADD, b'0'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '0'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), None))),
             PWord::TakeType(Mnemonic::SKAG, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR3".into())), None))),
-            PWord::TakeType(Mnemonic::SKAG, b'1'.into(), 
+            PWord::TakeType(Mnemonic::SKAG, '1'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR4".into())), None))),
         ];
         let expected = pwords
@@ -148,13 +148,13 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
-            PWord::PutType(Mnemonic::XADD, b'0'.into(), 
+            PWord::PutType(Mnemonic::XADD, '0'.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::INCR, b'1'.into(), 
+            PWord::PutType(Mnemonic::INCR, '1'.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), None)),
-            PWord::PutType(Mnemonic::XINCR, b'2'.into(), 
+            PWord::PutType(Mnemonic::XINCR, '2'.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR3".into())), None)),
-            PWord::PutType(Mnemonic::JUMP, b'3'.into(), 
+            PWord::PutType(Mnemonic::JUMP, '3'.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR4".into())), None)),
         ];
         let expected = pwords
@@ -174,7 +174,7 @@ LABEL4: "L4C4"      ; Comment 4
         let pwords = vec![
             PWord::LoadN(None.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), 42),
-            PWord::LoadN(b'1'.into(), 
+            PWord::LoadN('1'.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), 57),
         ];
         let expected = pwords
@@ -193,7 +193,7 @@ LABEL4: "L4C4"      ; Comment 4
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
             PWord::LoadRConst(None.into(), ConstOperand::SignedInteger(24), 42),
-            PWord::LoadRConst(b'1'.into(), ConstOperand::SignedFWord(-3.14), 57),
+            PWord::LoadRConst('1'.into(), ConstOperand::SignedFWord(-3.14), 57),
         ];
         let expected = pwords
             .iter()
@@ -212,7 +212,7 @@ LABEL4: "L4C4"      ; Comment 4
         let pwords = vec![
             PWord::LoadR(None.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), 42),
-            PWord::LoadR(b'1'.into(), 
+            PWord::LoadR('1'.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), 57),
         ];
         let expected = pwords
@@ -332,21 +332,21 @@ LABEL4: "L4C4"      ; Comment 4
         let pwords = vec![
             PWord::TakeType(Mnemonic::ADD, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::ADD, b'0'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '0'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), Some(42)))),
-            PWord::TakeType(Mnemonic::ADD, b'1'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '1'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::IndirectAddress(Address::Identifier("ADDR3".into())), None))),
-            PWord::TakeType(Mnemonic::ADD, b'2'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '2'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::IndirectAddress(Address::Identifier("ADDR4".into())), Some(42)))),
-            PWord::TakeType(Mnemonic::ADD, b'3'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '3'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::NumericAddress(NumericAddress::AbsoluteAddress(512))), None))),
-            PWord::TakeType(Mnemonic::ADD, b'4'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '4'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::NumericAddress(NumericAddress::RelativeAddress(512))), None))),
-            PWord::TakeType(Mnemonic::ADD, b'5'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '5'.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SignedInteger(-42))),
-            PWord::TakeType(Mnemonic::ADD, b'6'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '6'.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SignedFWord(3.14))),
-            PWord::TakeType(Mnemonic::ADD, b'7'.into(), 
+            PWord::TakeType(Mnemonic::ADD, '7'.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::Octal(Octal::I(0o1234567)))),
             PWord::TakeType(Mnemonic::ADD, None.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SWord("TEXT".into()))),

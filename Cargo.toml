@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-pom = "3.4"
+pom = { version = "3.4", features = ["utf8"] }
 time = { version = "0.3.34", features = ["formatting", "local-offset"] }
 
 [dev-dependencies]

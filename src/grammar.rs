@@ -1,6 +1,6 @@
 use crate::ast::*;
 
-use pom::parser::*;
+use pom::utf8::*;
 
 use std::str::FromStr;
 
@@ -16,7 +16,7 @@ use std::str::FromStr;
 pub(crate) struct Grammar;
 
 impl Grammar {
-    pub fn bbcx_line<'a>() -> Parser<'a, u8, SourceProgramLine> {
+    pub fn bbcx_line<'a>() -> Parser<'a, SourceProgramLine> {
         source_program_line()
     }
 }
@@ -26,7 +26,7 @@ impl Grammar {
 //                           <comment><new line>
 // Amended: Optional location; Optional whitespace.
 //          This implementation removes newlines.
-fn source_program_line<'a>() -> Parser<'a, u8, SourceProgramLine> {
+fn source_program_line<'a>() -> Parser<'a, SourceProgramLine> {
     let as_source_program_line = |((l, w), c)| SourceProgramLine::new(l, w, c);
 
     (   location().opt() -
@@ -41,13 +41,13 @@ fn source_program_line<'a>() -> Parser<'a, u8, SourceProgramLine> {
 
 // <location> ::= <numeric address><space>
 // Amended: Location is symbolic and ends with ':'
-fn location<'a>() -> Parser<'a, u8, Location> {
-    (identifier() - sym(b':')).name("location")
+fn location<'a>() -> Parser<'a, Location> {
+    (identifier() - sym(':')).name("location")
 }
 
 // <source program word> ::= <S-word> | <P-word> | <F-word> |
 //                           <I-word> | <octal>
-fn source_program_word<'a>() -> Parser<'a, u8, SourceProgramWord> {
+fn source_program_word<'a>() -> Parser<'a, SourceProgramWord> {
     (   sword().map(SourceProgramWord::SWord) |
         pword().map(SourceProgramWord::PWord) |
         fword().map(SourceProgramWord::FWord) |
@@ -58,11 +58,11 @@ fn source_program_word<'a>() -> Parser<'a, u8, SourceProgramWord> {
 
 // <comment> ::= <no character> | <space><string>
 // Amended: Comment starts with ';'
-fn comment<'a>() -> Parser<'a, u8, Comment> {
-    sym(b';') * 
-        none_of(b"\n")
+fn comment<'a>() -> Parser<'a, Comment> {
+    sym(';') * 
+        none_of("\n")
             .repeat(0..)
-            .convert(String::from_utf8)
+            .map(String::from_iter)
             .name("comment")
 }
 
@@ -70,11 +70,11 @@ fn comment<'a>() -> Parser<'a, u8, Comment> {
 // <S-word> ::= <quote><actual character><character><character>
 //              <character><unquote>
 // Amended: SWord delimited by new quote/unquote ('"', rather than '<' and '>').
-fn sword<'a>() -> Parser<'a, u8, SWord> {
-    (   sym(b'"') +
+fn sword<'a>() -> Parser<'a, SWord> {
+    (   sym('"') +
         actual_character().repeat(1..=4) +
-        sym(b'"')
-    ).convert(|((_, cs), _)| SWord::from_utf8(cs))
+        sym('"')
+    ).map(|((_, cs), _)| SWord::from_iter(cs.iter()))
      .name("sword")
 }
 
@@ -84,7 +84,7 @@ fn sword<'a>() -> Parser<'a, u8, SWord> {
 //              LDR<acc><const. operand>:‹index>|
 //              LDR<acc><simple address operand>:<index>|
 //              <library mnemonic>
-fn pword<'a>() -> Parser<'a, u8, PWord> {
+fn pword<'a>() -> Parser<'a, PWord> {
     (   take_type_pword() |
         put_type_pword() |
         loadn_pword() |
@@ -94,7 +94,7 @@ fn pword<'a>() -> Parser<'a, u8, PWord> {
     ).name("pword")
 }
 
-fn take_type_pword<'a>() -> Parser<'a, u8, PWord> {
+fn take_type_pword<'a>() -> Parser<'a, PWord> {
     let as_take_type = |((m, a), o)| PWord::TakeType(m, a, o);
 
     (   take_type_mnemonic() -
@@ -106,7 +106,7 @@ fn take_type_pword<'a>() -> Parser<'a, u8, PWord> {
      .name("take_type_pword")
 }
 
-fn put_type_pword<'a>() -> Parser<'a, u8, PWord> {
+fn put_type_pword<'a>() -> Parser<'a, PWord> {
     let as_put_type = |((m, a), o)| PWord::PutType(m, a, o);
 
     (   put_type_mnemonic() -
@@ -118,7 +118,7 @@ fn put_type_pword<'a>() -> Parser<'a, u8, PWord> {
      .name("put_type_pword")
 }
 
-fn loadn_pword<'a>() -> Parser<'a, u8, PWord> {
+fn loadn_pword<'a>() -> Parser<'a, PWord> {
     let as_loadn = |(((_, a), o), i)| PWord::LoadN(a, o, i);
 
     (   ldn_mnemonic().discard() -
@@ -131,7 +131,7 @@ fn loadn_pword<'a>() -> Parser<'a, u8, PWord> {
      .name("loadn_pword")
 }
 
-fn loadr_const_pword<'a>() -> Parser<'a, u8, PWord> {
+fn loadr_const_pword<'a>() -> Parser<'a, PWord> {
     let as_loadr_const = |(((_, a), o), i)| PWord::LoadRConst(a, o, i);
 
     (   ldr_mnemonic().discard() -
@@ -144,7 +144,7 @@ fn loadr_const_pword<'a>() -> Parser<'a, u8, PWord> {
      .name("loadr_const_pword")
 }
 
-fn loadr_pword<'a>() -> Parser<'a, u8, PWord> {
+fn loadr_pword<'a>() -> Parser<'a, PWord> {
     let as_loadr = |(((_, a), o), i)| PWord::LoadR(a, o, i);
 
     (   ldr_mnemonic().discard() -
@@ -157,47 +157,47 @@ fn loadr_pword<'a>() -> Parser<'a, u8, PWord> {
      .name("loadr_pword")
 }
 
-fn library_mnemonic_pword<'a>() -> Parser<'a, u8, PWord> {
+fn library_mnemonic_pword<'a>() -> Parser<'a, PWord> {
     library_mnemonic()
         .map(PWord::LibraryMnemonic)
         .name("library_mnemonic_pword")
 }
 
 // <F-word> ::= <unsigned F-word> | <signed F-word>
-fn fword<'a>() -> Parser<'a, u8, FWord> {
+fn fword<'a>() -> Parser<'a, FWord> {
     (unsigned_fword() | signed_fword())
         .name("fword")
 }
 
 // <I-word> ::= <unsigned integer> | <signed integer>
-fn iword<'a>() -> Parser<'a, u8, IWord> {
+fn iword<'a>() -> Parser<'a, IWord> {
     (unsigned_integer() | signed_integer())
         .name("iword")
 }
 
 // <octal> ::= <type designator><oct.dig><oct.dig>‹oct.dig>
 //             <oct.dig><oct.dig><oct.dig><oct.dig><oct.dig>
-fn octal<'a>() -> Parser<'a, u8, Octal> {
+fn octal<'a>() -> Parser<'a, Octal> {
     let as_enum = |(t, value)| match t {
-        b'S' => Octal::S(value),
-        b'P' => Octal::P(value),
-        b'F' => Octal::F(value),
-        b'I' => Octal::I(value),
+        'S' => Octal::S(value),
+        'P' => Octal::P(value),
+        'F' => Octal::F(value),
+        'I' => Octal::I(value),
         _ => unreachable!(),
     };
 
-    (   sym(b'(') *
+    (   sym('(') *
         type_designator() +
         octal_word () -
-        sym(b')')
+        sym(')')
     ).map(as_enum)
      .name("octal")
 }
 
-fn octal_word<'a>() -> Parser<'a, u8, WordValue> {
+fn octal_word<'a>() -> Parser<'a, WordValue> {
     oct_dig()
         .repeat(8)
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .convert(|s| WordValue::from_str_radix(&s, 8))
         .name("octal_word")
 }
@@ -211,7 +211,7 @@ fn octal_word<'a>() -> Parser<'a, u8, WordValue> {
 
 // <actual character> ::= <alpha character> | <numeric character> |
 //                        <punctuation>
-fn actual_character<'a>() -> Parser<'a, u8, Character> {
+fn actual_character<'a>() -> Parser<'a, Character> {
     (   alpha_character() | 
         numeric_character() |
         punctuation()
@@ -220,41 +220,41 @@ fn actual_character<'a>() -> Parser<'a, u8, Character> {
 
 // <alpha character> ::= A | B | C | D | E | F | G | H | I | J | K| L |M | N | O | P |
 //                       Q | R | S | T | V | W | X | Y | Z
-fn alpha_character<'a>() -> Parser<'a, u8, u8>  {
-    one_of(&(b'A'..=b'Z'))
+fn alpha_character<'a>() -> Parser<'a, char>  {
+    one_of(&('A'..='Z'))
 }
 
 // <numeric character> ::= <digit> | + | - | <subscript 10> | .
-fn numeric_character<'a>() -> Parser<'a, u8, NumericCharacter> {
+fn numeric_character<'a>() -> Parser<'a, NumericCharacter> {
     (   digit() | 
-        sym(b'+') |
-        sym(b'-') |
+        sym('+') |
+        sym('-') |
         subscript10() |
-        sym(b'.')
+        sym('.')
     ).name("numeric_character")
 }
 
 // <punctuation> ::= ( | <quote> | <unquote> | <apostrophe> | * | / |
 //                   : | ) | = | ? | ^ | ~ | # | ; | , | <space>
-fn punctuation<'a>() -> Parser<'a, u8, Punctuation> {
-    one_of(b"<>'*/:)=?^~#;. ").name("punctuation")
+fn punctuation<'a>() -> Parser<'a, Punctuation> {
+    one_of("<>'*/:)=?^~#;. ").name("punctuation")
 }
 
 // <digit> ::= <oct.dig> | 8 | 9
-fn digit<'a>() -> Parser<'a, u8, u8>  {
-    oct_dig() | one_of(b"89")
+fn digit<'a>() -> Parser<'a, char>  {
+    oct_dig() | one_of("89")
 }
 
 // <oct.dig> ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
-fn oct_dig<'a>() -> Parser<'a, u8, u8>  {
-    one_of(&(b'0'..=b'7'))
+fn oct_dig<'a>() -> Parser<'a, char>  {
+    one_of(&('0'..='7'))
 }
 
 // Added: ++
-fn inline_ws<'a>() -> Parser<'a, u8, String> {
-    one_of(b" \t")
+fn inline_ws<'a>() -> Parser<'a, String> {
+    one_of(" \t")
         .repeat(1..)
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .name("inline_ws")
 }
 // Added: --
@@ -270,11 +270,11 @@ fn inline_ws<'a>() -> Parser<'a, u8, String> {
 // <new line>     .
 // .
 // <subscript 10> .@.
-fn subscript10<'a>() -> Parser<'a, u8, u8>  { sym(b'@') }
+fn subscript10<'a>() -> Parser<'a, char>  { sym('@') }
 
 // ****************************************************************************
 // <general operand> ::= <address operand> | <const. operand>
-fn general_operand<'a>() -> Parser<'a, u8, GeneralOperand> {
+fn general_operand<'a>() -> Parser<'a, GeneralOperand> {
     (   const_operand().map(GeneralOperand::ConstOperand) |
         address_operand().map(GeneralOperand::AddressOperand)
     ).name("general_operand")
@@ -283,7 +283,7 @@ fn general_operand<'a>() -> Parser<'a, u8, GeneralOperand> {
 // <address operand> ::= <simple address operand> | <simple address operand>
 //                       ":" <index>
 // Amended: ':index' to '(index)'
-fn address_operand<'a>() -> Parser<'a, u8, AddressOperand> {
+fn address_operand<'a>() -> Parser<'a, AddressOperand> {
     (   simple_address_operand() +
         index_ref().opt()
     ).map(|(o, i)| AddressOperand::new(o, i))
@@ -293,7 +293,7 @@ fn address_operand<'a>() -> Parser<'a, u8, AddressOperand> {
 // <const. operand> ::= <signed integer> | <signed F-word> !
 //                      <octal> | <S-word>
 // Amended: <octal> disallow
-fn const_operand<'a>() -> Parser<'a, u8, ConstOperand> {
+fn const_operand<'a>() -> Parser<'a, ConstOperand> {
     (   signed_fword().map(ConstOperand::SignedFWord) |
         signed_integer().map(ConstOperand::SignedInteger) |
         octal().map(ConstOperand::Octal) |
@@ -302,14 +302,14 @@ fn const_operand<'a>() -> Parser<'a, u8, ConstOperand> {
 }
 
 // <simple address operand> ::= <space><address> | *<address>
-fn simple_address_operand<'a>() -> Parser<'a, u8, SimpleAddressOperand> {
+fn simple_address_operand<'a>() -> Parser<'a, SimpleAddressOperand> {
     (   (address()).map(SimpleAddressOperand::DirectAddress) |
-        (sym(b'*') * address()).map(SimpleAddressOperand::IndirectAddress)
+        (sym('*') * address()).map(SimpleAddressOperand::IndirectAddress)
     ).name("simple_address_operand")
 }
 
 // <address> ::= <identifier> | <numeric address>
-fn address<'a>() -> Parser<'a, u8, Address> {
+fn address<'a>() -> Parser<'a, Address> {
     (   identifier().map(Address::Identifier) |
         numeric_address().map(Address::NumericAddress)
     ).name("address")
@@ -317,33 +317,32 @@ fn address<'a>() -> Parser<'a, u8, Address> {
 
 // <identifier> ::= <alpha char.> | <identifier><alpha char.> !
 //                  <identifier><digit>
-fn identifier<'a>() -> Parser<'a, u8, Identifier> {
-    let concat = |(a, ans)| {
-        let mut id = Vec::new();
-        id.push(a);
-        id.extend(ans);
-        String::from_utf8(id)
+fn identifier<'a>() -> Parser<'a, Identifier> {
+    let concat = |a: char, ans: &[char]| {
+        let mut id = Vec::from(ans);
+        id.insert(0, a);
+        String::from_iter(id)
     }; 
 
     (   alpha_character() + 
         alpha_numeric().repeat(0..)
-    ).convert(concat)
+    ).map(move |ans| concat(ans.0, &ans.1))
      .name("identifier")
 }
 
-fn alpha_numeric<'a>() -> Parser<'a, u8, u8>  {
+fn alpha_numeric<'a>() -> Parser<'a, char>  {
     alpha_character() | digit()
 } 
 
 // <numeric address> ::= <absolute address> | <relative address>
-fn numeric_address<'a>() -> Parser<'a, u8, NumericAddress> {
+fn numeric_address<'a>() -> Parser<'a, NumericAddress> {
     (   relative_address().map(NumericAddress::RelativeAddress) |
         absolute_address().map(NumericAddress::AbsoluteAddress)
     ).name("numeric_address")
 }
 
 // <absolute address> ::= <Unsigned integer>
-fn absolute_address<'a>() -> Parser<'a, u8, AddressRef> {
+fn absolute_address<'a>() -> Parser<'a, AddressRef> {
     unsigned_integer()
         .map(|i| i as AddressRef)
         .name("absolute_address")
@@ -351,30 +350,30 @@ fn absolute_address<'a>() -> Parser<'a, u8, AddressRef> {
 
 // <relative address> ::= <absolute address>+
 // TODO: Definition is unsigned - implies forward reference only...
-fn relative_address<'a>() -> Parser<'a, u8, RelativeRef> {
+fn relative_address<'a>() -> Parser<'a, RelativeRef> {
     (   absolute_address() - 
-        sym(b'+')
+        sym('+')
     ).name("relative_address")
 }
 
 // <index> ::= <digit> | <digit><digit>
-fn index<'a>() -> Parser<'a, u8, Index> {
+fn index<'a>() -> Parser<'a, Index> {
     digit()
         .repeat(1..=2)
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .convert(|s| Index::from_str(&s))
         .name("index")
 }
 
-fn index_ref<'a>() -> Parser<'a, u8, Index> {
-    (sym(b'(') + index() + sym(b')'))
+fn index_ref<'a>() -> Parser<'a, Index> {
+    (sym('(') + index() + sym(')'))
         .map(|((_, i), _)| i)
         .name("index_ref")
 }
 
 // <acc> ::= <no character> | 2
 // Amended: Allow 0..7
-fn acc<'a>() -> Parser<'a, u8, Acc> {
+fn acc<'a>() -> Parser<'a, Acc> {
     oct_dig()
         .opt()
         .map(Acc::from)
@@ -383,18 +382,18 @@ fn acc<'a>() -> Parser<'a, u8, Acc> {
 
 // ****************************************************************************
 // <signed F-word> ::= +<unsigned F-word> | -<unsigned F-word>
-fn signed_fword<'a>() -> Parser<'a, u8, FWord> {
+fn signed_fword<'a>() -> Parser<'a, FWord> {
     let negate = |f: FloatType| -f;
 
-    (   (sym(b'+') * unsigned_fword()) |
-        (sym(b'-') * unsigned_fword().map(negate))
+    (   (sym('+') * unsigned_fword()) |
+        (sym('-') * unsigned_fword().map(negate))
     ).name("signed_fword")
 }
 
 // <unsigned F-word> ::= <decimal part> | <decimal part>
 //                       <exponent part> | <unsigned integer>
 //                       <exponent part>
-fn unsigned_fword<'a>() -> Parser<'a, u8, FWord> {
+fn unsigned_fword<'a>() -> Parser<'a, FWord> {
     let de_to_float1 = |(d, e)| FloatType::from_str(&format!("{}e{}", d, e));
     let de_to_float2 = |(d, e)| FloatType::from_str(&format!("{}e{}", d, e));
 
@@ -406,20 +405,20 @@ fn unsigned_fword<'a>() -> Parser<'a, u8, FWord> {
 
 // <decimal part> ::= <unsigned integer>.<unsigned integer> |
 //                    .<unsigned integer>
-fn decimal_part<'a>() -> Parser<'a, u8, String> {
+fn decimal_part<'a>() -> Parser<'a, String> {
     let if_to_string = |(i, f): (IntType, IntType)| format!("{}.{}", i, f);
     let f_to_string = |f: IntType| format!("0.{}", f);
 
-    (   (unsigned_integer() - sym(b'.').discard() + unsigned_integer()).map(if_to_string) |
-        (sym(b'.').discard() * unsigned_integer()).map(f_to_string)
+    (   (unsigned_integer() - sym('.').discard() + unsigned_integer()).map(if_to_string) |
+        (sym('.').discard() * unsigned_integer()).map(f_to_string)
     ).name("decimal_part")
 }
 
 // <exponent part> ::= <subscript 10><sign><digit> |
 //                     <subscript 10><sign><digit><digit>
-fn exponent_part<'a>() -> Parser<'a, u8, String> {
-    let sd_to_string = |(s, d): (String, u8)| format!("{}{}", s, d);
-    let sdd_to_string = |((s, d1), d2): ((String, u8), u8)| format!("{}{}{}", s, d1, d2);
+fn exponent_part<'a>() -> Parser<'a, String> {
+    let sd_to_string = |(s, d): (String, char)| format!("{}{}", s, d);
+    let sdd_to_string = |((s, d1), d2): ((String, char), char)| format!("{}{}{}", s, d1, d2);
 
     (   (subscript10().discard() * sign() + digit()).map(sd_to_string) |
         (subscript10().discard() * sign() + digit() + digit()).map(sdd_to_string)
@@ -427,35 +426,35 @@ fn exponent_part<'a>() -> Parser<'a, u8, String> {
 }
 
 // <sign> ::= <no character> | + | -
-fn sign<'a>() -> Parser<'a, u8, String> {
-    (   sym(b'+') |
-        sym(b'-')
+fn sign<'a>() -> Parser<'a, String> {
+    (   sym('+') |
+        sym('-')
     ).repeat(..=1)
-     .convert(String::from_utf8)
+     .map(String::from_iter)
      .name("sign")
 }
 
 // <signed integer> ::= +<unsigned integer> | -<unsigned integer>
-fn signed_integer<'a>() -> Parser<'a, u8, IntType> {
+fn signed_integer<'a>() -> Parser<'a, IntType> {
     let negate = |i: IntType| -i;
 
-    (   (sym(b'+') * unsigned_integer()) |
-        (sym(b'-') * unsigned_integer().map(negate))
+    (   (sym('+') * unsigned_integer()) |
+        (sym('-') * unsigned_integer().map(negate))
     ).name("signed_integer")
 }
 
 // <unsigned integer> ::= <digit> | <digit><unsigned integer>
-fn unsigned_integer<'a>() -> Parser<'a, u8, IntType> {
+fn unsigned_integer<'a>() -> Parser<'a, IntType> {
     digit()
         .repeat(1..)
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .convert(|s| IntType::from_str(&s))
         .name("unsigned_integer")
 }
 
 // <type designator> ::= S | P | F | I
-fn type_designator<'a>() -> Parser<'a, u8, TypeDesignator> {
-    one_of(b"SPFI").name("type_designator")
+fn type_designator<'a>() -> Parser<'a, TypeDesignator> {
+    one_of("SPFI").name("type_designator")
 }
 
 // ****************************************************************************
@@ -464,7 +463,7 @@ fn type_designator<'a>() -> Parser<'a, u8, TypeDesignator> {
 // Not required in grammar...
 
 // <take type mnemonic> ::= <0-15 mnemonic> | <skip mnemonic>
-fn take_type_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn take_type_mnemonic<'a>() -> Parser<'a, Mnemonic> {
     (   n0_15_mnemonc() |
         skip_mnemonic()
     ).name("take_type_mnemonic")
@@ -472,7 +471,7 @@ fn take_type_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
 
 // <put type mnemonic> ::= X<0-15 mnemonic> | <16-22 mnemonic> |
 //                         X<16-22 mnemonic> | <jump mnemonic>
-fn put_type_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn put_type_mnemonic<'a>() -> Parser<'a, Mnemonic> {
     (   n0_15_xmnemonic() |
         n16_22_mnemonic() |
         n16_22_xmnemonic() |
@@ -482,7 +481,7 @@ fn put_type_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
 
 // <0-15 mnemonic> ::= NTHG | ADD | SUBT | MPLY | DVD | TAKE | NEG | MOD |
 //                     CLR | AND | OR | NEQV | NOT | SHFR | CYCR | OPUT
-fn n0_15_mnemonc<'a>() -> Parser<'a, u8, Mnemonic> {
+fn n0_15_mnemonc<'a>() -> Parser<'a, Mnemonic> {
     (   exact("NTHG").map(|_| Mnemonic::NTHG) |
         exact("ADD").map(|_| Mnemonic::ADD) |
         exact("SUBT").map(|_| Mnemonic::SUBT) |
@@ -502,7 +501,7 @@ fn n0_15_mnemonc<'a>() -> Parser<'a, u8, Mnemonic> {
     ).name("n0_15_mnemonic")
 }
 
-fn n0_15_xmnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn n0_15_xmnemonic<'a>() -> Parser<'a, Mnemonic> {
     let as_x = |m| match m {
         Mnemonic::NTHG => Mnemonic::XNTHG,
         Mnemonic::ADD => Mnemonic::XADD,
@@ -523,13 +522,13 @@ fn n0_15_xmnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
         _ => unreachable!(),
     };
 
-    (   sym(b'X') *
+    (   sym('X') *
         n0_15_mnemonc().map(as_x)
     ).name("n0_15_xmnemonic")
 }
 
 // <16-22 mnemonic> ::= IPUT | PUT | INCR | DECR | TYPE | CHYP | EXEC
-fn n16_22_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn n16_22_mnemonic<'a>() -> Parser<'a, Mnemonic> {
     (   exact("IPUT").map(|_| Mnemonic::IPUT) |
         exact("PUT").map(|_| Mnemonic::PUT) |
         exact("INCR").map(|_| Mnemonic::INCR) |
@@ -540,7 +539,7 @@ fn n16_22_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
     ).name("n16_22_mnemonic")
 }
 
-fn n16_22_xmnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn n16_22_xmnemonic<'a>() -> Parser<'a, Mnemonic> {
     let as_x = |m| match m {
         Mnemonic::IPUT => Mnemonic::XIPUT,
         Mnemonic::PUT => Mnemonic::XPUT,
@@ -551,11 +550,11 @@ fn n16_22_xmnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
         Mnemonic::EXEC => Mnemonic::XEXEC,
         _ => unreachable!(),
     };
-    sym(b'X') * n16_22_mnemonic().map(as_x).name("n16_22_xmnemonic")
+    sym('X') * n16_22_mnemonic().map(as_x).name("n16_22_xmnemonic")
 }
 
 // <skip mnemonic>::= SKET | SKAE | SKAN | SKAL | SKAG
-fn skip_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn skip_mnemonic<'a>() -> Parser<'a, Mnemonic> {
     (   exact("SKET").map(|_| Mnemonic::SKET) |
         exact("SKAE").map(|_| Mnemonic::SKAE) |
         exact("SKAN").map(|_| Mnemonic::SKAN) |
@@ -566,7 +565,7 @@ fn skip_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
 
 // <jump mnemonic> ::= LIBR | JLIK | JUMP | JEZ | JNZ | JLZ | JGZ | JOI |
 //                     SLIK | SNLZ
-fn jump_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn jump_mnemonic<'a>() -> Parser<'a, Mnemonic> {
     (   exact("LIBR").map(|_| Mnemonic::LIBR) |
         exact("JLIK").map(|_| Mnemonic::JLIK) |
         exact("JUMP").map(|_| Mnemonic::JUMP) |
@@ -582,7 +581,7 @@ fn jump_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
 
 // <library mnemonic> ::= SQRT | LN | EXP | READ | PRINT | SIN | COS | TAN |
 //                        ARCTAN | STOP | LINE | INT | FRAC | FLOAT | CAPTN
-fn library_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn library_mnemonic<'a>() -> Parser<'a, Mnemonic> {
     (   exact("SQRT").map(|_| Mnemonic::SQRT) |
         exact("LN").map(|_| Mnemonic::LN) |
         exact("EXP").map(|_| Mnemonic::EXP) |
@@ -601,24 +600,24 @@ fn library_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
     ).name("library_mnemonocic")
 }
 
-fn ldn_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn ldn_mnemonic<'a>() -> Parser<'a, Mnemonic> {
     exact("LDN")
         .map(|_| Mnemonic::LDN)
         .name("ldn_mnemonic")
 }
 
-fn ldr_mnemonic<'a>() -> Parser<'a, u8, Mnemonic> {
+fn ldr_mnemonic<'a>() -> Parser<'a, Mnemonic> {
     exact("LDR")
         .map(|_| Mnemonic::LDR)
         .name("ldr_mnemonic")
 }
 
 // Utility parsers
-fn exact(tag: &str) -> Parser<'_, u8, String> {
+fn exact(tag: &str) -> Parser<'_, String> {
     let assert_tag = move |s| (s == tag).then_some(tag.into()).ok_or(Err::<String, _>("not tag"));
     any()
         .repeat(tag.len())
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .convert(assert_tag)
         .name("exact")
 }

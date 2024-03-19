@@ -213,9 +213,9 @@ impl std::fmt::Display for ConstOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
             ConstOperand::SignedInteger(c) => write!(f, "{:+}", c),
-            ConstOperand::SignedFWord(c) => write!(f, "*{:+}", c), 
-            ConstOperand::Octal(c) => write!(f, "*{}", c),
-            ConstOperand::SWord(c) => write!(f, "*{}", c),
+            ConstOperand::SignedFWord(c) => write!(f, "{:+}", c), 
+            ConstOperand::Octal(c) => write!(f, "{}", c),
+            ConstOperand::SWord(c) => write!(f, "\"{}\"", c),
         }
     }
 }
@@ -278,7 +278,7 @@ impl std::fmt::Display for NumericAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
             NumericAddress::AbsoluteAddress(a) => write!(f, "{}", a),
-            NumericAddress::RelativeAddress(a) => write!(f, "{}", a),
+            NumericAddress::RelativeAddress(a) => write!(f, "{}+", a),
         }
     }
 }

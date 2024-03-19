@@ -139,7 +139,7 @@ fn add_symbol_table_to_listing(listing: &mut Vec<String>, symbol_table: &SymbolT
 
 fn add_text_to_listing(listing: &mut Vec<String>, text: &str) {
     let text = text.split('\n');
-    text.into_iter().for_each(|l| listing.push(l.into()));
+    text.into_iter().for_each(|l| listing.push(l.trim_end().into()));
 }
 
 #[inline]

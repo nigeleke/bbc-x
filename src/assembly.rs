@@ -10,7 +10,7 @@ pub(crate) type MemoryAddress = usize;
 
 pub(crate) type WordContent = SourceProgramWord;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Assembly {
     symbol_table: SymbolTable,
     code: Code,
@@ -21,6 +21,10 @@ impl Assembly {
         let symbol_table = symbol_table.clone();
         let code = code.clone();
         Self { symbol_table, code }
+    }
+
+    pub(crate) fn symbol_table(&self) -> &SymbolTable {
+        &self.symbol_table
     }
 
     #[cfg(test)]

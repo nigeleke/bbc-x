@@ -1,8 +1,6 @@
 use crate::assembly::*;
 use crate::ast::*;
-use crate::result::{Error, Result};
-
-use std::collections::HashMap;
+use crate::result::{Error, Result, SymbolError};
 
 // DEFINITION OF THE ASSEMBLER
 // The assembler is a program which accepts as data
@@ -19,9 +17,7 @@ pub(crate) struct Assembler {}
 
 impl Assembler {
     pub(crate) fn assemble(program: &SourceProgram) -> Result<Assembly> {
-        let symbol_table = get_definitions(program)?;
-        let references = get_references(program);
-        confirm_all_references_defined(&references, &symbol_table)?;
+        let symbol_table = build_symbol_table(program)?;
 
         let code = generate_code(program);
 
@@ -31,64 +27,40 @@ impl Assembler {
 
 }
 
-fn get_definitions(program: &SourceProgram) -> Result<SymbolTable> {
-    let mut definitions = vec![];
+fn build_symbol_table(program: &SourceProgram) -> Result<SymbolTable> {
+    let mut symbol_table = SymbolTable::new();
+    let mut unresolved = vec![];
+    let mut references = vec![];
     let mut address = 0;
 
     for line in program {
-        if let Some(identifier) = line.location() {
-            definitions.push((identifier.clone(), address));
+        if let Some(id) = line.location() {
+            if symbol_table.insert(id.to_string(), address).is_some() {
+                unresolved.push(SymbolError::Duplicated(id.to_string()));
+            }
         }
-        if line.source_program_word().is_some() {
+        if let Some(program_word) = line.source_program_word() {
             address += 1;
-        }
-    }
-
-    let mut counted: HashMap<Identifier, usize> = HashMap::new();
-
-    for (id, _) in definitions.clone() {
-        let entry = counted.entry(id).or_insert(0);
-        *entry += 1;
-    }
-
-    let counted = counted
-        .into_iter()
-        .filter(|(_, c)| *c > 1)
-        .map(|(i, _)| i)
-        .collect::<Vec<Identifier>>();
-
-    if counted.is_empty() {
-        Ok(definitions.into_iter().collect())
-    } else {
-        Err(Error::DuplicatedSymbols(counted))
-    }
-}
-
-fn get_references(program: &SourceProgram) -> Vec<Identifier> {
-    let mut references = vec![];
-
-    for line in program {
-        if let Some(SourceProgramWord::PWord(pword)) = line.source_program_word() {
-            if let Some(id) = pword.identifier() {
-                references.push(id);
+            if let SourceProgramWord::PWord(pword) = program_word {
+                if let Some(id) = pword.identifier() {
+                    references.push(id);
+                }
             }
         }
     }
 
     references
-}
-
-fn confirm_all_references_defined(references: &[Identifier], symbol_table: &SymbolTable) -> Result<()> {
-    let undefined = references
         .iter()
-        .filter(|&k| !symbol_table.contains_key(k))
-        .cloned()
-        .collect::<Vec<String>>();
-    
-    if undefined.is_empty() {
-        Ok(())
+        .for_each(|id| {
+            if !symbol_table.contains_key(id) { 
+                unresolved.push(SymbolError::Undefined(id.to_string()))
+            }
+        });
+ 
+    if unresolved.is_empty() {
+        Ok(symbol_table)
     } else {
-        Err(Error::UndefinedSymbols(undefined))
+        Err(Error::UnresolvedSymbols(unresolved))
     }
 }
 
@@ -133,7 +105,7 @@ GAMMA:                              ; Comment 2
 "#;
         let program = Parser::parse(program).unwrap();
         let result = Assembler::assemble(&program).err().unwrap();
-        assert_eq!(result, Error::UndefinedSymbols(vec!["DELTA".into()]));
+        assert_eq!(result, Error::UnresolvedSymbols(vec![SymbolError::Undefined("DELTA".into())]));
     }
 
     #[test]
@@ -141,11 +113,12 @@ GAMMA:                              ; Comment 2
         let program = r#"
 ALPHA:                              ; Comment 1
 BETA:   JUMP    DELTA
-ALPHA:                              ; Comment 2        
+ALPHA:                              ; Comment 2     
+DELTA:  
 "#;
         let program = Parser::parse(program).unwrap();
         let result = Assembler::assemble(&program).err().unwrap();
-        assert_eq!(result, Error::DuplicatedSymbols(vec!["ALPHA".into()]));
+        assert_eq!(result, Error::UnresolvedSymbols(vec![SymbolError::Duplicated("ALPHA".into())]));
     }
 
     #[test]
@@ -159,8 +132,8 @@ EPSILON:
 "#;
         let program = Parser::parse(program).unwrap();
         let assembly = Assembler::assemble(&program).unwrap();
-        assert_eq!(assembly.content(0), Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None, AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ALPHA".into())), None)))));
-        assert_eq!(assembly.content(1), Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None, AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("EPSILON".into())), None)))));
+        assert_eq!(assembly.content(0), Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(), AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ALPHA".into())), None)))));
+        assert_eq!(assembly.content(1), Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(), AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("EPSILON".into())), None)))));
         assert_eq!(assembly.content(2), None);
     }
 

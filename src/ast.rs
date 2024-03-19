@@ -1,6 +1,6 @@
 pub(crate) type SourceProgram = Vec<SourceProgramLine>;
 
-#[derive(Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(crate) struct SourceProgramLine {
     location: Option<Location>,
     source_program_word: Option<SourceProgramWord>,
@@ -24,6 +24,25 @@ impl SourceProgramLine {
     }
 }
 
+impl std::fmt::Display for SourceProgramLine {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        let location = self.location
+            .as_ref()
+            .map(|l| format!("{}:", l))
+            .unwrap_or("".into());
+        let source_program_word = self.source_program_word
+            .as_ref()
+            .map(|w| format!("{}", w))
+            .unwrap_or("".into());
+        let comment = self.comment
+            .as_ref()
+            .map(|c| format!(" ;{}", c))
+            .unwrap_or("".into());
+
+        write!(f, "{:<8}{:<42}{}", location.to_string(), source_program_word.to_string(), comment.to_string())
+    }
+}
+
 pub(crate) type Location = Identifier;
 
 pub(crate) type Identifier = String;
@@ -37,32 +56,76 @@ pub(crate) enum SourceProgramWord {
     Octal(Octal),
 }
 
+impl std::fmt::Display for SourceProgramWord {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            SourceProgramWord::SWord(sword) => write!(f, "\"{}\"", sword),
+            SourceProgramWord::PWord(pword) => write!(f, "{}", pword),
+            SourceProgramWord::FWord(fword) => write!(f, "{}", fword),
+            SourceProgramWord::IWord(iword) => write!(f, "{}", iword),
+            SourceProgramWord::Octal(octal) => write!(f, "{}", octal),
+        }
+    }
+}
+
 pub(crate) type SWord = String;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum PWord {
-    TakeType(Mnemonic, Option<Acc>, GeneralOperand),
-    PutType(Mnemonic, Option<Acc>, AddressOperand),
-    LoadN(Option<Acc>, SimpleAddressOperand, Index),
-    LoadRConst(Option<Acc>, ConstOperand, Index),
-    LoadR(Option<Acc>, SimpleAddressOperand, Index),
+    TakeType(Mnemonic, Acc, GeneralOperand),
+    PutType(Mnemonic, Acc, AddressOperand),
+    LoadN(Acc, SimpleAddressOperand, Index),
+    LoadRConst(Acc, ConstOperand, Index),
+    LoadR(Acc, SimpleAddressOperand, Index),
     LibraryMnemonic(Mnemonic),
 }
 
 impl PWord {
     pub(crate) fn identifier(&self) -> Option<Identifier> {
         match self {
-            PWord::TakeType(_, _, o) => o.identifier(),
-            PWord::PutType(_, _, o) => o.identifier(),
-            PWord::LoadN(_, o, _) => o.identifier(),
+            PWord::TakeType(_, _, operand) => operand.identifier(),
+            PWord::PutType(_, _, operand) => operand.identifier(),
+            PWord::LoadN(_, operand, _) => operand.identifier(),
             PWord::LoadRConst(_, _, _) => None,
-            PWord::LoadR(_, o, _) => o.identifier(),
+            PWord::LoadR(_, operand, _) => operand.identifier(),
             PWord::LibraryMnemonic(_) => None,
         }        
     }
 }
 
-pub(crate) type Acc = u8;
+impl std::fmt::Display for PWord {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            PWord::TakeType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand.to_string()),
+            PWord::PutType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand.to_string()),
+            PWord::LoadN(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDN.to_string(), acc.to_string(), operand.to_string(), index.to_string()),
+            PWord::LoadRConst(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDR.to_string(), acc.to_string(), operand.to_string(), index.to_string()),
+            PWord::LoadR(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDR.to_string(), acc.to_string(), operand.to_string(), index.to_string()),
+            PWord::LibraryMnemonic(inst) => write!(f, "{:<8}", inst.to_string()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct Acc(Option<u8>);
+
+impl From<u8> for Acc {
+    fn from(a: u8) -> Self {
+        Self(Some(a))
+     }
+}
+
+impl From<Option<u8>> for Acc {
+    fn from(a: Option<u8>) -> Self {
+        Self(a)
+     }
+}
+
+impl std::fmt::Display for Acc {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        write!(f, "{}", self.0.map_or("".into(), |a| (a as char).to_string()))
+    }
+}
 
 pub(crate) type FWord = FloatType;
 
@@ -79,7 +142,7 @@ pub(crate) enum Octal {
 }
 
 impl std::fmt::Display for Octal {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
             Octal::S(value) => write!(f, "(S{:08o})", value),
             Octal::P(value) => write!(f, "(P{:08o})", value),
@@ -104,6 +167,15 @@ impl GeneralOperand {
     }
 }
 
+impl std::fmt::Display for GeneralOperand {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            GeneralOperand::AddressOperand(o) => write!(f, "{}", o),
+            GeneralOperand::ConstOperand(o) => write!(f, "{}", o),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct AddressOperand {
     address: SimpleAddressOperand,
@@ -122,12 +194,30 @@ impl AddressOperand {
     }
 }
 
+impl std::fmt::Display for AddressOperand {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        let index = self.index.map(|i| format!("({})", i)).unwrap_or("".into());
+        write!(f, "{}{}", self.address, index)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum ConstOperand {
     SignedInteger(IntType),
     SignedFWord(FloatType),
     Octal(Octal),
     SWord(SWord)
+}
+
+impl std::fmt::Display for ConstOperand {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            ConstOperand::SignedInteger(c) => write!(f, "{:+}", c),
+            ConstOperand::SignedFWord(c) => write!(f, "*{:+}", c), 
+            ConstOperand::Octal(c) => write!(f, "*{}", c),
+            ConstOperand::SWord(c) => write!(f, "*{}", c),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -142,6 +232,15 @@ impl SimpleAddressOperand {
             SimpleAddressOperand::DirectAddress(a) => a.identifier(),
             SimpleAddressOperand::IndirectAddress(a) => a.identifier(),
         }        
+    }
+}
+
+impl std::fmt::Display for SimpleAddressOperand {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            SimpleAddressOperand::DirectAddress(a) => write!(f, "{}", a),
+            SimpleAddressOperand::IndirectAddress(a) => write!(f, "*{}", a), 
+        }
     }
 }
 
@@ -160,11 +259,28 @@ impl Address {
     }
 }
 
+impl std::fmt::Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            Address::Identifier(i) => write!(f, "{}", i),
+            Address::NumericAddress(a) => write!(f, "{}", a),
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum NumericAddress {
     AbsoluteAddress(AddressRef),
     RelativeAddress(RelativeRef),
+}
+
+impl std::fmt::Display for NumericAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        match self {
+            NumericAddress::AbsoluteAddress(a) => write!(f, "{}", a),
+            NumericAddress::RelativeAddress(a) => write!(f, "{}", a),
+        }
+    }
 }
 
 pub(crate) type TypeDesignator = u8;
@@ -266,4 +382,10 @@ pub(crate) enum Mnemonic {
     FRAC,
     FLOAT,
     CAPTN,
+}
+
+impl std::fmt::Display for Mnemonic {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        write!(f, "{:?}", self)
+    }
 }

@@ -45,6 +45,16 @@ impl Args {
         Args::parse_from(args)
     }
 
+    #[inline]
+    pub(crate) fn list(&self) -> bool {
+        self.list
+    }
+
+    #[inline]
+    pub(crate) fn list_path(&self) -> Option<PathBuf> {
+        self.list_path.clone()
+    }
+
     pub(crate) fn files(&self) -> impl Iterator<Item = PathBuf> + '_ {
         self.files.iter().cloned()
     }

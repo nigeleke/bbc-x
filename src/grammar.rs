@@ -99,7 +99,7 @@ fn take_type_pword<'a>() -> Parser<'a, u8, PWord> {
 
     (   take_type_mnemonic() -
         inline_ws().opt() + 
-        acc().opt() -
+        acc() -
         inline_ws().opt() + 
         general_operand()
     ).map(as_take_type)
@@ -111,7 +111,7 @@ fn put_type_pword<'a>() -> Parser<'a, u8, PWord> {
 
     (   put_type_mnemonic() -
         inline_ws().opt() +
-        acc().opt() - 
+        acc() - 
         inline_ws().opt() + 
         address_operand()
     ).map(as_put_type)
@@ -123,7 +123,7 @@ fn loadn_pword<'a>() -> Parser<'a, u8, PWord> {
 
     (   ldn_mnemonic().discard() -
         inline_ws().opt() +
-        acc().opt() -
+        acc() -
         inline_ws().opt() +
         simple_address_operand() + 
         index_ref()
@@ -136,7 +136,7 @@ fn loadr_const_pword<'a>() -> Parser<'a, u8, PWord> {
 
     (   ldr_mnemonic().discard() -
         inline_ws().opt() +
-        acc().opt() -
+        acc() -
         inline_ws().opt() +
         const_operand() +
         index_ref()
@@ -149,7 +149,7 @@ fn loadr_pword<'a>() -> Parser<'a, u8, PWord> {
 
     (   ldr_mnemonic().discard() -
         inline_ws().opt() +
-        acc().opt() - 
+        acc() - 
         inline_ws().opt() + 
         simple_address_operand() + 
         index_ref()
@@ -375,7 +375,10 @@ fn index_ref<'a>() -> Parser<'a, u8, Index> {
 // <acc> ::= <no character> | 2
 // Amended: Allow 0..7
 fn acc<'a>() -> Parser<'a, u8, Acc> {
-    oct_dig().name("acc")
+    oct_dig()
+        .opt()
+        .map(Acc::from)
+        .name("acc")
 }
 
 // ****************************************************************************

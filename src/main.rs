@@ -4,6 +4,7 @@ pub(crate) mod assembly;
 pub(crate) mod ast;
 pub(crate) mod bbc_x;
 pub(crate) mod grammar;
+pub(crate) mod list_writer;
 pub(crate) mod parser;
 pub(crate) mod result;
 

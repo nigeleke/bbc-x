@@ -614,13 +614,20 @@
 <a href="#613" id="613">613</a>
 <a href="#614" id="614">614</a>
 <a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ast::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::grammar::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::result::{Error, <span class="prelude-ty">Result</span>};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>LineNumber = usize;
 
-<span class="attr">#[derive(Debug, PartialEq)]
+<span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ParsedLine {
     line_number: LineNumber,
     parse_result: <span class="prelude-ty">Result</span>&lt;SourceProgramLine&gt;,
@@ -629,6 +636,14 @@
 <span class="kw">impl </span>ParsedLine {
     <span class="kw">fn </span>new(line_number: LineNumber, parse_result: <span class="prelude-ty">Result</span>&lt;SourceProgramLine&gt;) -&gt; <span class="self">Self </span>{
         ParsedLine { line_number, parse_result }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>line_number(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LineNumber {
+        <span class="self">self</span>.line_number
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse_result(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Result</span>&lt;SourceProgramLine&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.parse_result
     }
 }
 
@@ -650,8 +665,7 @@
         
         <span class="kw">let </span>all_results = lines.map(parse_line);
         <span class="kw">let </span>ok_results = all_results.clone()
-            .filter(|l| l.parse_result.is_ok())
-            .map(|l| l.parse_result.unwrap())
+            .filter_map(|l| l.parse_result.ok())
             .collect::&lt;SourceProgram&gt;();
 
         <span class="kw">let </span>all_ok = lines_count == ok_results.len();
@@ -731,13 +745,13 @@ LABEL4: "L4C4"      ; Comment 4
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>pwords = <span class="macro">vec!</span>[
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'0'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'0'</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR2"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::SKAG, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::SKAG, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR3"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::SKAG, <span class="prelude-val">Some</span>(<span class="string">b'1'</span>), 
+            PWord::TakeType(Mnemonic::SKAG, <span class="string">'1'</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR4"</span>.into())), <span class="prelude-val">None</span>))),
         ];
         <span class="kw">let </span>expected = pwords
@@ -757,13 +771,13 @@ LABEL4: "L4C4"      ; Comment 4
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>pwords = <span class="macro">vec!</span>[
-            PWord::PutType(Mnemonic::XADD, <span class="prelude-val">Some</span>(<span class="string">b'0'</span>), 
+            PWord::PutType(Mnemonic::XADD, <span class="string">'0'</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::INCR, <span class="prelude-val">Some</span>(<span class="string">b'1'</span>), 
+            PWord::PutType(Mnemonic::INCR, <span class="string">'1'</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR2"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XINCR, <span class="prelude-val">Some</span>(<span class="string">b'2'</span>), 
+            PWord::PutType(Mnemonic::XINCR, <span class="string">'2'</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR3"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::JUMP, <span class="prelude-val">Some</span>(<span class="string">b'3'</span>), 
+            PWord::PutType(Mnemonic::JUMP, <span class="string">'3'</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR4"</span>.into())), <span class="prelude-val">None</span>)),
         ];
         <span class="kw">let </span>expected = pwords
@@ -781,9 +795,9 @@ LABEL4: "L4C4"      ; Comment 4
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>pwords = <span class="macro">vec!</span>[
-            PWord::LoadN(<span class="prelude-val">None</span>, 
+            PWord::LoadN(<span class="prelude-val">None</span>.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="number">42</span>),
-            PWord::LoadN(<span class="prelude-val">Some</span>(<span class="string">b'1'</span>), 
+            PWord::LoadN(<span class="string">'1'</span>.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR2"</span>.into())), <span class="number">57</span>),
         ];
         <span class="kw">let </span>expected = pwords
@@ -801,8 +815,8 @@ LABEL4: "L4C4"      ; Comment 4
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>pwords = <span class="macro">vec!</span>[
-            PWord::LoadRConst(<span class="prelude-val">None</span>, ConstOperand::SignedInteger(<span class="number">24</span>), <span class="number">42</span>),
-            PWord::LoadRConst(<span class="prelude-val">Some</span>(<span class="string">b'1'</span>), ConstOperand::SignedFWord(-<span class="number">3.14</span>), <span class="number">57</span>),
+            PWord::LoadRConst(<span class="prelude-val">None</span>.into(), ConstOperand::SignedInteger(<span class="number">24</span>), <span class="number">42</span>),
+            PWord::LoadRConst(<span class="string">'1'</span>.into(), ConstOperand::SignedFWord(-<span class="number">3.14</span>), <span class="number">57</span>),
         ];
         <span class="kw">let </span>expected = pwords
             .iter()
@@ -819,9 +833,9 @@ LABEL4: "L4C4"      ; Comment 4
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>pwords = <span class="macro">vec!</span>[
-            PWord::LoadR(<span class="prelude-val">None</span>, 
+            PWord::LoadR(<span class="prelude-val">None</span>.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="number">42</span>),
-            PWord::LoadR(<span class="prelude-val">Some</span>(<span class="string">b'1'</span>), 
+            PWord::LoadR(<span class="string">'1'</span>.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR2"</span>.into())), <span class="number">57</span>),
         ];
         <span class="kw">let </span>expected = pwords
@@ -939,25 +953,25 @@ LABEL4: "L4C4"      ; Comment 4
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>pwords = <span class="macro">vec!</span>[
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'0'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'0'</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR2"</span>.into())), <span class="prelude-val">Some</span>(<span class="number">42</span>)))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'1'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'1'</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::IndirectAddress(Address::Identifier(<span class="string">"ADDR3"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'2'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'2'</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::IndirectAddress(Address::Identifier(<span class="string">"ADDR4"</span>.into())), <span class="prelude-val">Some</span>(<span class="number">42</span>)))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'3'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'3'</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::NumericAddress(NumericAddress::AbsoluteAddress(<span class="number">512</span>))), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'4'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'4'</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::NumericAddress(NumericAddress::RelativeAddress(<span class="number">512</span>))), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'5'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'5'</span>.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SignedInteger(-<span class="number">42</span>))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'6'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'6'</span>.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SignedFWord(<span class="number">3.14</span>))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">Some</span>(<span class="string">b'7'</span>), 
+            PWord::TakeType(Mnemonic::ADD, <span class="string">'7'</span>.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::Octal(Octal::I(<span class="number">0o1234567</span>)))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SWord(<span class="string">"TEXT"</span>.into()))),
         ];
         <span class="kw">let </span>expected = pwords
@@ -1051,131 +1065,131 @@ LABEL4: "L4C4"      ; Comment 4
 "#</span>;        
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>pwords = <span class="macro">vec!</span>[
-            PWord::LoadN(<span class="prelude-val">None</span>, 
+            PWord::LoadN(<span class="prelude-val">None</span>.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="number">42</span>),
-            PWord::LoadR(<span class="prelude-val">None</span>, 
+            PWord::LoadR(<span class="prelude-val">None</span>.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="number">42</span>),
-            PWord::TakeType(Mnemonic::NTHG, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::NTHG, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::ADD, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::SUBT, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::SUBT, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::MPLY, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::MPLY, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::DVD, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::DVD, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::TAKE, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::TAKE, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::NEG, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::NEG, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::MOD, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::MOD, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::CLR, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::CLR, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::AND, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::AND, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::OR, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::OR, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::NEQV, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::NEQV, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::NOT, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::NOT, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::SHFR, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::SHFR, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::CYCR, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::CYCR, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::OPUT, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::OPUT, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::PutType(Mnemonic::XNTHG, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XNTHG, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XADD, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XADD, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XSUBT, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XSUBT, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XMPLY, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XMPLY, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XDVD, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XDVD, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XTAKE, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XTAKE, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XNEG, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XNEG, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XMOD, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XMOD, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XCLR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XCLR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XAND, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XAND, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XOR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XOR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XNEQV, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XNEQV, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XNOT, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XNOT, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XSHFR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XSHFR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XCYCR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XCYCR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XOPUT, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XOPUT, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::IPUT, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::IPUT, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::PUT, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::PUT, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::INCR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::INCR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::DECR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::DECR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::TYPE, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::TYPE, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::CHYP, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::CHYP, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::EXEC, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::EXEC, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XIPUT, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XIPUT, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XPUT, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XPUT, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XINCR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XINCR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XDECR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XDECR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XTYPE, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XTYPE, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XCHYP, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XCHYP, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::XEXEC, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::XEXEC, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::TakeType(Mnemonic::SKET, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::SKET, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::SKAE, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::SKAE, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::SKAN, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::SKAN, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::SKAL, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::SKAL, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::TakeType(Mnemonic::SKAG, <span class="prelude-val">None</span>, 
+            PWord::TakeType(Mnemonic::SKAG, <span class="prelude-val">None</span>.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>))),
-            PWord::PutType(Mnemonic::LIBR, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::LIBR, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::JLIK, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::JLIK, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::JUMP, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::JUMP, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::JEZ, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::JEZ, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::JNZ, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::JNZ, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::JLZ, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::JLZ, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::JGZ, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::JGZ, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::JOI, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::JOI, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::SLIK, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::SLIK, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
-            PWord::PutType(Mnemonic::SNLZ, <span class="prelude-val">None</span>, 
+            PWord::PutType(Mnemonic::SNLZ, <span class="prelude-val">None</span>.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR1"</span>.into())), <span class="prelude-val">None</span>)),
             PWord::LibraryMnemonic(Mnemonic::SQRT), 
             PWord::LibraryMnemonic(Mnemonic::LN),

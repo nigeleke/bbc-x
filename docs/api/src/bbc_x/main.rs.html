@@ -36,12 +36,14 @@
 <a href="#35" id="35">35</a>
 <a href="#36" id="36">36</a>
 <a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
 </pre></div><pre class="rust"><code><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>args;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>assembler;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>assembly;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>ast;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>bbc_x;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>grammar;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>list_writer;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>parser;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>result;
 
@@ -68,7 +70,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>invoke_core() {
-        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"./examples/nthg.bbc"</span>].into_iter().map(|s| s.to_string()).collect();
+        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"./examples/test/nthg.bbc"</span>].into_iter().map(|s| s.to_string()).collect();
         <span class="kw">let </span>result = bbc_x(args);
         <span class="macro">assert!</span>(result.is_ok())
     }

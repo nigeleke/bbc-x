@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["assemble","bbc_x","parse"]};
+window.SIDEBAR_ITEMS = {"fn":["assemble","bbc_x","build","parse"]};

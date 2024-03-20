@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["confirm_all_references_defined","generate_code","get_definitions","get_references"],"struct":["Assembler"]};
+window.SIDEBAR_ITEMS = {"fn":["build_symbol_table","generate_code"],"struct":["Assembler"]};

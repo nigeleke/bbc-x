@@ -139,39 +139,9 @@
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
 <a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::assembly::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::ast::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::result::{Error, <span class="prelude-ty">Result</span>};
-
-<span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span><span class="kw">crate</span>::result::{Error, <span class="prelude-ty">Result</span>, SymbolError};
 
 <span class="comment">// DEFINITION OF THE ASSEMBLER
 // The assembler is a program which accepts as data
@@ -188,9 +158,7 @@
 
 <span class="kw">impl </span>Assembler {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assemble(program: <span class="kw-2">&amp;</span>SourceProgram) -&gt; <span class="prelude-ty">Result</span>&lt;Assembly&gt; {
-        <span class="kw">let </span>symbol_table = get_definitions(program)<span class="question-mark">?</span>;
-        <span class="kw">let </span>references = get_references(program);
-        <span class="kw">_ </span>= confirm_all_references_defined(<span class="kw-2">&amp;</span>references, <span class="kw-2">&amp;</span>symbol_table)<span class="question-mark">?</span>;
+        <span class="kw">let </span>symbol_table = build_symbol_table(program)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>code = generate_code(program);
 
@@ -200,73 +168,48 @@
 
 }
 
-<span class="kw">fn </span>get_definitions(program: <span class="kw-2">&amp;</span>SourceProgram) -&gt; <span class="prelude-ty">Result</span>&lt;SymbolTable&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>definitions = <span class="macro">vec!</span>[];
+<span class="kw">fn </span>build_symbol_table(program: <span class="kw-2">&amp;</span>SourceProgram) -&gt; <span class="prelude-ty">Result</span>&lt;SymbolTable&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>symbol_table = SymbolTable::new();
+    <span class="kw">let </span><span class="kw-2">mut </span>unresolved = <span class="macro">vec!</span>[];
+    <span class="kw">let </span><span class="kw-2">mut </span>references = <span class="macro">vec!</span>[];
     <span class="kw">let </span><span class="kw-2">mut </span>address = <span class="number">0</span>;
 
     <span class="kw">for </span>line <span class="kw">in </span>program {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(identifier) = line.location() {
-            definitions.push((identifier.clone(), address));
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = line.location() {
+            <span class="kw">if </span>symbol_table.insert(id.to_string(), address).is_some() {
+                unresolved.push(SymbolError::Duplicated(id.to_string()));
+            }
         }
-        <span class="kw">if </span>line.source_program_word().is_some() {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(program_word) = line.source_program_word() {
             address += <span class="number">1</span>;
-        }
-    }
-
-    <span class="kw">let </span><span class="kw-2">mut </span>counted: HashMap&lt;Identifier, usize&gt; = HashMap::new();
-
-    <span class="kw">for </span>(id, <span class="kw">_</span>) <span class="kw">in </span>definitions.clone() {
-        <span class="kw">let </span>entry = counted.entry(id).or_insert(<span class="number">0</span>);
-        <span class="kw-2">*</span>entry += <span class="number">1</span>;
-    }
-
-    <span class="kw">let </span>counted = counted
-        .into_iter()
-        .filter(|(<span class="kw">_</span>, c)| <span class="kw-2">*</span>c &gt; <span class="number">1</span>)
-        .map(|(i, <span class="kw">_</span>)| i)
-        .collect::&lt;Vec&lt;Identifier&gt;&gt;();
-
-    <span class="kw">if </span>counted.len() &gt; <span class="number">0 </span>{
-        <span class="prelude-val">Err</span>(Error::DuplicatedSymbols(counted))
-    } <span class="kw">else </span>{
-        <span class="prelude-val">Ok</span>(definitions.into_iter().collect())
-    }
-}
-
-<span class="kw">fn </span>get_references(program: <span class="kw-2">&amp;</span>SourceProgram) -&gt; Vec&lt;Identifier&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>references = <span class="macro">vec!</span>[];
-
-    <span class="kw">for </span>line <span class="kw">in </span>program {
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(SourceProgramWord::PWord(pword)) = line.source_program_word() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = pword.identifier() {
-                references.push(id);
+            <span class="kw">if let </span>SourceProgramWord::PWord(pword) = program_word {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(id) = pword.identifier() {
+                    references.push(id);
+                }
             }
         }
     }
 
     references
-}
-
-<span class="kw">fn </span>confirm_all_references_defined(references: <span class="kw-2">&amp;</span>Vec&lt;Identifier&gt;, symbol_table: <span class="kw-2">&amp;</span>SymbolTable) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span>undefined = references
         .iter()
-        .filter(|<span class="kw-2">&amp;</span>k| !symbol_table.contains_key(k))
-        .cloned()
-        .collect::&lt;Vec&lt;String&gt;&gt;();
-    
-    <span class="kw">if </span>undefined.len() &gt; <span class="number">0 </span>{
-        <span class="prelude-val">Err</span>(Error::UndefinedSymbols(undefined))
+        .for_each(|id| {
+            <span class="kw">if </span>!symbol_table.contains_key(id) { 
+                unresolved.push(SymbolError::Undefined(id.to_string()))
+            }
+        });
+ 
+    <span class="kw">if </span>unresolved.is_empty() {
+        <span class="prelude-val">Ok</span>(symbol_table)
     } <span class="kw">else </span>{
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Err</span>(Error::UnresolvedSymbols(unresolved))
     }
 }
 
 <span class="kw">fn </span>generate_code(program: <span class="kw-2">&amp;</span>SourceProgram) -&gt; Code {
     program
-        .into_iter()
+        .iter()
         .filter(|l| l.source_program_word().is_some())
         .map(|l| l.source_program_word().as_ref().unwrap().clone())
-        .enumerate()
         .collect::&lt;Code&gt;()
 }
 
@@ -303,7 +246,7 @@ GAMMA:                              ; Comment 2
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>result = Assembler::assemble(<span class="kw-2">&amp;</span>program).err().unwrap();
-        <span class="macro">assert_eq!</span>(result, Error::UndefinedSymbols(<span class="macro">vec!</span>[<span class="string">"DELTA"</span>.into()]));
+        <span class="macro">assert_eq!</span>(result, Error::UnresolvedSymbols(<span class="macro">vec!</span>[SymbolError::Undefined(<span class="string">"DELTA"</span>.into())]));
     }
 
     <span class="attr">#[test]
@@ -311,11 +254,12 @@ GAMMA:                              ; Comment 2
         <span class="kw">let </span>program = <span class="string">r#"
 ALPHA:                              ; Comment 1
 BETA:   JUMP    DELTA
-ALPHA:                              ; Comment 2        
+ALPHA:                              ; Comment 2     
+DELTA:  
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>result = Assembler::assemble(<span class="kw-2">&amp;</span>program).err().unwrap();
-        <span class="macro">assert_eq!</span>(result, Error::DuplicatedSymbols(<span class="macro">vec!</span>[<span class="string">"ALPHA"</span>.into()]));
+        <span class="macro">assert_eq!</span>(result, Error::UnresolvedSymbols(<span class="macro">vec!</span>[SymbolError::Duplicated(<span class="string">"ALPHA"</span>.into())]));
     }
 
     <span class="attr">#[test]
@@ -329,8 +273,8 @@ EPSILON:
 "#</span>;
         <span class="kw">let </span>program = Parser::parse(program).unwrap();
         <span class="kw">let </span>assembly = Assembler::assemble(<span class="kw-2">&amp;</span>program).unwrap();
-        <span class="macro">assert_eq!</span>(assembly.content(<span class="number">0</span>), <span class="prelude-val">Some</span>(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, <span class="prelude-val">None</span>, AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ALPHA"</span>.into())), <span class="prelude-val">None</span>)))));
-        <span class="macro">assert_eq!</span>(assembly.content(<span class="number">1</span>), <span class="prelude-val">Some</span>(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, <span class="prelude-val">None</span>, AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"EPSILON"</span>.into())), <span class="prelude-val">None</span>)))));
+        <span class="macro">assert_eq!</span>(assembly.content(<span class="number">0</span>), <span class="prelude-val">Some</span>(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, <span class="prelude-val">None</span>.into(), AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ALPHA"</span>.into())), <span class="prelude-val">None</span>)))));
+        <span class="macro">assert_eq!</span>(assembly.content(<span class="number">1</span>), <span class="prelude-val">Some</span>(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, <span class="prelude-val">None</span>.into(), AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"EPSILON"</span>.into())), <span class="prelude-val">None</span>)))));
         <span class="macro">assert_eq!</span>(assembly.content(<span class="number">2</span>), <span class="prelude-val">None</span>);
     }
 

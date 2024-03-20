@@ -620,9 +620,11 @@
 <a href="#619" id="619">619</a>
 <a href="#620" id="620">620</a>
 <a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::ast::<span class="kw-2">*</span>;
 
-<span class="kw">use </span>pom::parser::<span class="kw-2">*</span>;
+<span class="kw">use </span>pom::utf8::<span class="kw-2">*</span>;
 
 <span class="kw">use </span>std::str::FromStr;
 
@@ -638,7 +640,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Grammar;
 
 <span class="kw">impl </span>Grammar {
-    <span class="kw">pub fn </span>bbcx_line&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, SourceProgramLine&gt; {
+    <span class="kw">pub fn </span>bbcx_line&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, SourceProgramLine&gt; {
         source_program_line()
     }
 }
@@ -648,7 +650,7 @@
 //                           &lt;comment&gt;&lt;new line&gt;
 // Amended: Optional location; Optional whitespace.
 //          This implementation removes newlines.
-</span><span class="kw">fn </span>source_program_line&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, SourceProgramLine&gt; {
+</span><span class="kw">fn </span>source_program_line&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, SourceProgramLine&gt; {
     <span class="kw">let </span>as_source_program_line = |((l, w), c)| SourceProgramLine::new(l, w, c);
 
     (   location().opt() -
@@ -663,13 +665,13 @@
 
 <span class="comment">// &lt;location&gt; ::= &lt;numeric address&gt;&lt;space&gt;
 // Amended: Location is symbolic and ends with ':'
-</span><span class="kw">fn </span>location&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Location&gt; {
-    (identifier() - sym(<span class="string">b':'</span>)).name(<span class="string">"location"</span>)
+</span><span class="kw">fn </span>location&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Location&gt; {
+    (identifier() - sym(<span class="string">':'</span>)).name(<span class="string">"location"</span>)
 }
 
 <span class="comment">// &lt;source program word&gt; ::= &lt;S-word&gt; | &lt;P-word&gt; | &lt;F-word&gt; |
 //                           &lt;I-word&gt; | &lt;octal&gt;
-</span><span class="kw">fn </span>source_program_word&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, SourceProgramWord&gt; {
+</span><span class="kw">fn </span>source_program_word&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, SourceProgramWord&gt; {
     (   sword().map(SourceProgramWord::SWord) |
         pword().map(SourceProgramWord::PWord) |
         fword().map(SourceProgramWord::FWord) |
@@ -680,11 +682,11 @@
 
 <span class="comment">// &lt;comment&gt; ::= &lt;no character&gt; | &lt;space&gt;&lt;string&gt;
 // Amended: Comment starts with ';'
-</span><span class="kw">fn </span>comment&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Comment&gt; {
-    sym(<span class="string">b';'</span>) * 
-        none_of(<span class="string">b"\n"</span>)
+</span><span class="kw">fn </span>comment&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Comment&gt; {
+    sym(<span class="string">';'</span>) * 
+        none_of(<span class="string">"\n"</span>)
             .repeat(<span class="number">0</span>..)
-            .convert(String::from_utf8)
+            .map(String::from_iter)
             .name(<span class="string">"comment"</span>)
 }
 
@@ -692,11 +694,11 @@
 // &lt;S-word&gt; ::= &lt;quote&gt;&lt;actual character&gt;&lt;character&gt;&lt;character&gt;
 //              &lt;character&gt;&lt;unquote&gt;
 // Amended: SWord delimited by new quote/unquote ('"', rather than '&lt;' and '&gt;').
-</span><span class="kw">fn </span>sword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, SWord&gt; {
-    (   sym(<span class="string">b'"'</span>) +
+</span><span class="kw">fn </span>sword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, SWord&gt; {
+    (   sym(<span class="string">'"'</span>) +
         actual_character().repeat(<span class="number">1</span>..=<span class="number">4</span>) +
-        sym(<span class="string">b'"'</span>)
-    ).convert(|((<span class="kw">_</span>, cs), <span class="kw">_</span>)| SWord::from_utf8(cs))
+        sym(<span class="string">'"'</span>)
+    ).map(|((<span class="kw">_</span>, cs), <span class="kw">_</span>)| SWord::from_iter(cs.iter()))
      .name(<span class="string">"sword"</span>)
 }
 
@@ -706,7 +708,7 @@
 //              LDR&lt;acc&gt;&lt;const. operand&gt;:‹index&gt;|
 //              LDR&lt;acc&gt;&lt;simple address operand&gt;:&lt;index&gt;|
 //              &lt;library mnemonic&gt;
-</span><span class="kw">fn </span>pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, PWord&gt; {
+</span><span class="kw">fn </span>pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, PWord&gt; {
     (   take_type_pword() |
         put_type_pword() |
         loadn_pword() |
@@ -716,36 +718,36 @@
     ).name(<span class="string">"pword"</span>)
 }
 
-<span class="kw">fn </span>take_type_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, PWord&gt; {
+<span class="kw">fn </span>take_type_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, PWord&gt; {
     <span class="kw">let </span>as_take_type = |((m, a), o)| PWord::TakeType(m, a, o);
 
     (   take_type_mnemonic() -
         inline_ws().opt() + 
-        acc().opt() -
+        acc() -
         inline_ws().opt() + 
         general_operand()
     ).map(as_take_type)
      .name(<span class="string">"take_type_pword"</span>)
 }
 
-<span class="kw">fn </span>put_type_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, PWord&gt; {
+<span class="kw">fn </span>put_type_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, PWord&gt; {
     <span class="kw">let </span>as_put_type = |((m, a), o)| PWord::PutType(m, a, o);
 
     (   put_type_mnemonic() -
         inline_ws().opt() +
-        acc().opt() - 
+        acc() - 
         inline_ws().opt() + 
         address_operand()
     ).map(as_put_type)
      .name(<span class="string">"put_type_pword"</span>)
 }
 
-<span class="kw">fn </span>loadn_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, PWord&gt; {
+<span class="kw">fn </span>loadn_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, PWord&gt; {
     <span class="kw">let </span>as_loadn = |(((<span class="kw">_</span>, a), o), i)| PWord::LoadN(a, o, i);
 
     (   ldn_mnemonic().discard() -
         inline_ws().opt() +
-        acc().opt() -
+        acc() -
         inline_ws().opt() +
         simple_address_operand() + 
         index_ref()
@@ -753,12 +755,12 @@
      .name(<span class="string">"loadn_pword"</span>)
 }
 
-<span class="kw">fn </span>loadr_const_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, PWord&gt; {
+<span class="kw">fn </span>loadr_const_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, PWord&gt; {
     <span class="kw">let </span>as_loadr_const = |(((<span class="kw">_</span>, a), o), i)| PWord::LoadRConst(a, o, i);
 
     (   ldr_mnemonic().discard() -
         inline_ws().opt() +
-        acc().opt() -
+        acc() -
         inline_ws().opt() +
         const_operand() +
         index_ref()
@@ -766,12 +768,12 @@
      .name(<span class="string">"loadr_const_pword"</span>)
 }
 
-<span class="kw">fn </span>loadr_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, PWord&gt; {
+<span class="kw">fn </span>loadr_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, PWord&gt; {
     <span class="kw">let </span>as_loadr = |(((<span class="kw">_</span>, a), o), i)| PWord::LoadR(a, o, i);
 
     (   ldr_mnemonic().discard() -
         inline_ws().opt() +
-        acc().opt() - 
+        acc() - 
         inline_ws().opt() + 
         simple_address_operand() + 
         index_ref()
@@ -779,47 +781,47 @@
      .name(<span class="string">"loadr_pword"</span>)
 }
 
-<span class="kw">fn </span>library_mnemonic_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, PWord&gt; {
+<span class="kw">fn </span>library_mnemonic_pword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, PWord&gt; {
     library_mnemonic()
         .map(PWord::LibraryMnemonic)
         .name(<span class="string">"library_mnemonic_pword"</span>)
 }
 
 <span class="comment">// &lt;F-word&gt; ::= &lt;unsigned F-word&gt; | &lt;signed F-word&gt;
-</span><span class="kw">fn </span>fword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, FWord&gt; {
+</span><span class="kw">fn </span>fword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, FWord&gt; {
     (unsigned_fword() | signed_fword())
         .name(<span class="string">"fword"</span>)
 }
 
 <span class="comment">// &lt;I-word&gt; ::= &lt;unsigned integer&gt; | &lt;signed integer&gt;
-</span><span class="kw">fn </span>iword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, IWord&gt; {
+</span><span class="kw">fn </span>iword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, IWord&gt; {
     (unsigned_integer() | signed_integer())
         .name(<span class="string">"iword"</span>)
 }
 
 <span class="comment">// &lt;octal&gt; ::= &lt;type designator&gt;&lt;oct.dig&gt;&lt;oct.dig&gt;‹oct.dig&gt;
 //             &lt;oct.dig&gt;&lt;oct.dig&gt;&lt;oct.dig&gt;&lt;oct.dig&gt;&lt;oct.dig&gt;
-</span><span class="kw">fn </span>octal&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Octal&gt; {
+</span><span class="kw">fn </span>octal&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Octal&gt; {
     <span class="kw">let </span>as_enum = |(t, value)| <span class="kw">match </span>t {
-        <span class="string">b'S' </span>=&gt; Octal::S(value),
-        <span class="string">b'P' </span>=&gt; Octal::P(value),
-        <span class="string">b'F' </span>=&gt; Octal::F(value),
-        <span class="string">b'I' </span>=&gt; Octal::I(value),
+        <span class="string">'S' </span>=&gt; Octal::S(value),
+        <span class="string">'P' </span>=&gt; Octal::P(value),
+        <span class="string">'F' </span>=&gt; Octal::F(value),
+        <span class="string">'I' </span>=&gt; Octal::I(value),
         <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
     };
 
-    (   sym(<span class="string">b'('</span>) *
+    (   sym(<span class="string">'('</span>) *
         type_designator() +
         octal_word () -
-        sym(<span class="string">b')'</span>)
+        sym(<span class="string">')'</span>)
     ).map(as_enum)
      .name(<span class="string">"octal"</span>)
 }
 
-<span class="kw">fn </span>octal_word&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, WordValue&gt; {
+<span class="kw">fn </span>octal_word&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, WordValue&gt; {
     oct_dig()
         .repeat(<span class="number">8</span>)
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .convert(|s| WordValue::from_str_radix(<span class="kw-2">&amp;</span>s, <span class="number">8</span>))
         .name(<span class="string">"octal_word"</span>)
 }
@@ -833,7 +835,7 @@
 
 // &lt;actual character&gt; ::= &lt;alpha character&gt; | &lt;numeric character&gt; |
 //                        &lt;punctuation&gt;
-</span><span class="kw">fn </span>actual_character&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Character&gt; {
+</span><span class="kw">fn </span>actual_character&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Character&gt; {
     (   alpha_character() | 
         numeric_character() |
         punctuation()
@@ -842,41 +844,41 @@
 
 <span class="comment">// &lt;alpha character&gt; ::= A | B | C | D | E | F | G | H | I | J | K| L |M | N | O | P |
 //                       Q | R | S | T | V | W | X | Y | Z
-</span><span class="kw">fn </span>alpha_character&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, u8&gt;  {
-    one_of(<span class="kw-2">&amp;</span>(<span class="string">b'A'</span>..=<span class="string">b'Z'</span>))
+</span><span class="kw">fn </span>alpha_character&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, char&gt;  {
+    one_of(<span class="kw-2">&amp;</span>(<span class="string">'A'</span>..=<span class="string">'Z'</span>))
 }
 
 <span class="comment">// &lt;numeric character&gt; ::= &lt;digit&gt; | + | - | &lt;subscript 10&gt; | .
-</span><span class="kw">fn </span>numeric_character&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, NumericCharacter&gt; {
+</span><span class="kw">fn </span>numeric_character&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, NumericCharacter&gt; {
     (   digit() | 
-        sym(<span class="string">b'+'</span>) |
-        sym(<span class="string">b'-'</span>) |
+        sym(<span class="string">'+'</span>) |
+        sym(<span class="string">'-'</span>) |
         subscript10() |
-        sym(<span class="string">b'.'</span>)
+        sym(<span class="string">'.'</span>)
     ).name(<span class="string">"numeric_character"</span>)
 }
 
 <span class="comment">// &lt;punctuation&gt; ::= ( | &lt;quote&gt; | &lt;unquote&gt; | &lt;apostrophe&gt; | * | / |
 //                   : | ) | = | ? | ^ | ~ | # | ; | , | &lt;space&gt;
-</span><span class="kw">fn </span>punctuation&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Punctuation&gt; {
-    one_of(<span class="string">b"&lt;&gt;'*/:)=?^~#;. "</span>).name(<span class="string">"punctuation"</span>)
+</span><span class="kw">fn </span>punctuation&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Punctuation&gt; {
+    one_of(<span class="string">"&lt;&gt;'*/:)=?^~#;. "</span>).name(<span class="string">"punctuation"</span>)
 }
 
 <span class="comment">// &lt;digit&gt; ::= &lt;oct.dig&gt; | 8 | 9
-</span><span class="kw">fn </span>digit&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, u8&gt;  {
-    oct_dig() | one_of(<span class="string">b"89"</span>)
+</span><span class="kw">fn </span>digit&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, char&gt;  {
+    oct_dig() | one_of(<span class="string">"89"</span>)
 }
 
 <span class="comment">// &lt;oct.dig&gt; ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
-</span><span class="kw">fn </span>oct_dig&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, u8&gt;  {
-    one_of(<span class="kw-2">&amp;</span>(<span class="string">b'0'</span>..=<span class="string">b'7'</span>))
+</span><span class="kw">fn </span>oct_dig&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, char&gt;  {
+    one_of(<span class="kw-2">&amp;</span>(<span class="string">'0'</span>..=<span class="string">'7'</span>))
 }
 
 <span class="comment">// Added: ++
-</span><span class="kw">fn </span>inline_ws&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, String&gt; {
-    one_of(<span class="string">b" \t"</span>)
+</span><span class="kw">fn </span>inline_ws&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, String&gt; {
+    one_of(<span class="string">" \t"</span>)
         .repeat(<span class="number">1</span>..)
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .name(<span class="string">"inline_ws"</span>)
 }
 <span class="comment">// Added: --
@@ -892,11 +894,11 @@
 // &lt;new line&gt;     .
 // .
 // &lt;subscript 10&gt; .@.
-</span><span class="kw">fn </span>subscript10&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, u8&gt;  { sym(<span class="string">b'@'</span>) }
+</span><span class="kw">fn </span>subscript10&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, char&gt;  { sym(<span class="string">'@'</span>) }
 
 <span class="comment">// ****************************************************************************
 // &lt;general operand&gt; ::= &lt;address operand&gt; | &lt;const. operand&gt;
-</span><span class="kw">fn </span>general_operand&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, GeneralOperand&gt; {
+</span><span class="kw">fn </span>general_operand&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, GeneralOperand&gt; {
     (   const_operand().map(GeneralOperand::ConstOperand) |
         address_operand().map(GeneralOperand::AddressOperand)
     ).name(<span class="string">"general_operand"</span>)
@@ -905,7 +907,7 @@
 <span class="comment">// &lt;address operand&gt; ::= &lt;simple address operand&gt; | &lt;simple address operand&gt;
 //                       ":" &lt;index&gt;
 // Amended: ':index' to '(index)'
-</span><span class="kw">fn </span>address_operand&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, AddressOperand&gt; {
+</span><span class="kw">fn </span>address_operand&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, AddressOperand&gt; {
     (   simple_address_operand() +
         index_ref().opt()
     ).map(|(o, i)| AddressOperand::new(o, i))
@@ -915,7 +917,7 @@
 <span class="comment">// &lt;const. operand&gt; ::= &lt;signed integer&gt; | &lt;signed F-word&gt; !
 //                      &lt;octal&gt; | &lt;S-word&gt;
 // Amended: &lt;octal&gt; disallow
-</span><span class="kw">fn </span>const_operand&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, ConstOperand&gt; {
+</span><span class="kw">fn </span>const_operand&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, ConstOperand&gt; {
     (   signed_fword().map(ConstOperand::SignedFWord) |
         signed_integer().map(ConstOperand::SignedInteger) |
         octal().map(ConstOperand::Octal) |
@@ -924,14 +926,14 @@
 }
 
 <span class="comment">// &lt;simple address operand&gt; ::= &lt;space&gt;&lt;address&gt; | *&lt;address&gt;
-</span><span class="kw">fn </span>simple_address_operand&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, SimpleAddressOperand&gt; {
+</span><span class="kw">fn </span>simple_address_operand&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, SimpleAddressOperand&gt; {
     (   (address()).map(SimpleAddressOperand::DirectAddress) |
-        (sym(<span class="string">b'*'</span>) * address()).map(SimpleAddressOperand::IndirectAddress)
+        (sym(<span class="string">'*'</span>) * address()).map(SimpleAddressOperand::IndirectAddress)
     ).name(<span class="string">"simple_address_operand"</span>)
 }
 
 <span class="comment">// &lt;address&gt; ::= &lt;identifier&gt; | &lt;numeric address&gt;
-</span><span class="kw">fn </span>address&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Address&gt; {
+</span><span class="kw">fn </span>address&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Address&gt; {
     (   identifier().map(Address::Identifier) |
         numeric_address().map(Address::NumericAddress)
     ).name(<span class="string">"address"</span>)
@@ -939,33 +941,32 @@
 
 <span class="comment">// &lt;identifier&gt; ::= &lt;alpha char.&gt; | &lt;identifier&gt;&lt;alpha char.&gt; !
 //                  &lt;identifier&gt;&lt;digit&gt;
-</span><span class="kw">fn </span>identifier&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Identifier&gt; {
-    <span class="kw">let </span>concat = |(a, ans)| {
-        <span class="kw">let </span><span class="kw-2">mut </span>id = Vec::new();
-        id.push(a);
-        id.extend(ans);
-        String::from_utf8(id)
+</span><span class="kw">fn </span>identifier&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Identifier&gt; {
+    <span class="kw">let </span>concat = |a: char, ans: <span class="kw-2">&amp;</span>[char]| {
+        <span class="kw">let </span><span class="kw-2">mut </span>id = Vec::from(ans);
+        id.insert(<span class="number">0</span>, a);
+        String::from_iter(id)
     }; 
 
     (   alpha_character() + 
         alpha_numeric().repeat(<span class="number">0</span>..)
-    ).convert(concat)
+    ).map(<span class="kw">move </span>|ans| concat(ans.<span class="number">0</span>, <span class="kw-2">&amp;</span>ans.<span class="number">1</span>))
      .name(<span class="string">"identifier"</span>)
 }
 
-<span class="kw">fn </span>alpha_numeric&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, u8&gt;  {
+<span class="kw">fn </span>alpha_numeric&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, char&gt;  {
     alpha_character() | digit()
 } 
 
 <span class="comment">// &lt;numeric address&gt; ::= &lt;absolute address&gt; | &lt;relative address&gt;
-</span><span class="kw">fn </span>numeric_address&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, NumericAddress&gt; {
+</span><span class="kw">fn </span>numeric_address&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, NumericAddress&gt; {
     (   relative_address().map(NumericAddress::RelativeAddress) |
         absolute_address().map(NumericAddress::AbsoluteAddress)
     ).name(<span class="string">"numeric_address"</span>)
 }
 
 <span class="comment">// &lt;absolute address&gt; ::= &lt;Unsigned integer&gt;
-</span><span class="kw">fn </span>absolute_address&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, AddressRef&gt; {
+</span><span class="kw">fn </span>absolute_address&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, AddressRef&gt; {
     unsigned_integer()
         .map(|i| i <span class="kw">as </span>AddressRef)
         .name(<span class="string">"absolute_address"</span>)
@@ -973,47 +974,50 @@
 
 <span class="comment">// &lt;relative address&gt; ::= &lt;absolute address&gt;+
 // TODO: Definition is unsigned - implies forward reference only...
-</span><span class="kw">fn </span>relative_address&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, RelativeRef&gt; {
+</span><span class="kw">fn </span>relative_address&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, RelativeRef&gt; {
     (   absolute_address() - 
-        sym(<span class="string">b'+'</span>)
+        sym(<span class="string">'+'</span>)
     ).name(<span class="string">"relative_address"</span>)
 }
 
 <span class="comment">// &lt;index&gt; ::= &lt;digit&gt; | &lt;digit&gt;&lt;digit&gt;
-</span><span class="kw">fn </span>index&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Index&gt; {
+</span><span class="kw">fn </span>index&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Index&gt; {
     digit()
         .repeat(<span class="number">1</span>..=<span class="number">2</span>)
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .convert(|s| Index::from_str(<span class="kw-2">&amp;</span>s))
         .name(<span class="string">"index"</span>)
 }
 
-<span class="kw">fn </span>index_ref&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Index&gt; {
-    (sym(<span class="string">b'('</span>) + index() + sym(<span class="string">b')'</span>))
+<span class="kw">fn </span>index_ref&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Index&gt; {
+    (sym(<span class="string">'('</span>) + index() + sym(<span class="string">')'</span>))
         .map(|((<span class="kw">_</span>, i), <span class="kw">_</span>)| i)
         .name(<span class="string">"index_ref"</span>)
 }
 
 <span class="comment">// &lt;acc&gt; ::= &lt;no character&gt; | 2
 // Amended: Allow 0..7
-</span><span class="kw">fn </span>acc&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Acc&gt; {
-    oct_dig().name(<span class="string">"acc"</span>)
+</span><span class="kw">fn </span>acc&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Acc&gt; {
+    oct_dig()
+        .opt()
+        .map(Acc::from)
+        .name(<span class="string">"acc"</span>)
 }
 
 <span class="comment">// ****************************************************************************
 // &lt;signed F-word&gt; ::= +&lt;unsigned F-word&gt; | -&lt;unsigned F-word&gt;
-</span><span class="kw">fn </span>signed_fword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, FWord&gt; {
+</span><span class="kw">fn </span>signed_fword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, FWord&gt; {
     <span class="kw">let </span>negate = |f: FloatType| -f;
 
-    (   (sym(<span class="string">b'+'</span>) * unsigned_fword()) |
-        (sym(<span class="string">b'-'</span>) * unsigned_fword().map(negate))
+    (   (sym(<span class="string">'+'</span>) * unsigned_fword()) |
+        (sym(<span class="string">'-'</span>) * unsigned_fword().map(negate))
     ).name(<span class="string">"signed_fword"</span>)
 }
 
 <span class="comment">// &lt;unsigned F-word&gt; ::= &lt;decimal part&gt; | &lt;decimal part&gt;
 //                       &lt;exponent part&gt; | &lt;unsigned integer&gt;
 //                       &lt;exponent part&gt;
-</span><span class="kw">fn </span>unsigned_fword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, FWord&gt; {
+</span><span class="kw">fn </span>unsigned_fword&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, FWord&gt; {
     <span class="kw">let </span>de_to_float1 = |(d, e)| FloatType::from_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{}e{}"</span>, d, e));
     <span class="kw">let </span>de_to_float2 = |(d, e)| FloatType::from_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{}e{}"</span>, d, e));
 
@@ -1025,20 +1029,20 @@
 
 <span class="comment">// &lt;decimal part&gt; ::= &lt;unsigned integer&gt;.&lt;unsigned integer&gt; |
 //                    .&lt;unsigned integer&gt;
-</span><span class="kw">fn </span>decimal_part&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, String&gt; {
+</span><span class="kw">fn </span>decimal_part&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, String&gt; {
     <span class="kw">let </span>if_to_string = |(i, f): (IntType, IntType)| <span class="macro">format!</span>(<span class="string">"{}.{}"</span>, i, f);
     <span class="kw">let </span>f_to_string = |f: IntType| <span class="macro">format!</span>(<span class="string">"0.{}"</span>, f);
 
-    (   (unsigned_integer() - sym(<span class="string">b'.'</span>).discard() + unsigned_integer()).map(if_to_string) |
-        (sym(<span class="string">b'.'</span>).discard() * unsigned_integer()).map(f_to_string)
+    (   (unsigned_integer() - sym(<span class="string">'.'</span>).discard() + unsigned_integer()).map(if_to_string) |
+        (sym(<span class="string">'.'</span>).discard() * unsigned_integer()).map(f_to_string)
     ).name(<span class="string">"decimal_part"</span>)
 }
 
 <span class="comment">// &lt;exponent part&gt; ::= &lt;subscript 10&gt;&lt;sign&gt;&lt;digit&gt; |
 //                     &lt;subscript 10&gt;&lt;sign&gt;&lt;digit&gt;&lt;digit&gt;
-</span><span class="kw">fn </span>exponent_part&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, String&gt; {
-    <span class="kw">let </span>sd_to_string = |(s, d): (String, u8)| <span class="macro">format!</span>(<span class="string">"{}{}"</span>, s, d);
-    <span class="kw">let </span>sdd_to_string = |((s, d1), d2): ((String, u8), u8)| <span class="macro">format!</span>(<span class="string">"{}{}{}"</span>, s, d1, d2);
+</span><span class="kw">fn </span>exponent_part&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, String&gt; {
+    <span class="kw">let </span>sd_to_string = |(s, d): (String, char)| <span class="macro">format!</span>(<span class="string">"{}{}"</span>, s, d);
+    <span class="kw">let </span>sdd_to_string = |((s, d1), d2): ((String, char), char)| <span class="macro">format!</span>(<span class="string">"{}{}{}"</span>, s, d1, d2);
 
     (   (subscript10().discard() * sign() + digit()).map(sd_to_string) |
         (subscript10().discard() * sign() + digit() + digit()).map(sdd_to_string)
@@ -1046,35 +1050,35 @@
 }
 
 <span class="comment">// &lt;sign&gt; ::= &lt;no character&gt; | + | -
-</span><span class="kw">fn </span>sign&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, String&gt; {
-    (   sym(<span class="string">b'+'</span>) |
-        sym(<span class="string">b'-'</span>)
+</span><span class="kw">fn </span>sign&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, String&gt; {
+    (   sym(<span class="string">'+'</span>) |
+        sym(<span class="string">'-'</span>)
     ).repeat(..=<span class="number">1</span>)
-     .convert(String::from_utf8)
+     .map(String::from_iter)
      .name(<span class="string">"sign"</span>)
 }
 
 <span class="comment">// &lt;signed integer&gt; ::= +&lt;unsigned integer&gt; | -&lt;unsigned integer&gt;
-</span><span class="kw">fn </span>signed_integer&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, IntType&gt; {
+</span><span class="kw">fn </span>signed_integer&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, IntType&gt; {
     <span class="kw">let </span>negate = |i: IntType| -i;
 
-    (   (sym(<span class="string">b'+'</span>) * unsigned_integer()) |
-        (sym(<span class="string">b'-'</span>) * unsigned_integer().map(negate))
+    (   (sym(<span class="string">'+'</span>) * unsigned_integer()) |
+        (sym(<span class="string">'-'</span>) * unsigned_integer().map(negate))
     ).name(<span class="string">"signed_integer"</span>)
 }
 
 <span class="comment">// &lt;unsigned integer&gt; ::= &lt;digit&gt; | &lt;digit&gt;&lt;unsigned integer&gt;
-</span><span class="kw">fn </span>unsigned_integer&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, IntType&gt; {
+</span><span class="kw">fn </span>unsigned_integer&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, IntType&gt; {
     digit()
         .repeat(<span class="number">1</span>..)
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .convert(|s| IntType::from_str(<span class="kw-2">&amp;</span>s))
         .name(<span class="string">"unsigned_integer"</span>)
 }
 
 <span class="comment">// &lt;type designator&gt; ::= S | P | F | I
-</span><span class="kw">fn </span>type_designator&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, TypeDesignator&gt; {
-    one_of(<span class="string">b"SPFI"</span>).name(<span class="string">"type_designator"</span>)
+</span><span class="kw">fn </span>type_designator&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, TypeDesignator&gt; {
+    one_of(<span class="string">"SPFI"</span>).name(<span class="string">"type_designator"</span>)
 }
 
 <span class="comment">// ****************************************************************************
@@ -1083,7 +1087,7 @@
 // Not required in grammar...
 
 // &lt;take type mnemonic&gt; ::= &lt;0-15 mnemonic&gt; | &lt;skip mnemonic&gt;
-</span><span class="kw">fn </span>take_type_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+</span><span class="kw">fn </span>take_type_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     (   n0_15_mnemonc() |
         skip_mnemonic()
     ).name(<span class="string">"take_type_mnemonic"</span>)
@@ -1091,7 +1095,7 @@
 
 <span class="comment">// &lt;put type mnemonic&gt; ::= X&lt;0-15 mnemonic&gt; | &lt;16-22 mnemonic&gt; |
 //                         X&lt;16-22 mnemonic&gt; | &lt;jump mnemonic&gt;
-</span><span class="kw">fn </span>put_type_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+</span><span class="kw">fn </span>put_type_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     (   n0_15_xmnemonic() |
         n16_22_mnemonic() |
         n16_22_xmnemonic() |
@@ -1101,7 +1105,7 @@
 
 <span class="comment">// &lt;0-15 mnemonic&gt; ::= NTHG | ADD | SUBT | MPLY | DVD | TAKE | NEG | MOD |
 //                     CLR | AND | OR | NEQV | NOT | SHFR | CYCR | OPUT
-</span><span class="kw">fn </span>n0_15_mnemonc&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+</span><span class="kw">fn </span>n0_15_mnemonc&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     (   exact(<span class="string">"NTHG"</span>).map(|<span class="kw">_</span>| Mnemonic::NTHG) |
         exact(<span class="string">"ADD"</span>).map(|<span class="kw">_</span>| Mnemonic::ADD) |
         exact(<span class="string">"SUBT"</span>).map(|<span class="kw">_</span>| Mnemonic::SUBT) |
@@ -1121,7 +1125,7 @@
     ).name(<span class="string">"n0_15_mnemonic"</span>)
 }
 
-<span class="kw">fn </span>n0_15_xmnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+<span class="kw">fn </span>n0_15_xmnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     <span class="kw">let </span>as_x = |m| <span class="kw">match </span>m {
         Mnemonic::NTHG =&gt; Mnemonic::XNTHG,
         Mnemonic::ADD =&gt; Mnemonic::XADD,
@@ -1142,13 +1146,13 @@
         <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
     };
 
-    (   sym(<span class="string">b'X'</span>) *
+    (   sym(<span class="string">'X'</span>) *
         n0_15_mnemonc().map(as_x)
     ).name(<span class="string">"n0_15_xmnemonic"</span>)
 }
 
 <span class="comment">// &lt;16-22 mnemonic&gt; ::= IPUT | PUT | INCR | DECR | TYPE | CHYP | EXEC
-</span><span class="kw">fn </span>n16_22_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+</span><span class="kw">fn </span>n16_22_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     (   exact(<span class="string">"IPUT"</span>).map(|<span class="kw">_</span>| Mnemonic::IPUT) |
         exact(<span class="string">"PUT"</span>).map(|<span class="kw">_</span>| Mnemonic::PUT) |
         exact(<span class="string">"INCR"</span>).map(|<span class="kw">_</span>| Mnemonic::INCR) |
@@ -1159,7 +1163,7 @@
     ).name(<span class="string">"n16_22_mnemonic"</span>)
 }
 
-<span class="kw">fn </span>n16_22_xmnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+<span class="kw">fn </span>n16_22_xmnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     <span class="kw">let </span>as_x = |m| <span class="kw">match </span>m {
         Mnemonic::IPUT =&gt; Mnemonic::XIPUT,
         Mnemonic::PUT =&gt; Mnemonic::XPUT,
@@ -1170,11 +1174,11 @@
         Mnemonic::EXEC =&gt; Mnemonic::XEXEC,
         <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
     };
-    sym(<span class="string">b'X'</span>) * n16_22_mnemonic().map(as_x).name(<span class="string">"n16_22_xmnemonic"</span>)
+    sym(<span class="string">'X'</span>) * n16_22_mnemonic().map(as_x).name(<span class="string">"n16_22_xmnemonic"</span>)
 }
 
 <span class="comment">// &lt;skip mnemonic&gt;::= SKET | SKAE | SKAN | SKAL | SKAG
-</span><span class="kw">fn </span>skip_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+</span><span class="kw">fn </span>skip_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     (   exact(<span class="string">"SKET"</span>).map(|<span class="kw">_</span>| Mnemonic::SKET) |
         exact(<span class="string">"SKAE"</span>).map(|<span class="kw">_</span>| Mnemonic::SKAE) |
         exact(<span class="string">"SKAN"</span>).map(|<span class="kw">_</span>| Mnemonic::SKAN) |
@@ -1185,7 +1189,7 @@
 
 <span class="comment">// &lt;jump mnemonic&gt; ::= LIBR | JLIK | JUMP | JEZ | JNZ | JLZ | JGZ | JOI |
 //                     SLIK | SNLZ
-</span><span class="kw">fn </span>jump_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+</span><span class="kw">fn </span>jump_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     (   exact(<span class="string">"LIBR"</span>).map(|<span class="kw">_</span>| Mnemonic::LIBR) |
         exact(<span class="string">"JLIK"</span>).map(|<span class="kw">_</span>| Mnemonic::JLIK) |
         exact(<span class="string">"JUMP"</span>).map(|<span class="kw">_</span>| Mnemonic::JUMP) |
@@ -1201,7 +1205,7 @@
 
 <span class="comment">// &lt;library mnemonic&gt; ::= SQRT | LN | EXP | READ | PRINT | SIN | COS | TAN |
 //                        ARCTAN | STOP | LINE | INT | FRAC | FLOAT | CAPTN
-</span><span class="kw">fn </span>library_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+</span><span class="kw">fn </span>library_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     (   exact(<span class="string">"SQRT"</span>).map(|<span class="kw">_</span>| Mnemonic::SQRT) |
         exact(<span class="string">"LN"</span>).map(|<span class="kw">_</span>| Mnemonic::LN) |
         exact(<span class="string">"EXP"</span>).map(|<span class="kw">_</span>| Mnemonic::EXP) |
@@ -1220,24 +1224,24 @@
     ).name(<span class="string">"library_mnemonocic"</span>)
 }
 
-<span class="kw">fn </span>ldn_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+<span class="kw">fn </span>ldn_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     exact(<span class="string">"LDN"</span>)
         .map(|<span class="kw">_</span>| Mnemonic::LDN)
         .name(<span class="string">"ldn_mnemonic"</span>)
 }
 
-<span class="kw">fn </span>ldr_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, u8, Mnemonic&gt; {
+<span class="kw">fn </span>ldr_mnemonic&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Mnemonic&gt; {
     exact(<span class="string">"LDR"</span>)
         .map(|<span class="kw">_</span>| Mnemonic::LDR)
         .name(<span class="string">"ldr_mnemonic"</span>)
 }
 
 <span class="comment">// Utility parsers
-</span><span class="kw">fn </span>exact(tag: <span class="kw-2">&amp;</span>str) -&gt; Parser&lt;<span class="lifetime">'_</span>, u8, String&gt; {
+</span><span class="kw">fn </span>exact(tag: <span class="kw-2">&amp;</span>str) -&gt; Parser&lt;<span class="lifetime">'_</span>, String&gt; {
     <span class="kw">let </span>assert_tag = <span class="kw">move </span>|s| (s == tag).then_some(tag.into()).ok_or(<span class="prelude-val">Err</span>::&lt;String, <span class="kw">_</span>&gt;(<span class="string">"not tag"</span>));
     any()
         .repeat(tag.len())
-        .convert(String::from_utf8)
+        .map(String::from_iter)
         .convert(assert_tag)
         .name(<span class="string">"exact"</span>)
 }

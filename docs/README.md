@@ -60,12 +60,14 @@ The BBC had a TV series about computing, but both BBC-X & BBC-10 seem to have be
 
 ## Project
 
-There are a few points which lead to a different implementation here to that described in the thesis:
+The project has developed from a combination of:
 
-  1. The thesis refers to *major modifications planned for BBC-10* and that *the Hatfield Polytechnic Computer Centre intend that an extended form of the BBC will be implemented on the PDP-10 configuration*.
-  2. The assembly listings (not original source code) imply a slightly different source syntax for the simulator used on the PDP-10.
+  1. the BBC-3 definition, provided in Bill Tagg's original [thesis](https://spiral.imperial.ac.uk/bitstream/10044/1/21019/2/Tagg-W-1971-PhD-Thesis.pdf).
+  2. my BBC-X assembly listings (which, unfortunately appear to be intermediate code rather than original source code).
 
-Given that, some changes have been implemented here. Note, however, that at this stage the BBC-X documentation is not (yet) available so I've nothing to confirm whether these are true to the original, or otherwise. If I do find out otherwise I will endeavour to update the project.
+It turns out there a number of differences between BBC-X and BBC-3. The thesis itself refers to *major modifications planned for BBC-10* and that *the Hatfield Polytechnic Computer Centre intend that an extended form of the BBC will be implemented on the PDP-10 configuration*.
+
+This project is, fundamentally, a BBC-3 parser, with some amendments (listed below), to progress toward a BBC-X version.  These amendments partly come from my (very shakey) recollection of the project, and clear differences shown in the assembly listings.
 
   1. Source `Location`s will be symbolic.
   2. `Location` definition will be, optional, and labelled with a `:`.
@@ -73,14 +75,18 @@ Given that, some changes have been implemented here. Note, however, that at this
   4. Accumulators 0..7 allowed.
   5. Comments will start with a `;`.
   6. Indices will use `LOCATION(index)` format rather than `LOCATION:index`.
-  7. Instructions have been found existing source code (`MOCP`, `TTYP`, others...?), but not in the thesis, and will require interpretation to something *sensible*.
+  7. Instructions exist in the assembly listings that do not appear directly in the thesis.
+
+At this stage the BBC-X documentation is not (yet) available so I've nothing to confirm whether these are true to the original, or otherwise. However, once the BBC-X example code was added it became apparent that the point (7) difference is quite dramatic, and hinders any further progress.
 
 ## Timeline
 
-| Date        | Action                                                                                                                            | Result                                                                                                       |
-|-------------|-----------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
-| 23-Jan-2024 | Reach out to [University of Hertfordshire](https://www.herts.ac.uk/) with a general query if they had anything in their archives. | Nothing found, but a lot of interesting leads were provided and followed up.                                 |
-| 12-Feb-2024 | Reach out on the [Hatfield Polytechnic Group](https://www.facebook.com/groups/2042375999327304) Facebook page.                    | A response led direct contact with the Tagg family.                                                          |
-| 12-Feb-2024 | Reach to out [Tagg Furntiture]()                                                                                                  | Details passed to [Clare Tagg](https://www.claretagg.net/)                                                   |
-| 14-Feb-2024 | -                                                                                                                                 | [Clare Tagg](https://www.claretagg.net/) confirmed her and her father's background, which is recorded here. |
-| 01-Mar-2024 | BBC-X parser released.                                                                                                            |                                                                                                              |
+| Date        | Action                                                                                                                            | Result                                                                                                                                      |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| 23-Jan-2024 | Reach out to [University of Hertfordshire](https://www.herts.ac.uk/) with a general query if they had anything in their archives. | Nothing found, but a lot of interesting leads were provided and followed up.                                                                |
+| 12-Feb-2024 | Reach out on the [Hatfield Polytechnic Group](https://www.facebook.com/groups/2042375999327304) Facebook page.                    | A response led direct contact with the Tagg family.                                                                                         |
+| 12-Feb-2024 | Reach to out [Tagg Furntiture]()                                                                                                  | Details passed to [Clare Tagg](https://www.claretagg.net/)                                                                                  |
+| 14-Feb-2024 | -                                                                                                                                 | [Clare Tagg](https://www.claretagg.net/) confirmed her and her father's background, which is recorded here.                                 |
+| 01-Mar-2024 | BBC-3 parser released.                                                                                                            |                                                                                                                                             |
+| 19-Mar-2024 | Added source listing capability; prepped commands for running.                                                                    |                                                                                                                                             |
+| 20-Mar-2024 | Added Initial BBC-X program ()                                                                                                    | Unfortunately this proved there are too many differences between BBC-3 and BBC-X. Further development will only be guesswork at this stage. |

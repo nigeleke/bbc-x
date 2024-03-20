@@ -16,4 +16,4 @@ Cargo.lock
 cobertura.xml
 
 # Local runs
-examples/*.lst
+examples/*/*.lst

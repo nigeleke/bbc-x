@@ -63,7 +63,7 @@ mod test {
 
     #[test]
     fn program_parsed_ok() {
-        let args = vec!["bbc-x", "./examples/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "./examples/test/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
         let result = bbc_x(&args);
         assert!(result.is_ok())        
@@ -71,7 +71,7 @@ mod test {
 
     #[test]
     fn program_parsed_error() {
-        let args = vec!["bbc-x", "./examples/invalid_syntax.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "./examples/test/invalid_syntax.bbc"].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
         let result = bbc_x(&args);
         assert!(result.is_err())        
@@ -79,7 +79,7 @@ mod test {
 
     #[test]
     fn program_assembled_ok() {
-        let args = vec!["bbc-x", "./examples/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "./examples/test/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
         let result = bbc_x(&args);
         assert!(result.is_ok())                
@@ -87,7 +87,7 @@ mod test {
 
     #[test]
     fn program_assembled_error() {
-        let args = vec!["bbc-x", "./examples/invalid_semantics.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "./examples/test/invalid_semantics.bbc"].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
         let result = bbc_x(&args);
         assert!(result.is_err())                
@@ -100,7 +100,7 @@ mod test {
         let temp_target = temp_folder.path().join("nthg.bbc");
         let temp_target_str = temp_target.display().to_string();
 
-        std::fs::copy("./examples/nthg.bbc", temp_target).unwrap();
+        std::fs::copy("./examples/test/nthg.bbc", temp_target).unwrap();
 
         let args = vec!["bbc-x", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
@@ -117,7 +117,7 @@ mod test {
         let temp_target = temp_folder.path().join("nthg.bbc");
         let temp_target_str = temp_target.display().to_string();
 
-        std::fs::copy("./examples/nthg.bbc", temp_target).unwrap();
+        std::fs::copy("./examples/test/nthg.bbc", temp_target).unwrap();
 
         let args = vec!["bbc-x", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
@@ -134,7 +134,7 @@ mod test {
         let temp_target = temp_folder.path().join("invalid_syntax.bbc");
         let temp_target_str = temp_target.display().to_string();
 
-        std::fs::copy("./examples/invalid_syntax.bbc", temp_target).unwrap();
+        std::fs::copy("./examples/test/invalid_syntax.bbc", temp_target).unwrap();
 
         let args = vec!["bbc-x", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
@@ -151,7 +151,7 @@ mod test {
         let temp_target = temp_folder.path().join("invalid_semantics.bbc");
         let temp_target_str = temp_target.display().to_string();
 
-        std::fs::copy("./examples/invalid_semantics.bbc", temp_target).unwrap();
+        std::fs::copy("./examples/test/invalid_semantics.bbc", temp_target).unwrap();
 
         let args = vec!["bbc-x", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
@@ -168,7 +168,7 @@ mod test {
         let temp_target = temp_folder.path();
         let temp_target_str = temp_target.display().to_string();
 
-        let args = vec!["bbc-x", "--list", "--list-path", &temp_target_str, "./examples/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--list", "--list-path", &temp_target_str, "./examples/test/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);
         let _ = bbc_x(&args);
 
@@ -183,7 +183,7 @@ mod test {
         let temp_target = temp_folder.path().join("instruction_set.bbc");
         let temp_target_str = temp_target.display().to_string();
 
-        std::fs::copy("./examples/instruction_set.bbc", temp_target).unwrap();
+        std::fs::copy("./examples/test/instruction_set.bbc", temp_target).unwrap();
 
         let args = vec!["bbc-x", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
         let args = Args::from(args);

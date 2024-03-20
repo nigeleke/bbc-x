@@ -1,0 +1,95 @@
+        "SORT"
+        MOCP    997
+        MOCP    16
+        PUT     0, 4
+        TAKE    5, 1017     ; IDENTIFIER/LITERAL
+        EXTA    15          ; CAPN
+        "NUMB"
+        "ER O"
+        "F NU"
+        "MBER"
+        "S TO"
+        " BE "
+        "SORT"
+        "ED?."
+        "...."
+        ".&&&"
+        EXTA    2,  4       ; READ
+        TTYP    2
+        JNZ     *1014       ; IDENTIFIER/LITERAL
+        SUBT    2, 1017     ; IDENTIFIER/LITERAL
+        JLZ     2, *1014    ; IDENTIFIER/LITERAL
+        JEZ     2, *1014    ; IDENTIFIER/LITERAL
+        SUBT    2, 1016     ; IDENTIFIER/LITERAL
+        JGZ     2, *1014    ; IDENTIFIER/LITERAL
+        ADD     2, 1013     ; IDENTIFIER/LITERAL
+        PUT     2, 1020     ; IDENTIFIER/LITERAL
+        PUT     2, 1018     ; IDENTIFIER/LITERAL
+        PUT     2, 1022     ; IDENTIFIER/LITERAL
+        EXTA    2, 4        ; READ
+        TTYP    2
+        SUBT    1017        ; IDENTIFIER/LITERAL
+        JGZ     *1014       ; IDENTIFIER/LITERAL
+        PUT     2, 200(5)
+        INCR    0, 5
+        DECR    1020        ; IDENTIFIER/LITERAL
+        JNZ     *1010       ; IDENTIFIER/LITERAL
+        TAKE    5, 1017     ; IDENTIFIER/LITERAL
+        TAKE    2, 200(5)  
+        INCR    0, 5
+        TAKE    3, 200(5)
+        TAKE    3
+        SUBT    2
+        JGZ     *1004       ; IDENTIFIER/LITERAL
+        TAKE    4, 1017     ; IDENTIFIER/LITERAL
+        PUT     2, 200(5)
+        DECR    0, 5
+        PUT     3, 200(5)
+        INCR    0, 5
+        TAKE    5
+        SUBT    1022        ; IDENTIFIER/LITERAL
+        JNZ     *1006       ; IDENTIFIER/LITERAL
+        DECR    1022        ; IDENTIFIER/LITERAL
+        SUBT    1017        ; IDENTIFIER/LITERAL
+        JEZ     *1002       ; IDENTIFIER/LITERAL
+        JEZ     4, *1002    ; IDENTIFIER/LITERAL
+        PUT     0, 4
+        JUMP    *1008       ; IDENTIFIER/LITERAL
+        TAKE    5, 1017     ; IDENTIFIER/LITERAL
+        TAKE    200(5)
+        EXTA    5           ; PRIT
+        DECR    1018        ; IDENTIFIER/LITERAL
+        JEZ     *998        ; IDENTIFIER/LITERAL
+        INCR    0, 5
+        JUMP    *1000       ; IDENTIFIER/LITERAL
+        EXTA    15          ; CAPN
+        "ERRO"
+        "R IN"
+        " INP"
+        "UT.."
+        EXTA    10          ; STOP
+; 201                        +3
+; 202                        +2
+; 203                        +1
+; 998    NIL     82
+; 999    "FIN&"
+;1000    NIL     71
+;1001    "CARY"
+;1002    NIL     70
+;1003    "OUT&"
+;1004    NIL     61
+;1005    "ZE&&"
+;1006    NIL     50
+;1007    "TK&&"
+;1008    NIL     49
+;1009    "MD&&"
+;1010    NIL     41
+;1011    "CY&&"
+;1013                        +601
+;1014    NIL     77
+;1015    "ERR&"
+;1016                        +600
+;1017                          +1
+;1019    "PNT&"
+;1021    "INP&"
+;1023    "COUT"

@@ -31,7 +31,7 @@ mod test {
 
     #[test]
     fn invoke_core() {
-        let args = vec!["bbc-x", "./examples/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "./examples/test/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
         let result = bbc_x(args);
         assert!(result.is_ok())
     }

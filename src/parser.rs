@@ -4,7 +4,7 @@ use crate::result::{Error, Result};
 
 pub(crate) type LineNumber = usize;
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct ParsedLine {
     line_number: LineNumber,
     parse_result: Result<SourceProgramLine>,
@@ -13,6 +13,14 @@ pub(crate) struct ParsedLine {
 impl ParsedLine {
     fn new(line_number: LineNumber, parse_result: Result<SourceProgramLine>) -> Self {
         ParsedLine { line_number, parse_result }
+    }
+
+    pub(crate) fn line_number(&self) -> LineNumber {
+        self.line_number
+    }
+
+    pub(crate) fn parse_result(&self) -> &Result<SourceProgramLine> {
+        &self.parse_result
     }
 }
 
@@ -34,8 +42,7 @@ impl Parser {
         
         let all_results = lines.map(parse_line);
         let ok_results = all_results.clone()
-            .filter(|l| l.parse_result.is_ok())
-            .map(|l| l.parse_result.unwrap())
+            .filter_map(|l| l.parse_result.ok())
             .collect::<SourceProgram>();
 
         let all_ok = lines_count == ok_results.len();
@@ -115,13 +122,13 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
-            PWord::TakeType(Mnemonic::ADD, None, 
+            PWord::TakeType(Mnemonic::ADD, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'0'), 
+            PWord::TakeType(Mnemonic::ADD, '0'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), None))),
-            PWord::TakeType(Mnemonic::SKAG, None, 
+            PWord::TakeType(Mnemonic::SKAG, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR3".into())), None))),
-            PWord::TakeType(Mnemonic::SKAG, Some(b'1'), 
+            PWord::TakeType(Mnemonic::SKAG, '1'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR4".into())), None))),
         ];
         let expected = pwords
@@ -141,13 +148,13 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
-            PWord::PutType(Mnemonic::XADD, Some(b'0'), 
+            PWord::PutType(Mnemonic::XADD, '0'.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::INCR, Some(b'1'), 
+            PWord::PutType(Mnemonic::INCR, '1'.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), None)),
-            PWord::PutType(Mnemonic::XINCR, Some(b'2'), 
+            PWord::PutType(Mnemonic::XINCR, '2'.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR3".into())), None)),
-            PWord::PutType(Mnemonic::JUMP, Some(b'3'), 
+            PWord::PutType(Mnemonic::JUMP, '3'.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR4".into())), None)),
         ];
         let expected = pwords
@@ -165,9 +172,9 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
-            PWord::LoadN(None, 
+            PWord::LoadN(None.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), 42),
-            PWord::LoadN(Some(b'1'), 
+            PWord::LoadN('1'.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), 57),
         ];
         let expected = pwords
@@ -185,8 +192,8 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
-            PWord::LoadRConst(None, ConstOperand::SignedInteger(24), 42),
-            PWord::LoadRConst(Some(b'1'), ConstOperand::SignedFWord(-3.14), 57),
+            PWord::LoadRConst(None.into(), ConstOperand::SignedInteger(24), 42),
+            PWord::LoadRConst('1'.into(), ConstOperand::SignedFWord(-3.14), 57),
         ];
         let expected = pwords
             .iter()
@@ -203,9 +210,9 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
-            PWord::LoadR(None, 
+            PWord::LoadR(None.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), 42),
-            PWord::LoadR(Some(b'1'), 
+            PWord::LoadR('1'.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), 57),
         ];
         let expected = pwords
@@ -323,25 +330,25 @@ LABEL4: "L4C4"      ; Comment 4
 "#;
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
-            PWord::TakeType(Mnemonic::ADD, None, 
+            PWord::TakeType(Mnemonic::ADD, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'0'), 
+            PWord::TakeType(Mnemonic::ADD, '0'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())), Some(42)))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'1'), 
+            PWord::TakeType(Mnemonic::ADD, '1'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::IndirectAddress(Address::Identifier("ADDR3".into())), None))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'2'), 
+            PWord::TakeType(Mnemonic::ADD, '2'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::IndirectAddress(Address::Identifier("ADDR4".into())), Some(42)))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'3'), 
+            PWord::TakeType(Mnemonic::ADD, '3'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::NumericAddress(NumericAddress::AbsoluteAddress(512))), None))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'4'), 
+            PWord::TakeType(Mnemonic::ADD, '4'.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::NumericAddress(NumericAddress::RelativeAddress(512))), None))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'5'), 
+            PWord::TakeType(Mnemonic::ADD, '5'.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SignedInteger(-42))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'6'), 
+            PWord::TakeType(Mnemonic::ADD, '6'.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SignedFWord(3.14))),
-            PWord::TakeType(Mnemonic::ADD, Some(b'7'), 
+            PWord::TakeType(Mnemonic::ADD, '7'.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::Octal(Octal::I(0o1234567)))),
-            PWord::TakeType(Mnemonic::ADD, None, 
+            PWord::TakeType(Mnemonic::ADD, None.into(), 
                 GeneralOperand::ConstOperand(ConstOperand::SWord("TEXT".into()))),
         ];
         let expected = pwords
@@ -435,131 +442,131 @@ LABEL4: "L4C4"      ; Comment 4
 "#;        
         let program = Parser::parse(program).unwrap();
         let pwords = vec![
-            PWord::LoadN(None, 
+            PWord::LoadN(None.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), 42),
-            PWord::LoadR(None, 
+            PWord::LoadR(None.into(), 
                 SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), 42),
-            PWord::TakeType(Mnemonic::NTHG, None, 
+            PWord::TakeType(Mnemonic::NTHG, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::ADD, None, 
+            PWord::TakeType(Mnemonic::ADD, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::SUBT, None, 
+            PWord::TakeType(Mnemonic::SUBT, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::MPLY, None, 
+            PWord::TakeType(Mnemonic::MPLY, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::DVD, None, 
+            PWord::TakeType(Mnemonic::DVD, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::TAKE, None, 
+            PWord::TakeType(Mnemonic::TAKE, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::NEG, None, 
+            PWord::TakeType(Mnemonic::NEG, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::MOD, None, 
+            PWord::TakeType(Mnemonic::MOD, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::CLR, None, 
+            PWord::TakeType(Mnemonic::CLR, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::AND, None, 
+            PWord::TakeType(Mnemonic::AND, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::OR, None, 
+            PWord::TakeType(Mnemonic::OR, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::NEQV, None, 
+            PWord::TakeType(Mnemonic::NEQV, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::NOT, None, 
+            PWord::TakeType(Mnemonic::NOT, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::SHFR, None, 
+            PWord::TakeType(Mnemonic::SHFR, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::CYCR, None, 
+            PWord::TakeType(Mnemonic::CYCR, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::OPUT, None, 
+            PWord::TakeType(Mnemonic::OPUT, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::PutType(Mnemonic::XNTHG, None, 
+            PWord::PutType(Mnemonic::XNTHG, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XADD, None, 
+            PWord::PutType(Mnemonic::XADD, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XSUBT, None, 
+            PWord::PutType(Mnemonic::XSUBT, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XMPLY, None, 
+            PWord::PutType(Mnemonic::XMPLY, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XDVD, None, 
+            PWord::PutType(Mnemonic::XDVD, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XTAKE, None, 
+            PWord::PutType(Mnemonic::XTAKE, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XNEG, None, 
+            PWord::PutType(Mnemonic::XNEG, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XMOD, None, 
+            PWord::PutType(Mnemonic::XMOD, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XCLR, None, 
+            PWord::PutType(Mnemonic::XCLR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XAND, None, 
+            PWord::PutType(Mnemonic::XAND, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XOR, None, 
+            PWord::PutType(Mnemonic::XOR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XNEQV, None, 
+            PWord::PutType(Mnemonic::XNEQV, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XNOT, None, 
+            PWord::PutType(Mnemonic::XNOT, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XSHFR, None, 
+            PWord::PutType(Mnemonic::XSHFR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XCYCR, None, 
+            PWord::PutType(Mnemonic::XCYCR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XOPUT, None, 
+            PWord::PutType(Mnemonic::XOPUT, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::IPUT, None, 
+            PWord::PutType(Mnemonic::IPUT, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::PUT, None, 
+            PWord::PutType(Mnemonic::PUT, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::INCR, None, 
+            PWord::PutType(Mnemonic::INCR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::DECR, None, 
+            PWord::PutType(Mnemonic::DECR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::TYPE, None, 
+            PWord::PutType(Mnemonic::TYPE, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::CHYP, None, 
+            PWord::PutType(Mnemonic::CHYP, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::EXEC, None, 
+            PWord::PutType(Mnemonic::EXEC, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XIPUT, None, 
+            PWord::PutType(Mnemonic::XIPUT, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XPUT, None, 
+            PWord::PutType(Mnemonic::XPUT, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XINCR, None, 
+            PWord::PutType(Mnemonic::XINCR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XDECR, None, 
+            PWord::PutType(Mnemonic::XDECR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XTYPE, None, 
+            PWord::PutType(Mnemonic::XTYPE, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XCHYP, None, 
+            PWord::PutType(Mnemonic::XCHYP, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::XEXEC, None, 
+            PWord::PutType(Mnemonic::XEXEC, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::TakeType(Mnemonic::SKET, None, 
+            PWord::TakeType(Mnemonic::SKET, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::SKAE, None, 
+            PWord::TakeType(Mnemonic::SKAE, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::SKAN, None, 
+            PWord::TakeType(Mnemonic::SKAN, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::SKAL, None, 
+            PWord::TakeType(Mnemonic::SKAL, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::TakeType(Mnemonic::SKAG, None, 
+            PWord::TakeType(Mnemonic::SKAG, None.into(), 
                 GeneralOperand::AddressOperand(AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None))),
-            PWord::PutType(Mnemonic::LIBR, None, 
+            PWord::PutType(Mnemonic::LIBR, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::JLIK, None, 
+            PWord::PutType(Mnemonic::JLIK, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::JUMP, None, 
+            PWord::PutType(Mnemonic::JUMP, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::JEZ, None, 
+            PWord::PutType(Mnemonic::JEZ, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::JNZ, None, 
+            PWord::PutType(Mnemonic::JNZ, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::JLZ, None, 
+            PWord::PutType(Mnemonic::JLZ, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::JGZ, None, 
+            PWord::PutType(Mnemonic::JGZ, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::JOI, None, 
+            PWord::PutType(Mnemonic::JOI, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::SLIK, None, 
+            PWord::PutType(Mnemonic::SLIK, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
-            PWord::PutType(Mnemonic::SNLZ, None, 
+            PWord::PutType(Mnemonic::SNLZ, None.into(), 
                 AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR1".into())), None)),
             PWord::LibraryMnemonic(Mnemonic::SQRT), 
             PWord::LibraryMnemonic(Mnemonic::LN),

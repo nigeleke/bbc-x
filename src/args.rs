@@ -1,8 +1,14 @@
-use clap::{Parser as ClapParser};
+use clap::{Parser as ClapParser, ValueEnum};
 #[cfg(test)]
 use clap::error::Error as ClapError;
 
 use std::path::PathBuf;
+
+#[derive(Clone, Copy, Debug, PartialEq, ValueEnum)]
+pub(crate) enum Language {
+    BBC3,
+    BBCX
+}
 
 #[derive(Debug, ClapParser, PartialEq)]
 #[command(version, about, long_about = None)]
@@ -10,6 +16,11 @@ use std::path::PathBuf;
 /// Resurrection of the educational BBC-X assembler language used at Hatfield Polytechnic.
 ///
 pub(crate) struct Args {
+    /// Specify the source file language. It is expected that all source files are in the same
+    /// language.
+    #[arg(long, visible_alias="lang", value_enum, default_value_t=Language::BBCX)]
+    language: Language,
+
     /// Create listing files during compilation. The list files will be named '<FILE>.lst'.
     /// See also [list-path].
     #[arg(short, long, required(false))]
@@ -43,6 +54,10 @@ pub(crate) struct Args {
 impl Args {
     pub(crate) fn from(args: Vec<String>) -> Self {
         Args::parse_from(args)
+    }
+
+    pub(crate) fn language(&self) -> Language {
+        self.language
     }
 
     #[inline]

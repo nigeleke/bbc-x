@@ -1,0 +1,124 @@
+0001    "WORD"                                  ; SWord
+0002    ADD         ADDR1                       ; PWord TakeType
+0003    ADD 2       ADDR2
+0004    SKAG        ADDR3
+0005    SKAG 2      ADDR4
+0006    XADD        ADDR1                       ; PWord PutType
+0007    INCR        ADDR2
+0008    XINCR 2     ADDR3
+0009    JUMP  2     ADDR4
+0010    LDN         ADDR1:42                    ; PWord LoadN
+0011    LDN 2       ADDR2:57
+0012    LDR         +24:42                      ; PWord LoadRConst
+0013    LDR 2       -3.14:57
+0014    LDR         ADDR1:42                    ; PWord LoadR
+0015    LDR 2       ADDR2:57
+0016    SQRT                                    ; PWord LibraryMnemonic
+0017    LN
+0018    EXP
+0019    READ
+0020    PRINT
+0021    SIN
+0022    COS
+0023    TAN
+0024    ARCTAN
+0025    STOP
+0026    LINE
+0027    INT
+0028    FRAC
+0029    FLOAT
+0030    CAPTN
+0031    3.14                                    ; FWord
+0032    42                                      ; IWord
+0033    (S11110000)                             ; Octal
+0034    (P33332222)
+0035    (F55554444)
+0036    (I77776666)
+0037    ADD         ADDR1                       ; Addressing modes
+0038    ADD 2       ADDR2:42
+0039    ADD         *ADDR3
+0040    ADD 2       *ADDR4:42
+0041    ADD         512
+0042    ADD 2       512+
+0043    ADD         -42
+0044    ADD 2       +3.14
+0045    ADD         (I01234567)
+0046    ADD 2       <TEXT>
+0047    LDN         ADDR1:42                   ; Mnemonics
+0048    LDR         ADDR1:42
+0049    NTHG        ADDR1
+0050    ADD         ADDR1
+0051    SUBT        ADDR1
+0052    MPLY        ADDR1
+0053    DVD         ADDR1
+0054    TAKE        ADDR1
+0055    NEG         ADDR1
+0056    MOD         ADDR1
+0057    CLR         ADDR1
+0058    AND         ADDR1
+0059    OR          ADDR1
+0060    NEQV        ADDR1
+0061    NOT         ADDR1
+0062    SHFR        ADDR1
+0063    CYCR        ADDR1
+0064    OPUT        ADDR1
+0065    XNTHG       ADDR1
+0066    XADD        ADDR1
+0067    XSUBT       ADDR1
+0068    XMPLY       ADDR1
+0069    XDVD        ADDR1
+0070    XTAKE       ADDR1
+0071    XNEG        ADDR1
+0072    XMOD        ADDR1
+0073    XCLR        ADDR1
+0074    XAND        ADDR1
+0075    XOR         ADDR1
+0076    XNEQV       ADDR1
+0077    XNOT        ADDR1
+0078    XSHFR       ADDR1
+0079    XCYCR       ADDR1
+0080    XOPUT       ADDR1
+0081    IPUT        ADDR1
+0082    PUT         ADDR1
+0083    INCR        ADDR1
+0084    DECR        ADDR1
+0085    TYPE        ADDR1
+0086    CHYP        ADDR1
+0087    EXEC        ADDR1
+0088    XIPUT       ADDR1
+0089    XPUT        ADDR1
+0090    XINCR       ADDR1
+0091    XDECR       ADDR1
+0092    XTYPE       ADDR1
+0093    XCHYP       ADDR1
+0094    XEXEC       ADDR1
+0095    SKET        ADDR1
+0096    SKAE        ADDR1
+0097    SKAN        ADDR1
+0098    SKAL        ADDR1
+0099    SKAG        ADDR1
+0100    LIBR        ADDR1
+0101    JLIK        ADDR1
+0102    JUMP        ADDR1
+0103    JEZ         ADDR1
+0104    JNZ         ADDR1
+0105    JLZ         ADDR1
+0106    JGZ         ADDR1
+0107    JOI         ADDR1
+0108    SLIK        ADDR1
+0109    SNLZ        ADDR1
+0110    SQRT
+0111    LN
+0112    EXP
+0113    READ
+0114    PRINT
+0115    SIN
+0116    COS
+0117    TAN
+0118    ARCTAN
+0119    STOP
+0120    LINE
+0121    INT
+0122    FRAC
+0123    FLOAT
+0124    CAPTN001

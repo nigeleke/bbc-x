@@ -67,26 +67,45 @@ The project has developed from a combination of:
 
 It turns out there a number of differences between BBC-X and BBC-3. The thesis itself refers to *major modifications planned for BBC-10* and that *the Hatfield Polytechnic Computer Centre intend that an extended form of the BBC will be implemented on the PDP-10 configuration*.
 
-This project is, fundamentally, a BBC-3 parser, with some amendments (listed below), to progress toward a BBC-X version.  These amendments partly come from my (very shakey) recollection of the language, and clear differences shown in the assembly listings.
+Some "amendments" were made to the BBC-3 "syntax" to progress toward a BBC-X version. These were found to be inadequate, partly because of my (very shakey) recollection of the language, and partly that there were clear (and unresolvable) differences in the assembly listings of the BBC-X programs. These amendments were reverted, and the project refactored to allow assembly of both BBC-3 and BBC-X dialects.
 
-  1. Source `Location`s will be symbolic.
-  2. `Location` definition will be, optional, and labelled with a `:`.
-  3. `S-Words` will be delimited by `"..."` rather than `<...>`.
-  4. Accumulators 0..7 allowed.
-  5. Comments will start with a `;`.
-  6. Indices will use `LOCATION(index)` format rather than `LOCATION:index`.
-  7. Instructions exist in the assembly listings that do not appear directly in the thesis.
+The BBC-3 dialect is assembled, but not executed; there are no plans to emulate BBC-3 further.
 
-At this stage the BBC-X documentation is not (yet) available so I've nothing to confirm whether these are true to the original, or otherwise. However, once the BBC-X example code was added it became apparent that the differences related to point 7 are more than originally anticipated, and hinder any further progress.
+At this stage the BBC-X documentation is not available but understood to be being scanned in - and awaited with ant-ticip-----pation [1].
+
+  [1] Rocky Horror Picture Show
+
+## Running the program
+
+```
+> bbc-x --help
+Resurrection of the educational BBC-X assembler language used at Hatfield Polytechnic
+
+Usage: bbc-x [OPTIONS] <FILES>...
+
+Arguments:
+  <FILES>...  The source file(s) to be compiled and / or run
+
+Options:
+      --language <LANGUAGE>      Specify the source file language. It is expected that all source files are in the same language [default: bbcx] [aliases: lang] [possible values: bbc3, bbcx]
+  -l, --list                     Create listing files during compilation. The list files will be named '<FILE>.lst'. See also [list-path]
+      --list-path <LIST_PATH>    The folder where the list files will be written. If not specified then they will be written to the same folder as the input file. Implies '--list'
+  -r, --run                      Run the file(s) following successfully compillation. If more than one file is provided then each will be run sequentially
+  -t, --trace                    Trace a file when it is executed. The trace files will be named '<FILE>.out' See also [trace-path]. Implies '--run'
+      --trace-path <TRACE_PATH>  The folder where the trace output files will be written. If not specified then they will be written to same folder as the input file. Implies '--trace'
+  -h, --help                     Print help
+  -V, --version                  Print version
+```
 
 ## Timeline
 
-| Date        | Action                                                                                                                            | Result                                                                                                                                      |
-|-------------|-----------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
-| 23-Jan-2024 | Reach out to [University of Hertfordshire](https://www.herts.ac.uk/) with a general query if they had anything in their archives. | Nothing found, but a lot of interesting leads were provided and followed up.                                                                |
-| 12-Feb-2024 | Reach out on the [Hatfield Polytechnic Group](https://www.facebook.com/groups/2042375999327304) Facebook page.                    | A response led direct contact with the Tagg family.                                                                                         |
-| 12-Feb-2024 | Reach to out [Tagg Furntiture]()                                                                                                  | Details passed to [Clare Tagg](https://www.claretagg.net/)                                                                                  |
-| 14-Feb-2024 | -                                                                                                                                 | [Clare Tagg](https://www.claretagg.net/) confirmed her and her father's background, which is recorded here.                                 |
-| 01-Mar-2024 | BBC-3 parser released.                                                                                                            |                                                                                                                                             |
-| 19-Mar-2024 | Added source listing capability; prepped commands for running.                                                                    |                                                                                                                                             |
-| 20-Mar-2024 | Added Initial BBC-X program ()                                                                                                    | Unfortunately this proved there are too many differences between BBC-3 and BBC-X. Further development will only be guesswork at this stage and I'd like the recreation to be as authentic to the orignal as possible. |
+| Date        | Action                                                                                                                            | Result                                                                                                      |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| 23-Jan-2024 | Reach out to [University of Hertfordshire](https://www.herts.ac.uk/) with a general query if they had anything in their archives. | Nothing found, but a lot of interesting leads were provided and followed up.                                |
+| 12-Feb-2024 | Reach out on the [Hatfield Polytechnic Group](https://www.facebook.com/groups/2042375999327304) Facebook page.                    | A response led direct contact with the Tagg family.                                                         |
+| 12-Feb-2024 | Reach to out [Tagg Furntiture]()                                                                                                  | Details passed to [Clare Tagg](https://www.claretagg.net/)                                                  |
+| 14-Feb-2024 | -                                                                                                                                 | [Clare Tagg](https://www.claretagg.net/) confirmed her and her father's background, which is recorded here. |
+| 01-Mar-2024 | BBC-3 parser released.                                                                                                            |                                                                                                             |
+| 19-Mar-2024 | Added source listing capability; prepped commands for running.                                                                    |                                                                                                             |
+| 20-Mar-2024 | Added Initial BBC-"X"  program                                                                                                    | Unfortunately this proved there are too many differences between BBC-3 and BBC-X.                           |
+| 28-Mar-2024 | Amended parser to reflect original BBC-3 specification. Refactored program in preparation for BBC-X.                              |                                                                                                             |

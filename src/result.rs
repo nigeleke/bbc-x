@@ -5,7 +5,7 @@ pub(crate) enum Error {
      FailedToAssembleFile(String, String),
      FailedToRunFile(String, String),
      BuildErrors(Vec<Error>),
-     // CannotToWriteFile(String)
+     CannotToWriteFile(String, String)
 }
 
 impl std::fmt::Display for Error {

@@ -3,7 +3,7 @@ pub(crate) mod args;
 // pub(crate) mod assembly;
 pub(crate) mod bbc3;
 pub(crate) mod core;
-// pub(crate) mod list_writer;
+pub(crate) mod list_writer;
 pub(crate) mod model;
 // pub(crate) mod parser;
 pub(crate) mod result;

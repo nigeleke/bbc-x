@@ -1,7 +1,6 @@
 mod assembler;
 mod assembly;
 mod ast;
-mod executor;
 mod grammar;
 mod parser;
 
@@ -10,6 +9,7 @@ use self::assembly::Assembly;
 use self::ast::SourceProgramLine;
 use self::parser::Parser;
 
+use crate::list_writer::ListWriter;
 use crate::model::*;
 
 #[derive(Clone)]
@@ -39,8 +39,16 @@ impl LanguageModel for Bbc3 {
     }
     
     fn run(&self, _ic: &Self::IntermediateCode) -> RuntimeResult<()> {
-        // TODO:
+        println!("BBC-3 run command is not implemented");
         Ok(())
     }
-    
+
+    fn list_line(&self, writer: &mut ListWriter, line: &ParserResult<Self::ParsedLine>) {
+        let line = match line {
+            Ok(line) => format!("        {}", line.to_string()),
+            Err(ParserError::FailedToParseLine(error)) => format!(" *****  {}", error), 
+            _ => unreachable!(),
+        };
+        writer.add_lines_to_listing(&line);
+    }
 }

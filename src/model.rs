@@ -10,6 +10,7 @@
 ///   3. an executor to run the intermediate code.
 /// 
 use crate::result::*;
+use crate::list_writer::ListWriter;
 
 use std::path::PathBuf;
 
@@ -68,6 +69,7 @@ pub(crate) trait LanguageModel {
     fn ast_from_parsed_lines(&self, lines: &Vec<Self::ParsedLine>) -> Self::AbstractSyntaxTree;
     fn assemble(&self, ast: &Self::AbstractSyntaxTree) -> AssemblerResult<Self::IntermediateCode>;
     fn run(&self, ic: &Self::IntermediateCode) -> RuntimeResult<()>;
+    fn list_line(&self, writer: &mut ListWriter, line: &ParserResult<Self::ParsedLine>);
 
     fn parse(&self, input: &str) -> ParserResult<Self::AbstractSyntaxTree> {
         let lines = input.lines();
@@ -94,17 +96,12 @@ pub(crate) trait LanguageModel {
                 .join("\n");
             Err(ParserError::FailedToParse(all_results))
         }
-
     }
 
     fn build(&self, file: &PathBuf) -> Result<()> {
         let filename = file.display().to_string();
 
-        let content = std::fs::read(file)
-            .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))?;
-
-        let content = String::from_utf8(content)
-            .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))?;
+        let content = self.get_file_content(file)?;
 
         let ast = self.parse(&content)
             .map_err(|e| Error::FailedToParseFile(filename.clone(), e.to_string()))?;
@@ -116,6 +113,28 @@ pub(crate) trait LanguageModel {
             .map_err(|e| Error::FailedToRunFile(filename.clone(), e.to_string()))?;
 
         Ok(())
+    }
+
+    fn get_file_content(&self, file: &PathBuf) -> Result<String> {
+        let filename = file.display().to_string();
+
+        let content = std::fs::read(file)
+            .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))?;
+
+        String::from_utf8(content)
+            .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))
+    }
+
+    fn list(&self, file: &PathBuf, writer: &mut ListWriter) -> Result<()> {
+        let filename = file.display().to_string();
+        let content = self.get_file_content(file)?;
+
+        content
+            .lines()
+            .map(|l| self.parse_line(l))
+            .for_each(|r| self.list_line(writer, &r));
+
+        writer.write_content_to_file().map_err(|e| Error::CannotToWriteFile(filename, e.to_string()))
     }
 
 }

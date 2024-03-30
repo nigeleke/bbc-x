@@ -1,4 +1,4 @@
-0001    "WORD"                                  ; SWord
+0001    <WORD>                                  ; SWord
 0002    ADD         ADDR1                       ; PWord TakeType
 0003    ADD 2       ADDR2
 0004    SKAG        ADDR3
@@ -121,4 +121,4 @@
 0121    INT
 0122    FRAC
 0123    FLOAT
-0124    CAPTN001
+0124    CAPTN

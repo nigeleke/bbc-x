@@ -69,27 +69,14 @@ pub(crate) enum PWord {
     LibraryMnemonic(Mnemonic),
 }
 
-impl PWord {
-    pub(crate) fn identifier(&self) -> Option<Identifier> {
-        match self {
-            PWord::TakeType(_, _, operand) => operand.identifier(),
-            PWord::PutType(_, _, operand) => operand.identifier(),
-            PWord::LoadN(_, operand, _) => operand.identifier(),
-            PWord::LoadRConst(_, _, _) => None,
-            PWord::LoadR(_, operand, _) => operand.identifier(),
-            PWord::LibraryMnemonic(_) => None,
-        }        
-    }
-}
-
 impl std::fmt::Display for PWord {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            PWord::TakeType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand.to_string()),
-            PWord::PutType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand.to_string()),
-            PWord::LoadN(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDN.to_string(), acc.to_string(), operand.to_string(), index.to_string()),
-            PWord::LoadRConst(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDR.to_string(), acc.to_string(), operand.to_string(), index.to_string()),
-            PWord::LoadR(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDR.to_string(), acc.to_string(), operand.to_string(), index.to_string()),
+            PWord::TakeType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand),
+            PWord::PutType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand),
+            PWord::LoadN(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDN.to_string(), acc.to_string(), operand, index),
+            PWord::LoadRConst(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
+            PWord::LoadR(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
             PWord::LibraryMnemonic(inst) => write!(f, "{:<8}", inst.to_string()),
         }
     }
@@ -112,7 +99,7 @@ impl From<Option<char>> for Acc {
 
 impl std::fmt::Display for Acc {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "{}", self.0.map_or("".into(), |a| (a as char).to_string()))
+        write!(f, "{}", self.0.map_or("".into(), |a| a.to_string()))
     }
 }
 
@@ -147,15 +134,6 @@ pub(crate) enum GeneralOperand {
     ConstOperand(ConstOperand),
 }
 
-impl GeneralOperand {
-    pub(crate) fn identifier(&self) -> Option<Identifier> {
-        match self {
-            GeneralOperand::AddressOperand(ao) => ao.identifier(),
-            GeneralOperand::ConstOperand(_) => None,
-        }        
-    }
-}
-
 impl std::fmt::Display for GeneralOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
@@ -176,10 +154,6 @@ impl AddressOperand {
         address: SimpleAddressOperand,
         index:  Option<Index>) -> Self {
         Self { address, index }
-    }
-
-    pub(crate) fn identifier(&self) -> Option<Identifier> {
-        self.address.identifier()
     }
 }
 
@@ -215,15 +189,6 @@ pub(crate) enum SimpleAddressOperand {
     IndirectAddress(Address)
 }
 
-impl SimpleAddressOperand {
-    pub(crate) fn identifier(&self) -> Option<Identifier> {
-        match self {
-            SimpleAddressOperand::DirectAddress(a) => a.identifier(),
-            SimpleAddressOperand::IndirectAddress(a) => a.identifier(),
-        }        
-    }
-}
-
 impl std::fmt::Display for SimpleAddressOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
@@ -237,15 +202,6 @@ impl std::fmt::Display for SimpleAddressOperand {
 pub(crate) enum Address {
     Identifier(Identifier),
     NumericAddress(NumericAddress),
-}
-
-impl Address {
-    pub(crate) fn identifier(&self) -> Option<Identifier> {
-        match self {
-            Address::Identifier(i) => Some(i.into()),
-            Address::NumericAddress(_) => None,
-        }        
-    }
 }
 
 impl std::fmt::Display for Address {

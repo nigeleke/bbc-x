@@ -19,15 +19,15 @@ use std::collections::HashMap;
 pub(crate) struct Assembler {}
 
 impl Assembler {
-    pub(crate) fn assemble(ast: &Vec<SourceProgramLine>) -> AssemblerResult<Assembly> {
-        _ = validate_ast(ast)?;
+    pub(crate) fn assemble(ast: &[SourceProgramLine]) -> AssemblerResult<Assembly> {
+        validate_ast(ast)?;
         let code = generate_code(ast);
         let assembly = Assembly::new(&code);
         Ok(assembly)
     }
 }
 
-fn validate_ast(ast: &Vec<SourceProgramLine>) -> AssemblerResult<()> {
+fn validate_ast(ast: &[SourceProgramLine]) -> AssemblerResult<()> {
     let mut invalid_locations = ast
         .iter()
         .fold(HashMap::new(), |mut counts, line| {
@@ -35,7 +35,8 @@ fn validate_ast(ast: &Vec<SourceProgramLine>) -> AssemblerResult<()> {
             counts
         })
         .into_iter()
-        .filter_map(|(key, value)| (value > 1).then(|| key))
+        .filter(|&(_key, value)| (value > 1))
+        .map(|(key, _value)| key)
         .collect::<Vec<_>>();
 
     if invalid_locations.is_empty() {
@@ -52,9 +53,9 @@ fn validate_ast(ast: &Vec<SourceProgramLine>) -> AssemblerResult<()> {
     }
 }
 
-fn generate_code(ast: &Vec<SourceProgramLine>) -> Code {
+fn generate_code(ast: &[SourceProgramLine]) -> Code {
     ast
-        .into_iter()
+        .iter()
         .map(|line| (*line.location(), line.source_program_word().clone()))
         .collect::<Code>()
 }

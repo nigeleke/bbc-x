@@ -9,14 +9,21 @@ pub(crate) struct Core { }
 impl Core {
     pub(crate) fn build_all(args: &Args) -> Result<()> {
         let model = match args.language() {
-            Language::BBC3 => Bbc3::new(),
-            Language::BBCX => unimplemented!(), // TODO: Implement BBC-X
+            Language::Bbc3 => Bbc3::new(),
+            Language::BbcX => unimplemented!(), // TODO: Implement BBC-X
         };
 
         let mut results = vec![];
     
         for file in args.files() {
-            let result = model.build(&file);
+            let result = match model.build(&file) {
+                Ok(code) => if args.run() {
+                    model.run(&code)
+                } else {
+                    Ok(())
+                },
+                Err(err) => Err::<(), _>(err),
+            };
             results.push(result);
 
             let mut writer = ListWriter::new(&file, args);

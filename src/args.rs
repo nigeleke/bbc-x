@@ -6,8 +6,8 @@ use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, PartialEq, ValueEnum)]
 pub(crate) enum Language {
-    BBC3,
-    BBCX
+    Bbc3,
+    BbcX
 }
 
 #[derive(Debug, ClapParser, PartialEq)]
@@ -18,7 +18,7 @@ pub(crate) enum Language {
 pub(crate) struct Args {
     /// Specify the source file language. It is expected that all source files are in the same
     /// language.
-    #[arg(long, visible_alias="lang", value_enum, default_value_t=Language::BBCX)]
+    #[arg(long, visible_alias="lang", value_enum, default_value_t=Language::BbcX)]
     language: Language,
 
     /// Create listing files during compilation. The list files will be named '<FILE>.lst'.
@@ -70,8 +70,14 @@ impl Args {
         self.list_path.clone()
     }
 
+    #[inline]
     pub(crate) fn files(&self) -> impl Iterator<Item = PathBuf> + '_ {
         self.files.iter().cloned()
+    }
+
+    #[inline]
+    pub(crate) fn run(&self) -> bool {
+        self.run
     }
 
     #[cfg(test)]

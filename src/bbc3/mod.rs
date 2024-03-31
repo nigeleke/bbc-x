@@ -26,26 +26,25 @@ impl LanguageModel for Bbc3 {
     type AbstractSyntaxTree = Vec<SourceProgramLine>;
     type IntermediateCode = Assembly;
 
-    fn parse_line(&self, input: &str) -> ParserResult<Self::ParsedLine> {
+    fn impl_parse_line(&self, input: &str) -> ParserResult<Self::ParsedLine> {
         Parser::parse_line(input)
     }
     
-    fn ast_from_parsed_lines(&self, lines: &Vec<Self::ParsedLine>) -> Self::AbstractSyntaxTree {
-        lines.clone()
+    fn impl_parsed_lines_to_ast(&self, lines: &[Self::ParsedLine]) -> Self::AbstractSyntaxTree {
+        lines.to_vec()
     }
 
-    fn assemble(&self, ast: &Self::AbstractSyntaxTree) -> AssemblerResult<Self::IntermediateCode> {
-        Assembler::assemble(&ast)
+    fn impl_assemble(&self, ast: &Self::AbstractSyntaxTree) -> AssemblerResult<Self::IntermediateCode> {
+        Assembler::assemble(ast)
     }
     
-    fn run(&self, _ic: &Self::IntermediateCode) -> RuntimeResult<()> {
-        println!("BBC-3 run command is not implemented");
-        Ok(())
+    fn impl_run(&self, _code: &Self::IntermediateCode) -> RuntimeResult<()> {
+        Err(RuntimeError::FailedToExecute("BBC-3 run command is not implemented".into()))
     }
 
-    fn list_line(&self, writer: &mut ListWriter, line: &ParserResult<Self::ParsedLine>) {
+    fn impl_list_line(&self, writer: &mut ListWriter, line: &ParserResult<Self::ParsedLine>) {
         let line = match line {
-            Ok(line) => format!("        {}", line.to_string()),
+            Ok(line) => format!("        {}", line),
             Err(ParserError::FailedToParseLine(error)) => format!(" *****  {}", error), 
             _ => unreachable!(),
         };

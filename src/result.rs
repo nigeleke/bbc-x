@@ -1,9 +1,9 @@
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Error {
      CannotReadFile(String, String),
-     FailedToParseFile(String, String),
-     FailedToAssembleFile(String, String),
-     FailedToRunFile(String, String),
+     FailedToParse(String),
+     FailedToAssemble(String),
+     FailedToRun(String),
      BuildErrors(Vec<Error>),
      CannotToWriteFile(String, String)
 }

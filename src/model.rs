@@ -65,24 +65,24 @@ pub(crate) trait LanguageModel {
     type AbstractSyntaxTree;
     type IntermediateCode;
 
-    fn parse_line(&self, input: &str) -> ParserResult<Self::ParsedLine>;
-    fn ast_from_parsed_lines(&self, lines: &Vec<Self::ParsedLine>) -> Self::AbstractSyntaxTree;
-    fn assemble(&self, ast: &Self::AbstractSyntaxTree) -> AssemblerResult<Self::IntermediateCode>;
-    fn run(&self, ic: &Self::IntermediateCode) -> RuntimeResult<()>;
-    fn list_line(&self, writer: &mut ListWriter, line: &ParserResult<Self::ParsedLine>);
+    fn impl_parse_line(&self, input: &str) -> ParserResult<Self::ParsedLine>;
+    fn impl_parsed_lines_to_ast(&self, lines: &[Self::ParsedLine]) -> Self::AbstractSyntaxTree;
+    fn impl_assemble(&self, ast: &Self::AbstractSyntaxTree) -> AssemblerResult<Self::IntermediateCode>;
+    fn impl_run(&self, code: &Self::IntermediateCode) -> RuntimeResult<()>;
+    fn impl_list_line(&self, writer: &mut ListWriter, line: &ParserResult<Self::ParsedLine>);
 
     fn parse(&self, input: &str) -> ParserResult<Self::AbstractSyntaxTree> {
         let lines = input.lines();
         let lines_count = lines.clone().count();
         
-        let all_results = lines.clone().map(|l| self.parse_line(l));
+        let all_results = lines.clone().map(|l| self.impl_parse_line(l));
         let ok_results = Vec::from_iter(all_results.clone()
             .filter_map(|l| l.ok()));
 
         let all_ok = lines_count == ok_results.len();
 
         if all_ok {
-            Ok(self.ast_from_parsed_lines(&ok_results))
+            Ok(self.impl_parsed_lines_to_ast(&ok_results))
         } else {
             let all_results = all_results
                 .zip(lines)
@@ -98,21 +98,14 @@ pub(crate) trait LanguageModel {
         }
     }
 
-    fn build(&self, file: &PathBuf) -> Result<()> {
-        let filename = file.display().to_string();
-
+    fn build(&self, file: &PathBuf) -> Result<Self::IntermediateCode> {
         let content = self.get_file_content(file)?;
 
         let ast = self.parse(&content)
-            .map_err(|e| Error::FailedToParseFile(filename.clone(), e.to_string()))?;
+            .map_err(|e| Error::FailedToParse(e.to_string()))?;
 
-        let ic = self.assemble(&ast)
-            .map_err(|e| Error::FailedToAssembleFile(filename.clone(), e.to_string()))?;
-
-        _ = self.run(&ic)
-            .map_err(|e| Error::FailedToRunFile(filename.clone(), e.to_string()))?;
-
-        Ok(())
+        self.impl_assemble(&ast)
+            .map_err(|e| Error::FailedToAssemble(e.to_string()))
     }
 
     fn get_file_content(&self, file: &PathBuf) -> Result<String> {
@@ -125,14 +118,19 @@ pub(crate) trait LanguageModel {
             .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))
     }
 
+    fn run(&self, code: &Self::IntermediateCode) -> Result<()> {
+        self.impl_run(code)
+            .map_err(|e| Error::FailedToRun(e.to_string()))
+    }
+
     fn list(&self, file: &PathBuf, writer: &mut ListWriter) -> Result<()> {
         let filename = file.display().to_string();
         let content = self.get_file_content(file)?;
 
         content
             .lines()
-            .map(|l| self.parse_line(l))
-            .for_each(|r| self.list_line(writer, &r));
+            .map(|l| self.impl_parse_line(l))
+            .for_each(|r| self.impl_list_line(writer, &r));
 
         writer.write_content_to_file().map_err(|e| Error::CannotToWriteFile(filename, e.to_string()))
     }

@@ -1,4 +1,4 @@
 var srcIndex = new Map(JSON.parse('[\
-["bbc_x",["",[],["args.rs","assembler.rs","assembly.rs","ast.rs","bbc_x.rs","grammar.rs","list_writer.rs","main.rs","parser.rs","result.rs"]]]\
+["bbc_x",["",[["bbc3",[],["assembler.rs","assembly.rs","ast.rs","grammar.rs","mod.rs","parser.rs"]]],["args.rs","core.rs","list_writer.rs","main.rs","model.rs","result.rs"]]]\
 ]'));
 createSrcSidebar();

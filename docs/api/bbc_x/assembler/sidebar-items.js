@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["build_symbol_table","generate_code"],"struct":["Assembler"]};

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["Assembly"],"type":["Code","MemoryAddress","SymbolTable","WordContent"]};

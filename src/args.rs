@@ -1,8 +1,14 @@
-use clap::{Parser as ClapParser};
+use clap::{Parser as ClapParser, ValueEnum};
 #[cfg(test)]
 use clap::error::Error as ClapError;
 
 use std::path::PathBuf;
+
+#[derive(Clone, Copy, Debug, PartialEq, ValueEnum)]
+pub(crate) enum Language {
+    Bbc3,
+    BbcX
+}
 
 #[derive(Debug, ClapParser, PartialEq)]
 #[command(version, about, long_about = None)]
@@ -10,6 +16,11 @@ use std::path::PathBuf;
 /// Resurrection of the educational BBC-X assembler language used at Hatfield Polytechnic.
 ///
 pub(crate) struct Args {
+    /// Specify the source file language. It is expected that all source files are in the same
+    /// language.
+    #[arg(long, visible_alias="lang", value_enum, default_value_t=Language::BbcX)]
+    language: Language,
+
     /// Create listing files during compilation. The list files will be named '<FILE>.lst'.
     /// See also [list-path].
     #[arg(short, long, required(false))]
@@ -45,6 +56,10 @@ impl Args {
         Args::parse_from(args)
     }
 
+    pub(crate) fn language(&self) -> Language {
+        self.language
+    }
+
     #[inline]
     pub(crate) fn list(&self) -> bool {
         self.list
@@ -55,8 +70,14 @@ impl Args {
         self.list_path.clone()
     }
 
+    #[inline]
     pub(crate) fn files(&self) -> impl Iterator<Item = PathBuf> + '_ {
         self.files.iter().cloned()
+    }
+
+    #[inline]
+    pub(crate) fn run(&self) -> bool {
+        self.run
     }
 
     #[cfg(test)]

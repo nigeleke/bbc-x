@@ -1,19 +1,17 @@
-use crate::parser::ParsedLine;
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) enum SymbolError {
-     Undefined(String),
-     Duplicated(String),
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum Error {
-     CannotReadFile(String),
-     InvalidInput(Vec<ParsedLine>),
-     InvalidLine(String, String),
-     UnresolvedSymbols(Vec<SymbolError>),
+     CannotReadFile(String, String),
+     FailedToParse(String),
+     FailedToAssemble(String),
+     FailedToRun(String),
      BuildErrors(Vec<Error>),
-     UnableToWriteFile(String)
+     CannotToWriteFile(String, String)
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;

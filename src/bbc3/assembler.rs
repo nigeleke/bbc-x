@@ -1,7 +1,7 @@
 use super::assembly::{Assembly, Code};
 use super::ast::SourceProgramLine;
 
-use crate::model::{AssemblerError, AssemblerResult};
+use crate::result::{Error, Result};
 
 use std::collections::HashMap;
 
@@ -19,7 +19,7 @@ use std::collections::HashMap;
 pub(crate) struct Assembler {}
 
 impl Assembler {
-    pub(crate) fn assemble(ast: &[SourceProgramLine]) -> AssemblerResult<Assembly> {
+    pub(crate) fn assemble(ast: &[SourceProgramLine]) -> Result<Assembly> {
         validate_ast(ast)?;
         let code = generate_code(ast);
         let assembly = Assembly::new(&code);
@@ -27,7 +27,7 @@ impl Assembler {
     }
 }
 
-fn validate_ast(ast: &[SourceProgramLine]) -> AssemblerResult<()> {
+fn validate_ast(ast: &[SourceProgramLine]) -> Result<()> {
     let mut invalid_locations = ast
         .iter()
         .fold(HashMap::new(), |mut counts, line| {
@@ -49,7 +49,7 @@ fn validate_ast(ast: &[SourceProgramLine]) -> AssemblerResult<()> {
             .collect::<Vec<_>>()
             .join(", ");
         let error = format!("Same location(s) used multiple times: {}", invalid_locations);
-        Err(AssemblerError::FailedToAssemble(error))
+        Err(Error::FailedToAssemble(error))
     }
 }
 
@@ -103,7 +103,7 @@ mod test {
 "#;
         let program = parse(program);
         let result = Assembler::assemble(&program).err().unwrap();
-        assert_eq!(result, AssemblerError::FailedToAssemble("Same location(s) used multiple times: 1, 2".into()));
+        assert_eq!(result, Error::FailedToAssemble("Same location(s) used multiple times: 1, 2".into()));
     }
 
     #[test]

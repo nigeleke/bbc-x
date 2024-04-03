@@ -1,15 +1,15 @@
 use super::ast::*;
 use super::grammar::*;
 
-use crate::model::{ParserError, ParserResult};
+use crate::result::{Error, Result};
 
 pub(crate) struct Parser;
 
 impl Parser {
-    pub(crate) fn parse_line(input: &str) -> ParserResult<SourceProgramLine> {
+    pub(crate) fn parse_line(input: &str) -> Result<SourceProgramLine> {
         Grammar::bbc3_line()
             .parse(input.trim().as_bytes())
-            .map_err(|_| ParserError::FailedToParseLine(input.into()))
+            .map_err(|_| Error::FailedToParse(input.into()))
     }
 }
 
@@ -17,7 +17,7 @@ impl Parser {
 mod test {
     use super::*;
 
-    type SourceProgram = Vec<ParserResult<SourceProgramLine>>;
+    type SourceProgram = Vec<Result<SourceProgramLine>>;
 
     fn parse(input: &str) -> SourceProgram {
         input
@@ -537,12 +537,12 @@ mod test {
 "#;
         let actual = parse(program);
         let expected = vec![
-            Err(ParserError::FailedToParseLine("0001".into())),
-            Err(ParserError::FailedToParseLine("0002    Invalid One".into())),
-            Err(ParserError::FailedToParseLine("0003".into())),
+            Err(Error::FailedToParse("0001".into())),
+            Err(Error::FailedToParse("0002    Invalid One".into())),
+            Err(Error::FailedToParse("0003".into())),
             Ok(SourceProgramLine::new(4, SourceProgramWord::PWord(PWord::LibraryMnemonic(Mnemonic::SQRT)), "; Valid".into())),
-            Err(ParserError::FailedToParseLine("0005".into())),
-            Err(ParserError::FailedToParseLine("0006    Invalid Two".into())),
+            Err(Error::FailedToParse("0005".into())),
+            Err(Error::FailedToParse("0006    Invalid Two".into())),
         ];
         assert_eq!(actual[1..], expected)
     }

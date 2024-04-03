@@ -9,45 +9,107 @@ use self::assembly::Assembly;
 use self::ast::SourceProgramLine;
 use self::parser::Parser;
 
+use crate::args::Args;
 use crate::list_writer::ListWriter;
 use crate::model::*;
+use crate::result::{Error, Result};
 
-#[derive(Clone)]
-pub(crate) struct Bbc3 {}
+use std::path::Path;
+
+// #[derive(Clone)]
+pub(crate) struct Bbc3 {
+    args: Args,
+}
 
 impl Bbc3 {
-    pub(crate) fn new() -> Self {
-        Self { }
+    pub(crate) fn new(args: &Args) -> Bbc3 {
+        let args = args.clone();
+        Self { args }
     }
+
+    fn impl_parse(&self, path: &Path) -> Result<Vec<Result<SourceProgramLine>>> {
+        let lines = file_lines(path)?;
+        let results = lines.iter().map(|line| Parser::parse_line(line));
+        Ok(results.collect())
+    }
+
+    fn impl_assemble(&self, path: &Path) -> Result<Assembly> {
+        let parsed_lines = self.impl_parse(path)?;
+
+        let parsed_lines_len = parsed_lines.len();
+        let ast = parsed_lines
+            .iter()
+            .filter_map(|l| l.as_ref().ok())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let all_ok = parsed_lines_len == ast.len();
+
+        if all_ok {
+            Assembler::assemble(&ast)
+        } else {
+            let lines = file_lines(path)?;
+            let all_results = parsed_lines
+                .iter()
+                .zip(lines.iter())
+                .map(|(r, l)|
+                    match (r, l) {
+                        (Ok(_), l) => format!("        {}", l), 
+                        (Err(Error::FailedToParse(e)), l) => format!(" *****  {}\n         {}", l, e),
+                        _ => unreachable!(),
+                    })
+                .collect::<Vec<_>>()
+                .join("\n");
+            Err(Error::FailedToAssemble(all_results))
+        }
+    }
+
+    fn impl_run(&self, _path: &Path) -> Result<()> {
+        Err(Error::FailedToRun("BBC-3 run command is not implemented".into()))
+    }
+
+    fn impl_list(&self, path: &Path) -> Result<()> {
+        let mut writer = ListWriter::new(path, &self.args);
+        let lines = file_lines(path)?;
+        let results = lines.iter().map(|line| Parser::parse_line(line));
+        for line in results {
+            let line = match line {
+                Ok(line) => format!("        {}", line),
+                Err(Error::FailedToParse(error)) => format!(" *****  {}", error), 
+                _ => unreachable!(),
+            };
+            writer.add_lines_to_listing(&line);
+        }
+        writer.write_content_to_file().map_err(|e| Error::CannotToWriteFile(path.display().to_string(), e.to_string()))
+    }
+
+}
+
+fn file_lines(path: &Path) -> Result<Vec<String>> {
+    let filename = path.display().to_string();
+
+    let content = std::fs::read(path)
+        .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))?;
+
+    let content = String::from_utf8(content)
+        .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))?;
+
+    Ok(content.lines().map(|line| line.to_owned()).collect())
 }
 
 impl LanguageModel for Bbc3 {
-    type ParsedLine = SourceProgramLine;
-    type AbstractSyntaxTree = Vec<SourceProgramLine>;
-    type IntermediateCode = Assembly;
-
-    fn impl_parse_line(&self, input: &str) -> ParserResult<Self::ParsedLine> {
-        Parser::parse_line(input)
+    fn assemble(&self, path: &Path) -> Result<()> {
+        _ = self.impl_assemble(path)?;
+        Ok(())
     }
     
-    fn impl_parsed_lines_to_ast(&self, lines: &[Self::ParsedLine]) -> Self::AbstractSyntaxTree {
-        lines.to_vec()
+    fn run(&self, path: &Path) -> Result<()> {
+        self.impl_run(path)?;
+        Ok(())
     }
 
-    fn impl_assemble(&self, ast: &Self::AbstractSyntaxTree) -> AssemblerResult<Self::IntermediateCode> {
-        Assembler::assemble(ast)
-    }
-    
-    fn impl_run(&self, _code: &Self::IntermediateCode) -> RuntimeResult<()> {
-        Err(RuntimeError::FailedToExecute("BBC-3 run command is not implemented".into()))
-    }
-
-    fn impl_list_line(&self, writer: &mut ListWriter, line: &ParserResult<Self::ParsedLine>) {
-        let line = match line {
-            Ok(line) => format!("        {}", line),
-            Err(ParserError::FailedToParseLine(error)) => format!(" *****  {}", error), 
-            _ => unreachable!(),
-        };
-        writer.add_lines_to_listing(&line);
+    fn list(&self, path: &Path) -> Result<()> {
+        _ = self.impl_list(path);
+        Ok(())
     }
 }

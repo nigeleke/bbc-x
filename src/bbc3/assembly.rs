@@ -8,17 +8,17 @@ pub(crate) type Content = AstSourceProgramWord;
 pub(crate) type Code = HashMap<Location, Content>;
 
 pub(crate) struct Assembly {
-    code: Code,
+    _code: Code,
 }
 
 impl Assembly {
     pub(crate) fn new(code: &Code) -> Self {
         let code = code.clone();
-        Self { code }
+        Self { _code: code }
     }
 
     #[cfg(test)]
     pub(crate) fn content(&self, location: Location) -> Option<Content> {
-        self.code.get(&location).map(|w| w.clone())
+        self._code.get(&location).map(|w| w.clone())
     }
 }

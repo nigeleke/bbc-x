@@ -1,33 +1,27 @@
-use crate::args::{Args, Language};
+use crate::args::{Args, Language as LanguageArg};
 use crate::bbc3::Bbc3;
-use crate::list_writer::ListWriter;
-use crate::model::LanguageModel;
+use crate::bbcx::BbcX;
+use crate::language::Language;
 use crate::result::{Error, Result};
 
 pub(crate) struct Core { }
 
 impl Core {
     pub(crate) fn build_all(args: &Args) -> Result<()> {
-        let model = match args.language() {
-            Language::Bbc3 => Bbc3::new(),
-            Language::BbcX => unimplemented!(), // TODO: Implement BBC-X
+        let language = match args.language() {
+            LanguageArg::Bbc3 => Language::Bbc3(Bbc3::new(args)),
+            LanguageArg::BbcX => Language::BbcX(BbcX::new(args)),
         };
 
         let mut results = vec![];
     
         for file in args.files() {
-            let result = match model.build(&file) {
-                Ok(code) => if args.run() {
-                    model.run(&code)
-                } else {
-                    Ok(())
-                },
-                Err(err) => Err::<(), _>(err),
-            };
+            let result = language
+                .assemble(&file)
+                .and_then(|_| if args.run(){ language.run(&file) } else { Ok(()) } );
             results.push(result);
 
-            let mut writer = ListWriter::new(&file, args);
-            let _= model.list(&file, &mut writer);
+            let _= language.list(&file);
         }
     
         let results = results.into_iter().filter_map(Result::err).collect::<Vec<Error>>();

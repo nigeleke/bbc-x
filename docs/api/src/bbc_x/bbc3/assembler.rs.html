@@ -126,7 +126,7 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::assembly::{Assembly, Code};
 <span class="kw">use </span><span class="kw">super</span>::ast::SourceProgramLine;
 
-<span class="kw">use </span><span class="kw">crate</span>::model::{AssemblerError, AssemblerResult};
+<span class="kw">use </span><span class="kw">crate</span>::result::{Error, <span class="prelude-ty">Result</span>};
 
 <span class="kw">use </span>std::collections::HashMap;
 
@@ -144,7 +144,7 @@
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Assembler {}
 
 <span class="kw">impl </span>Assembler {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assemble(ast: <span class="kw-2">&amp;</span>[SourceProgramLine]) -&gt; AssemblerResult&lt;Assembly&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assemble(ast: <span class="kw-2">&amp;</span>[SourceProgramLine]) -&gt; <span class="prelude-ty">Result</span>&lt;Assembly&gt; {
         validate_ast(ast)<span class="question-mark">?</span>;
         <span class="kw">let </span>code = generate_code(ast);
         <span class="kw">let </span>assembly = Assembly::new(<span class="kw-2">&amp;</span>code);
@@ -152,7 +152,7 @@
     }
 }
 
-<span class="kw">fn </span>validate_ast(ast: <span class="kw-2">&amp;</span>[SourceProgramLine]) -&gt; AssemblerResult&lt;()&gt; {
+<span class="kw">fn </span>validate_ast(ast: <span class="kw-2">&amp;</span>[SourceProgramLine]) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>invalid_locations = ast
         .iter()
         .fold(HashMap::new(), |<span class="kw-2">mut </span>counts, line| {
@@ -174,7 +174,7 @@
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
             .join(<span class="string">", "</span>);
         <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">"Same location(s) used multiple times: {}"</span>, invalid_locations);
-        <span class="prelude-val">Err</span>(AssemblerError::FailedToAssemble(error))
+        <span class="prelude-val">Err</span>(Error::FailedToAssemble(error))
     }
 }
 
@@ -228,7 +228,7 @@
 "#</span>;
         <span class="kw">let </span>program = parse(program);
         <span class="kw">let </span>result = Assembler::assemble(<span class="kw-2">&amp;</span>program).err().unwrap();
-        <span class="macro">assert_eq!</span>(result, AssemblerError::FailedToAssemble(<span class="string">"Same location(s) used multiple times: 1, 2"</span>.into()));
+        <span class="macro">assert_eq!</span>(result, Error::FailedToAssemble(<span class="string">"Same location(s) used multiple times: 1, 2"</span>.into()));
     }
 
     <span class="attr">#[test]

@@ -552,15 +552,15 @@
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ast::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">super</span>::grammar::<span class="kw-2">*</span>;
 
-<span class="kw">use </span><span class="kw">crate</span>::model::{ParserError, ParserResult};
+<span class="kw">use </span><span class="kw">crate</span>::result::{Error, <span class="prelude-ty">Result</span>};
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Parser;
 
 <span class="kw">impl </span>Parser {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse_line(input: <span class="kw-2">&amp;</span>str) -&gt; ParserResult&lt;SourceProgramLine&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>parse_line(input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;SourceProgramLine&gt; {
         Grammar::bbc3_line()
             .parse(input.trim().as_bytes())
-            .map_err(|<span class="kw">_</span>| ParserError::FailedToParseLine(input.into()))
+            .map_err(|<span class="kw">_</span>| Error::FailedToParse(input.into()))
     }
 }
 
@@ -568,7 +568,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="kw">type </span>SourceProgram = Vec&lt;ParserResult&lt;SourceProgramLine&gt;&gt;;
+    <span class="kw">type </span>SourceProgram = Vec&lt;<span class="prelude-ty">Result</span>&lt;SourceProgramLine&gt;&gt;;
 
     <span class="kw">fn </span>parse(input: <span class="kw-2">&amp;</span>str) -&gt; SourceProgram {
         input
@@ -1088,12 +1088,12 @@
 "#</span>;
         <span class="kw">let </span>actual = parse(program);
         <span class="kw">let </span>expected = <span class="macro">vec!</span>[
-            <span class="prelude-val">Err</span>(ParserError::FailedToParseLine(<span class="string">"0001"</span>.into())),
-            <span class="prelude-val">Err</span>(ParserError::FailedToParseLine(<span class="string">"0002    Invalid One"</span>.into())),
-            <span class="prelude-val">Err</span>(ParserError::FailedToParseLine(<span class="string">"0003"</span>.into())),
+            <span class="prelude-val">Err</span>(Error::FailedToParse(<span class="string">"0001"</span>.into())),
+            <span class="prelude-val">Err</span>(Error::FailedToParse(<span class="string">"0002    Invalid One"</span>.into())),
+            <span class="prelude-val">Err</span>(Error::FailedToParse(<span class="string">"0003"</span>.into())),
             <span class="prelude-val">Ok</span>(SourceProgramLine::new(<span class="number">4</span>, SourceProgramWord::PWord(PWord::LibraryMnemonic(Mnemonic::SQRT)), <span class="string">"; Valid"</span>.into())),
-            <span class="prelude-val">Err</span>(ParserError::FailedToParseLine(<span class="string">"0005"</span>.into())),
-            <span class="prelude-val">Err</span>(ParserError::FailedToParseLine(<span class="string">"0006    Invalid Two"</span>.into())),
+            <span class="prelude-val">Err</span>(Error::FailedToParse(<span class="string">"0005"</span>.into())),
+            <span class="prelude-val">Err</span>(Error::FailedToParse(<span class="string">"0006    Invalid Two"</span>.into())),
         ];
         <span class="macro">assert_eq!</span>(actual[<span class="number">1</span>..], expected)
     }

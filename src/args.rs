@@ -10,7 +10,7 @@ pub(crate) enum Language {
     BbcX
 }
 
-#[derive(Debug, ClapParser, PartialEq)]
+#[derive(Clone, Debug, ClapParser, PartialEq)]
 #[command(version, about, long_about = None)]
 ///
 /// Resurrection of the educational BBC-X assembler language used at Hatfield Polytechnic.

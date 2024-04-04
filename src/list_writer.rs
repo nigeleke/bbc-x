@@ -14,6 +14,7 @@ impl ListWriter {
         let listing = Vec::new();
         let mut me = Self { list_file, listing };
         me.add_title_to_listing(file);
+        me.add_line_to_listing("");
         me
     }
 

@@ -24,7 +24,7 @@ impl SourceProgramLine {
 
 impl std::fmt::Display for SourceProgramLine {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        let location = self.location.to_string();
+        let location = format!("{:04}", self.location);
         let source_program_word = self.source_program_word.to_string();
         let comment = self.comment.to_string();
 
@@ -48,7 +48,7 @@ pub(crate) enum SourceProgramWord {
 impl std::fmt::Display for SourceProgramWord {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            SourceProgramWord::SWord(sword) => write!(f, "\"{}\"", sword),
+            SourceProgramWord::SWord(sword) => write!(f, "<{}>", sword),
             SourceProgramWord::PWord(pword) => write!(f, "{}", pword),
             SourceProgramWord::FWord(fword) => write!(f, "{}", fword),
             SourceProgramWord::IWord(iword) => write!(f, "{}", iword),
@@ -74,9 +74,9 @@ impl std::fmt::Display for PWord {
         match self {
             PWord::TakeType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand),
             PWord::PutType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand),
-            PWord::LoadN(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDN.to_string(), acc.to_string(), operand, index),
-            PWord::LoadRConst(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
-            PWord::LoadR(acc, operand, index) => write!(f, "{:<8}{:>2} {}({})", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
+            PWord::LoadN(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDN.to_string(), acc.to_string(), operand, index),
+            PWord::LoadRConst(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
+            PWord::LoadR(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
             PWord::LibraryMnemonic(inst) => write!(f, "{:<8}", inst.to_string()),
         }
     }
@@ -159,7 +159,7 @@ impl AddressOperand {
 
 impl std::fmt::Display for AddressOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        let index = self.index.map(|i| format!("({})", i)).unwrap_or("".into());
+        let index = self.index.map(|i| format!(":{}", i)).unwrap_or("".into());
         write!(f, "{}{}", self.address, index)
     }
 }
@@ -178,7 +178,7 @@ impl std::fmt::Display for ConstOperand {
             ConstOperand::SignedInteger(c) => write!(f, "{:+}", c),
             ConstOperand::SignedFWord(c) => write!(f, "{:+}", c), 
             ConstOperand::Octal(c) => write!(f, "{}", c),
-            ConstOperand::SWord(c) => write!(f, "\"{}\"", c),
+            ConstOperand::SWord(c) => write!(f, "<{}>", c),
         }
     }
 }

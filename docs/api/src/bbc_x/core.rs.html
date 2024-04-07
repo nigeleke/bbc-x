@@ -199,6 +199,14 @@
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::args::{Args, Language <span class="kw">as </span>LanguageArg};
 <span class="kw">use </span><span class="kw">crate</span>::bbc3::Bbc3;
 <span class="kw">use </span><span class="kw">crate</span>::bbcx::BbcX;
@@ -374,8 +382,16 @@
     }
 
     <span class="attr">#[test]
+    </span><span class="kw">fn </span>program_bbc3_not_executed() {
+        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc3"</span>, <span class="string">"--run"</span>, <span class="string">"./examples/test/bbc3/nthg.bbc"</span>].into_iter().map(|s| s.to_string()).collect();
+        <span class="kw">let </span>args = Args::from(args);
+        <span class="kw">let </span>result = Core::build_all(<span class="kw-2">&amp;</span>args);
+        <span class="macro">assert!</span>(result.is_err())                
+    }
+
+    <span class="attr">#[test]
     #[ignore]
-    </span><span class="kw">fn </span>program_executed() {
+    </span><span class="kw">fn </span>program_bbcx_executed() {
 
     }
 

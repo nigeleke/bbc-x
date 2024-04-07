@@ -173,8 +173,16 @@ mod test {
     }
 
     #[test]
+    fn program_bbc3_not_executed() {
+        let args = vec!["bbc-x", "--lang=bbc3", "--run", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = Args::from(args);
+        let result = Core::build_all(&args);
+        assert!(result.is_err())                
+    }
+
+    #[test]
     #[ignore]
-    fn program_executed() {
+    fn program_bbcx_executed() {
 
     }
 

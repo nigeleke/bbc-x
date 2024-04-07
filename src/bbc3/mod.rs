@@ -105,11 +105,54 @@ impl LanguageModel for Bbc3 {
     
     fn run(&self, path: &Path) -> Result<()> {
         self.impl_run(path)?;
-        Ok(())
+        unreachable!()
     }
 
     fn list(&self, path: &Path) -> Result<()> {
         _ = self.impl_list(path);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use tempdir::TempDir;
+
+    #[test]
+    fn will_assemble() {
+        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = Args::from(args);
+        let model = Bbc3::new(&args);
+        let result = model.assemble(&args.files().next().unwrap());
+        assert!(result.is_ok())                
+    }
+
+    #[test]
+    fn will_not_run() {
+        let args = vec!["bbc-x", "--lang=bbc3", "--run", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = Args::from(args);
+        let model = Bbc3::new(&args);
+        let result = model.run(&args.files().next().unwrap());
+        assert!(result.is_err())                
+    }
+
+    #[test]
+    fn will_list() {
+        let temp_folder = TempDir::new("bbcx-tests").unwrap();
+
+        let temp_target = temp_folder.path().join("nthg.bbc");
+        let temp_target_str = temp_target.display().to_string();
+
+        std::fs::copy("./examples/test/bbc3/nthg.bbc", temp_target).unwrap();
+
+        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
+        let args = Args::from(args);
+        let model = Bbc3::new(&args);
+        let _ = model.list(&args.files().next().unwrap());
+
+        let list_target = temp_folder.path().join("nthg.lst");
+        assert!(list_target.exists());
     }
 }

@@ -22,3 +22,19 @@ impl LanguageModel for BbcX {
     fn run(&self, _path: &Path) -> Result<()> { unimplemented!() }
     fn list(&self, _path: &Path) -> Result<()> { unimplemented!() }
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn will_assemble() {
+        
+    }
+    #[test]
+    fn will_not_run() {
+        
+    }
+    #[test]
+    fn will_list() {
+        
+    }
+}

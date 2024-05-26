@@ -71,9 +71,12 @@ Some "amendments" were made to the BBC-3 "syntax" to progress toward a BBC-X ver
 
 The BBC-3 dialect is assembled, but not executed; there are no plans to emulate BBC-3 further.
 
-At this stage the BBC-X documentation is not available but understood to be being scanned in - and awaited with ant-ticip-----pation [1].
+The BBC-X specification has been scanned and uploaded.
 
-  [1] Rocky Horror Picture Show
+### TODO
+
+  1. Develop BBC-X assembler.
+  2. Develop BBC-X execution environment.
 
 ## Running the program
 
@@ -109,3 +112,4 @@ Options:
 | 19-Mar-2024 | Added source listing capability; prepped commands for running.                                                                    |                                                                                                             |
 | 20-Mar-2024 | Added Initial BBC-"X"  program                                                                                                    | Unfortunately this proved there are too many differences between BBC-3 and BBC-X.                           |
 | 28-Mar-2024 | Amended parser to reflect original BBC-3 specification. Refactored program in preparation for BBC-X.                              |                                                                                                             |
+| 26-May-2024 | Added BBC-X Specification and S-Level submission. | Received from Clare Tagg. |

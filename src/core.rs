@@ -4,10 +4,10 @@ use crate::bbcx::BbcX;
 use crate::language::Language;
 use crate::result::{Error, Result};
 
-pub(crate) struct Core { }
+pub struct Core { }
 
 impl Core {
-    pub(crate) fn build_all(args: &Args) -> Result<()> {
+    pub fn build_all(args: &Args) -> Result<()> {
         let language = match args.language() {
             LanguageArg::Bbc3 => Language::Bbc3(Bbc3::new(args)),
             LanguageArg::BbcX => Language::BbcX(BbcX::new(args)),

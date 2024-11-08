@@ -1,16 +1,26 @@
+use std::fmt::{format, write};
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SourceProgramLine {
     location: Location,
+    label: Label,
     source_program_word: SourceProgramWord,
-    comment: Comment
+    comment: Comment,
 }
 
 impl SourceProgramLine {
     pub fn new(
         location: Location,
+        label: Label,
         source_program_word: SourceProgramWord,
-        comment: Comment) -> Self {
-        Self { location, source_program_word, comment }
+        comment: Comment,
+    ) -> Self {
+        Self {
+            location,
+            label,
+            source_program_word,
+            comment,
+        }
     }
 
     pub fn location(&self) -> &Location {
@@ -25,6 +35,7 @@ impl SourceProgramLine {
 impl std::fmt::Display for SourceProgramLine {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         let location = format!("{:04}", self.location);
+        let label = format!("{:08}", self.label);
         let source_program_word = self.source_program_word.to_string();
         let comment = self.comment.to_string();
 
@@ -34,67 +45,96 @@ impl std::fmt::Display for SourceProgramLine {
 
 pub type Location = AddressRef;
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Label(Option<String>);
+
+impl From<String> for Label {
+    fn from(a: String) -> Self {
+        Self(Some(a))
+    }
+}
+
+impl From<Option<String>> for Label {
+    fn from(a: Option<String>) -> Self {
+        Self(a)
+    }
+}
+
+impl std::fmt::Display for Label {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.0 {
+            Some(l) => write!(f, "{}:", l),
+            None => write!(f, ""),
+        }
+    }
+}
+
 pub type Identifier = String;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SourceProgramWord {
-    SWord(SWord),
     PWord(PWord),
     FWord(FWord),
     IWord(IWord),
-    Octal(Octal),
+    SWord(SWord),
 }
 
 impl std::fmt::Display for SourceProgramWord {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            SourceProgramWord::SWord(sword) => write!(f, "<{}>", sword),
+            SourceProgramWord::SWord(sword) => write!(f, "\"{}\"", sword),
             SourceProgramWord::PWord(pword) => write!(f, "{}", pword),
             SourceProgramWord::FWord(fword) => write!(f, "{}", fword),
             SourceProgramWord::IWord(iword) => write!(f, "{}", iword),
-            SourceProgramWord::Octal(octal) => write!(f, "{}", octal),
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PWord {
+    mnemonic: Mnemonic,
+    accumulator: Acc,
+    store_operand: StoreOperand,
+}
+
+impl PWord {
+    pub fn new(mnemonic: Mnemonic, accumulator: Acc, store_operand: StoreOperand) -> Self {
+        Self {
+            mnemonic,
+            accumulator,
+            store_operand,
+        }
+    }
+}
+
+impl std::fmt::Display for PWord {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+        write!(
+            f,
+            "{:<8}{:>2} {}",
+            self.mnemonic.to_string(),
+            self.accumulator.to_string(),
+            self.store_operand.to_string()
+        )
     }
 }
 
 pub type SWord = String;
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum PWord {
-    TakeType(Mnemonic, Acc, GeneralOperand),
-    PutType(Mnemonic, Acc, AddressOperand),
-    LoadN(Acc, SimpleAddressOperand, Index),
-    LoadRConst(Acc, ConstOperand, Index),
-    LoadR(Acc, SimpleAddressOperand, Index),
-    LibraryMnemonic(Mnemonic),
-}
-
-impl std::fmt::Display for PWord {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        match self {
-            PWord::TakeType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand),
-            PWord::PutType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand),
-            PWord::LoadN(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDN.to_string(), acc.to_string(), operand, index),
-            PWord::LoadRConst(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
-            PWord::LoadR(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
-            PWord::LibraryMnemonic(inst) => write!(f, "{:<8}", inst.to_string()),
-        }
-    }
-}
-
+// TODO: Line 86 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub struct Acc(Option<char>);
 
 impl From<char> for Acc {
     fn from(a: char) -> Self {
         Self(Some(a))
-     }
+    }
 }
 
 impl From<Option<char>> for Acc {
     fn from(a: Option<char>) -> Self {
         Self(a)
-     }
+    }
 }
 
 impl std::fmt::Display for Acc {
@@ -104,45 +144,30 @@ impl std::fmt::Display for Acc {
 }
 
 pub type FWord = FloatType;
-
 pub type IWord = IntType;
 
-pub type Comment = String;
-
+// TODO:
 #[derive(Clone, Debug, PartialEq)]
-pub enum Octal {
-    S(WordValue),
-    P(WordValue),
-    F(WordValue),
-    I(WordValue),
-}
-
-impl std::fmt::Display for Octal {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        match self {
-            Octal::S(value) => write!(f, "(S{:08o})", value),
-            Octal::P(value) => write!(f, "(P{:08o})", value),
-            Octal::F(value) => write!(f, "(F{:08o})", value),
-            Octal::I(value) => write!(f, "(I{:08o})", value),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum GeneralOperand {
+pub enum StoreOperand {
+    None,
     AddressOperand(AddressOperand),
     ConstOperand(ConstOperand),
 }
 
-impl std::fmt::Display for GeneralOperand {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
+impl std::fmt::Display for StoreOperand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GeneralOperand::AddressOperand(o) => write!(f, "{}", o),
-            GeneralOperand::ConstOperand(o) => write!(f, "{}", o),
+            StoreOperand::None => write!(f, ""),
+            StoreOperand::AddressOperand(o) => write!(f, "{}", o.to_string()),
+            StoreOperand::ConstOperand(o) => write!(f, "{}", o.to_string()),
         }
     }
 }
 
+// TOOD: Line 110 in bbc-3
+pub type Comment = String;
+
+// TODO: Line 146 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddressOperand {
     address: SimpleAddressOperand,
@@ -150,9 +175,7 @@ pub struct AddressOperand {
 }
 
 impl AddressOperand {
-    pub fn new(
-        address: SimpleAddressOperand,
-        index:  Option<Index>) -> Self {
+    pub fn new(address: SimpleAddressOperand, index: Option<Index>) -> Self {
         Self { address, index }
     }
 }
@@ -164,40 +187,41 @@ impl std::fmt::Display for AddressOperand {
     }
 }
 
+// TODO: Line 186 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstOperand {
     SignedInteger(IntType),
     SignedFWord(FloatType),
-    Octal(Octal),
-    SWord(SWord)
+    SWord(SWord),
 }
 
 impl std::fmt::Display for ConstOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
             ConstOperand::SignedInteger(c) => write!(f, "{:+}", c),
-            ConstOperand::SignedFWord(c) => write!(f, "{:+}", c), 
-            ConstOperand::Octal(c) => write!(f, "{}", c),
+            ConstOperand::SignedFWord(c) => write!(f, "{:+}", c),
             ConstOperand::SWord(c) => write!(f, "<{}>", c),
         }
     }
 }
 
+// TODO: Line 186 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub enum SimpleAddressOperand {
     DirectAddress(Address),
-    IndirectAddress(Address)
+    IndirectAddress(Address),
 }
 
 impl std::fmt::Display for SimpleAddressOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
             SimpleAddressOperand::DirectAddress(a) => write!(f, "{}", a),
-            SimpleAddressOperand::IndirectAddress(a) => write!(f, "*{}", a), 
+            SimpleAddressOperand::IndirectAddress(a) => write!(f, "*{}", a),
         }
     }
 }
 
+// TODO: Line 201 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub enum Address {
     Identifier(Identifier),
@@ -213,105 +237,87 @@ impl std::fmt::Display for Address {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum NumericAddress {
-    AbsoluteAddress(AddressRef),
-    RelativeAddress(RelativeRef),
-}
+// TODO: Line 216 in bbc-3
+pub type NumericAddress = u16;
 
-impl std::fmt::Display for NumericAddress {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        match self {
-            NumericAddress::AbsoluteAddress(a) => write!(f, "{}", a),
-            NumericAddress::RelativeAddress(a) => write!(f, "{}+", a),
-        }
-    }
-}
-
-pub type TypeDesignator = char;
+// TODO: Line 230++ in bbc-3
 pub type Character = char;
 pub type NumericCharacter = char;
 pub type Punctuation = char;
 pub type IntType = i32;
 pub type FloatType = f32;
 pub type AddressRef = usize;
-pub type RelativeRef = usize; // TODO: Implies forward addressing only...
 pub type Index = usize;
-pub type WordValue = u32;
 
+// TODO: Line 244 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Mnemonic {
-    LDN,
-    LDR,
-    // 0-15 mnemonic
     NTHG,
+    OR,
+    NEQV,
+    AND,
+    ADDX,
     ADD,
     SUBT,
     MPLY,
     DVD,
     TAKE,
-    NEG,
-    MOD,
-    CLR,
-    AND,
-    OR,
-    NEQV,
-    NOT,
-    SHFR,
-    CYCR,
-    OPUT,
-    // X 0-15 mnemonic
-    XNTHG,
-    XADD,
-    XSUBT,
-    XMPLY,
-    XDVD,
-    XTAKE,
-    XNEG,
-    XMOD,
-    XCLR,
-    XAND,
-    XOR,
-    XNEQV,
-    XNOT,
-    XSHFR,
-    XCYCR,
-    XOPUT,
-    // 16-22 mnemonic
-    IPUT,
-    PUT,
-    INCR,
-    DECR,
-    TYPE,
-    CHYP,
-    EXEC,
-    // X 16-22 mnemonic
-    XIPUT,
-    XPUT,
-    XINCR,
-    XDECR,
-    XTYPE,
-    XCHYP,
-    XEXEC,
-    // skip mnemonic
-    SKET,
+    TSTR,
+    TNEG,
+    TNOT,
+    TTYP,
+    TTYZ,
+    TTTT,
+    TOUT,
+    SKIP,
     SKAE,
     SKAN,
+    SKET,
     SKAL,
     SKAG,
-    // jump mnemonic
-    LIBR,
-    JLIK,
+    SKED,
+    SKEI,
+    SHL,
+    ROT,
+    DSHL,
+    DROT,
+    POWR,
+    DMULT,
+    DIV,
+    DDIV,
+    SWAP,
+    ORX,
+    NEQVX,
+    ANDX,
+    // ADDX,
+    SUBTX,
+    MPLYX,
+    DVDX,
+    PUT,
+    PSQU,
+    PNEG,
+    PNOT,
+    PTYP,
+    PTYZ,
+    PFFP,
+    PIN,
     JUMP,
     JEZ,
     JNZ,
+    JAT,
     JLZ,
     JGZ,
-    JOI,
-    SLIK,
-    SNLZ,
-    // library mnemonic
+    JZD,
+    JZI,
+    DECR,
+    INCR,
+    MOCKP,
+    MOCKS,
+    DBYTE,
+    EXEC,
+    EXTRA,
+    // Library
     SQRT,
     LN,
     EXP,
@@ -320,13 +326,16 @@ pub enum Mnemonic {
     SIN,
     COS,
     TAN,
-    ARCTAN,
+    ATN,
     STOP,
     LINE,
     INT,
     FRAC,
     FLOAT,
     CAPTN,
+    PAGE,
+    RND,
+    ABS,
 }
 
 impl std::fmt::Display for Mnemonic {

@@ -5,16 +5,6 @@ use crate::result::{Error, Result};
 
 use std::collections::HashMap;
 
-// DEFINITION OF THE ASSEMBLER
-// The assembler is a program which accepts as data
-// source code in the form of source program lines. Each
-// source program line corresponds to one main word of
-// object code and translation is strictly on a line-by-line
-// basis. Sometimes the translation of a source program
-// line causes the compilation of a subsidiary word of
-// object code and sometimes it causes a value to be assigned
-// to, or a modification of, an index register.
-
 #[derive(Debug, PartialEq)]
 pub struct Assembler {}
 
@@ -23,6 +13,7 @@ impl Assembler {
         validate_ast(ast)?;
         let code = generate_code(ast);
         let assembly = Assembly::new(&code);
+        println!("{:?}", assembly);
         Ok(assembly)
     }
 }
@@ -48,14 +39,16 @@ fn validate_ast(ast: &[SourceProgramLine]) -> Result<()> {
             .map(|l| l.to_string())
             .collect::<Vec<_>>()
             .join(", ");
-        let error = format!("Same location(s) used multiple times: {}", invalid_locations);
+        let error = format!(
+            "Same location(s) used multiple times: {}",
+            invalid_locations
+        );
         Err(Error::FailedToAssemble(error))
     }
 }
 
 fn generate_code(ast: &[SourceProgramLine]) -> Code {
-    ast
-        .iter()
+    ast.iter()
         .map(|line| (*line.location(), line.source_program_word().clone()))
         .collect::<Code>()
 }
@@ -63,7 +56,7 @@ fn generate_code(ast: &[SourceProgramLine]) -> Code {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::bbc3::{ast::*, Parser};
+    use crate::bbcx::{ast::*, Parser};
 
     type SourceProgram = Vec<SourceProgramLine>;
 
@@ -84,13 +77,30 @@ mod test {
 "#;
         let program = parse(program);
         let assembly = Assembler::assemble(&program).unwrap();
+        println!("rul: {:?}", assembly);
         assert_eq!(assembly.content(0), None);
-        assert_eq!(assembly.content(1), 
-            Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(),
-                AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::NumericAddress(NumericAddress::AbsoluteAddress(1))), None)))));
-        assert_eq!(assembly.content(2), 
-            Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(),
-                AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("HERE".into())), None)))));
+        assert_eq!(
+            assembly.content(1),
+            Some(SourceProgramWord::PWord(PWord::new(
+                Mnemonic::JUMP,
+                None.into(),
+                StoreOperand::AddressOperand(AddressOperand::new(
+                    SimpleAddressOperand::DirectAddress(Address::NumericAddress(1)),
+                    None
+                ))
+            )))
+        );
+        assert_eq!(
+            assembly.content(2),
+            Some(SourceProgramWord::PWord(PWord::new(
+                Mnemonic::JUMP,
+                None.into(),
+                StoreOperand::AddressOperand(AddressOperand::new(
+                    SimpleAddressOperand::DirectAddress(Address::Identifier("HERE".into())),
+                    None
+                ))
+            )))
+        );
     }
 
     #[test]
@@ -103,7 +113,10 @@ mod test {
 "#;
         let program = parse(program);
         let result = Assembler::assemble(&program).err().unwrap();
-        assert_eq!(result, Error::FailedToAssemble("Same location(s) used multiple times: 1, 2".into()));
+        assert_eq!(
+            result,
+            Error::FailedToAssemble("Same location(s) used multiple times: 1, 2".into())
+        );
     }
 
     #[test]
@@ -115,9 +128,28 @@ mod test {
         let program = parse(program);
         let assembly = Assembler::assemble(&program).unwrap();
         assert_eq!(assembly.content(0), None);
-        assert_eq!(assembly.content(1), Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(), AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ALPHA".into())), None)))));
-        assert_eq!(assembly.content(2), Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(), AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("EPSILON".into())), None)))));
+        assert_eq!(
+            assembly.content(1),
+            Some(SourceProgramWord::PWord(PWord::new(
+                Mnemonic::JUMP,
+                None.into(),
+                StoreOperand::AddressOperand(AddressOperand::new(
+                    SimpleAddressOperand::DirectAddress(Address::Identifier("ALPHA".into())),
+                    None
+                ))
+            )))
+        );
+        assert_eq!(
+            assembly.content(2),
+            Some(SourceProgramWord::PWord(PWord::new(
+                Mnemonic::JUMP,
+                None.into(),
+                StoreOperand::AddressOperand(AddressOperand::new(
+                    SimpleAddressOperand::DirectAddress(Address::Identifier("EPSILON".into())),
+                    None
+                ))
+            )))
+        );
         assert_eq!(assembly.content(3), None);
     }
-
 }

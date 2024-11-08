@@ -1,11 +1,11 @@
-pub(crate) mod args;
-pub(crate) mod bbc3;
-pub(crate) mod bbcx;
-pub(crate) mod core;
-pub(crate) mod language;
-pub(crate) mod list_writer;
-pub(crate) mod model;
-pub(crate) mod result;
+pub mod args;
+pub mod bbc3;
+pub mod bbcx;
+pub mod core;
+pub mod language;
+pub mod list_writer;
+pub mod model;
+pub mod result;
 
 use crate::args::Args;
 use crate::core::Core;

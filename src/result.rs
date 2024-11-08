@@ -1,5 +1,5 @@
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Error {
+pub enum Error {
      CannotReadFile(String, String),
      FailedToParse(String),
      FailedToAssemble(String),
@@ -8,4 +8,4 @@ pub(crate) enum Error {
      CannotToWriteFile(String, String)
 }
 
-pub(crate) type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;

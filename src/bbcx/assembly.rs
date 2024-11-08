@@ -7,6 +7,7 @@ pub type Content = AstSourceProgramWord;
 
 pub type Code = HashMap<Location, Content>;
 
+#[derive(Debug)]
 pub struct Assembly {
     _code: Code,
 }

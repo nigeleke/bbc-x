@@ -5,7 +5,7 @@ use crate::result::*;
 
 use std::path::Path;
 
-pub(crate) trait LanguageModel {
+pub trait LanguageModel {
     fn assemble(&self, path: &Path) -> Result<()>;
     fn run(&self, path: &Path) -> Result<()>;
     fn list(&self, path: &Path) -> Result<()>;

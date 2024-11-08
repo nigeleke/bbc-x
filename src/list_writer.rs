@@ -2,14 +2,14 @@ use crate::args::Args;
 
 use std::path::{Path, PathBuf};
 
-pub(crate) struct ListWriter {
+pub struct ListWriter {
     list_file: Option<PathBuf>,
     listing: Vec<String>,
 }
 
 impl ListWriter {
 
-    pub(crate) fn new(file: &Path, args: &Args) -> Self {
+    pub fn new(file: &Path, args: &Args) -> Self {
         let list_file = ListWriter::get_list_file(file, args);
         let listing = Vec::new();
         let mut me = Self { list_file, listing };
@@ -42,7 +42,7 @@ impl ListWriter {
         self.add_line_to_listing(&format!("{:<14}{:<42} {}\n", "", filename, now).to_uppercase());
     }
 
-    pub(crate) fn add_lines_to_listing(&mut self, text: &str) {
+    pub fn add_lines_to_listing(&mut self, text: &str) {
         let text = text.split('\n');
         text.into_iter().for_each(|s| self.add_line_to_listing(s));
     }
@@ -54,7 +54,7 @@ impl ListWriter {
     }
 
     #[inline]
-    pub(crate) fn write_content_to_file(&self) -> std::result::Result<(), std::io::Error> {
+    pub fn write_content_to_file(&self) -> std::result::Result<(), std::io::Error> {
         if let Some(list_file) = &self.list_file {
             std::fs::write(list_file, self.listing.join("\n"))
         } else {

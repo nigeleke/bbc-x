@@ -7,6 +7,12 @@ pub struct Executor {}
 
 impl Executor {
     pub fn execute(_assembly: Assembly) -> Result<()> {
-        unimplemented!();
+        unimplemented!()
     }
 }
+
+// #[cfg(test)]
+// mod test {
+//     #[test]
+//     fn
+// }

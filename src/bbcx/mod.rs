@@ -135,7 +135,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn will_run() {
         let args = vec![
             "bbc-x",

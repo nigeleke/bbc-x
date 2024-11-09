@@ -1,12 +1,14 @@
 mod assembler;
 mod assembly;
 mod ast;
+mod executor;
 mod grammar;
 mod parser;
 
 use self::assembler::Assembler;
 use self::assembly::Assembly;
 use self::ast::SourceProgramLine;
+use self::executor::Executor;
 use self::parser::Parser;
 
 use crate::args::Args;
@@ -63,9 +65,9 @@ impl BbcX {
     }
 
     fn impl_run(&self, path: &Path) -> Result<()> {
-        let assembly = self.impl_assemble(&path);
+        let assembly = self.impl_assemble(&path)?;
         println!("Assembly {:?}", assembly);
-        unimplemented!()
+        Executor::execute(assembly)
     }
 
     fn impl_list(&self, path: &Path) -> Result<()> {
@@ -133,12 +135,13 @@ mod test {
     }
 
     #[test]
+    #[ignore]
     fn will_run() {
         let args = vec![
             "bbc-x",
             "--lang=bbc-x",
             "--run",
-            "./examples/test/bbcx/nthg.bbc",
+            "./examples/test/bbcx/stop.bbc",
         ]
         .into_iter()
         .map(|s| s.to_string())

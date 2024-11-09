@@ -43,10 +43,12 @@ mod test {
     }
 
     #[test]
-    fn locations_and_comments() {
+    fn locations_labels_and_comments() {
         let program = r#"
-0001    "    "
-0002    "  C1"      ; Comment 1
+0001                "    "
+0002                "  C1"      ; Comment 1
+0003    LABEL1:     "    "
+0004    LABEL2:     "  C2"      ; Comment 2
 "#;
         let actual = parse(program);
         let expected = vec![
@@ -61,6 +63,18 @@ mod test {
                 Label::from(None),
                 SourceProgramWord::SWord("  C1".into()),
                 "; Comment 1".into(),
+            )),
+            Ok(SourceProgramLine::new(
+                3,
+                Label::from("LABEL1".to_string()),
+                SourceProgramWord::SWord("    ".into()),
+                "".into(),
+            )),
+            Ok(SourceProgramLine::new(
+                4,
+                Label::from("LABEL2".to_string()),
+                SourceProgramWord::SWord("  C2".into()),
+                "; Comment 2".into(),
             )),
         ]
         .into_iter()

@@ -27,6 +27,10 @@ impl SourceProgramLine {
         &self.location
     }
 
+    pub fn label(&self) -> &Label {
+        &self.label
+    }
+
     pub fn source_program_word(&self) -> &SourceProgramWord {
         &self.source_program_word
     }
@@ -39,14 +43,24 @@ impl std::fmt::Display for SourceProgramLine {
         let source_program_word = self.source_program_word.to_string();
         let comment = self.comment.to_string();
 
-        write!(f, "{:<8}{:<42}{}", location, source_program_word, comment)
+        write!(
+            f,
+            "{:<8}{:<10}{:<42}{}",
+            location, label, source_program_word, comment
+        )
     }
 }
 
 pub type Location = AddressRef;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Label(Option<String>);
+
+impl Label {
+    pub fn name(&self) -> Option<String> {
+        self.0.clone()
+    }
+}
 
 impl From<String> for Label {
     fn from(a: String) -> Self {
@@ -121,7 +135,6 @@ impl std::fmt::Display for PWord {
 
 pub type SWord = String;
 
-// TODO: Line 86 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub struct Acc(Option<char>);
 
@@ -146,7 +159,6 @@ impl std::fmt::Display for Acc {
 pub type FWord = FloatType;
 pub type IWord = IntType;
 
-// TODO:
 #[derive(Clone, Debug, PartialEq)]
 pub enum StoreOperand {
     None,
@@ -167,7 +179,6 @@ impl std::fmt::Display for StoreOperand {
 // TOOD: Line 110 in bbc-3
 pub type Comment = String;
 
-// TODO: Line 146 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddressOperand {
     address: SimpleAddressOperand,
@@ -187,7 +198,6 @@ impl std::fmt::Display for AddressOperand {
     }
 }
 
-// TODO: Line 186 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstOperand {
     SignedInteger(IntType),
@@ -205,7 +215,6 @@ impl std::fmt::Display for ConstOperand {
     }
 }
 
-// TODO: Line 186 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub enum SimpleAddressOperand {
     DirectAddress(Address),
@@ -221,7 +230,6 @@ impl std::fmt::Display for SimpleAddressOperand {
     }
 }
 
-// TODO: Line 201 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 pub enum Address {
     Identifier(Identifier),
@@ -237,10 +245,8 @@ impl std::fmt::Display for Address {
     }
 }
 
-// TODO: Line 216 in bbc-3
 pub type NumericAddress = u16;
 
-// TODO: Line 230++ in bbc-3
 pub type Character = char;
 pub type NumericCharacter = char;
 pub type Punctuation = char;
@@ -249,7 +255,6 @@ pub type FloatType = f32;
 pub type AddressRef = usize;
 pub type Index = usize;
 
-// TODO: Line 244 in bbc-3
 #[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Mnemonic {

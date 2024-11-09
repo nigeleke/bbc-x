@@ -1,4 +1,4 @@
-use super::assembly::{Assembly, Code};
+use super::assembly::{Assembly, Code, Symbols};
 use super::ast::SourceProgramLine;
 
 use crate::result::{Error, Result};
@@ -12,8 +12,8 @@ impl Assembler {
     pub fn assemble(ast: &[SourceProgramLine]) -> Result<Assembly> {
         validate_ast(ast)?;
         let code = generate_code(ast);
-        let assembly = Assembly::new(&code);
-        println!("{:?}", assembly);
+        let symbols = generate_symbol_table(ast);
+        let assembly = Assembly::new(&code, &symbols);
         Ok(assembly)
     }
 }
@@ -30,7 +30,18 @@ fn validate_ast(ast: &[SourceProgramLine]) -> Result<()> {
         .map(|(key, _value)| key)
         .collect::<Vec<_>>();
 
-    if invalid_locations.is_empty() {
+    let mut invalid_labels = ast
+        .iter()
+        .fold(HashMap::new(), |mut counts, line| {
+            *counts.entry(line.label()).or_insert(0) += 1;
+            counts
+        })
+        .into_iter()
+        .filter(|&(key, value)| (key.name().is_some() && value > 1))
+        .map(|(key, _value)| key)
+        .collect::<Vec<_>>();
+
+    if invalid_locations.is_empty() && invalid_labels.is_empty() {
         Ok(())
     } else {
         invalid_locations.sort();
@@ -39,9 +50,16 @@ fn validate_ast(ast: &[SourceProgramLine]) -> Result<()> {
             .map(|l| l.to_string())
             .collect::<Vec<_>>()
             .join(", ");
+        invalid_labels.sort();
+        let invalid_labels = invalid_labels
+            .into_iter()
+            .map(|l| l.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+
         let error = format!(
-            "Same location(s) used multiple times: {}",
-            invalid_locations
+            "Multiple definitions: locations: \"{}\", labels: \"{}\"",
+            invalid_locations, invalid_labels
         );
         Err(Error::FailedToAssemble(error))
     }
@@ -51,6 +69,12 @@ fn generate_code(ast: &[SourceProgramLine]) -> Code {
     ast.iter()
         .map(|line| (*line.location(), line.source_program_word().clone()))
         .collect::<Code>()
+}
+
+fn generate_symbol_table(ast: &[SourceProgramLine]) -> Symbols {
+    ast.iter()
+        .filter_map(|line| line.label().name().map(|name| (name, *line.location())))
+        .collect::<Symbols>()
 }
 
 #[cfg(test)]
@@ -115,7 +139,41 @@ mod test {
         let result = Assembler::assemble(&program).err().unwrap();
         assert_eq!(
             result,
-            Error::FailedToAssemble("Same location(s) used multiple times: 1, 2".into())
+            Error::FailedToAssemble(
+                "Multiple definitions: locations: \"1, 2\", labels: \"\"".into()
+            )
+        );
+    }
+
+    #[test]
+    fn expects_unique_labels() {
+        let program = r#"
+0001    LABEL1: JUMP    0001
+0002    LABEL2: JUMP    HERE
+"#;
+        let program = parse(program);
+        let assembly = Assembler::assemble(&program).unwrap();
+        assert_eq!(assembly.location("LABEL1".into()), 1.into());
+        assert_eq!(assembly.location("LABEL2".into()), 2.into());
+    }
+
+    #[test]
+    fn fails_when_labels_not_unique() {
+        let program = r#"
+0001    LABEL1: JUMP    0001
+0002    LABEL1: JUMP    THERE
+0003    LABEL2: JUMP    0001
+0004    LABEL2: JUMP    THERE
+"#;
+        let program = parse(program);
+        let result = Assembler::assemble(&program);
+        println!("result {:?}", result);
+        let result = result.err().unwrap();
+        assert_eq!(
+            result,
+            Error::FailedToAssemble(
+                "Multiple definitions: locations: \"\", labels: \"LABEL1:, LABEL2:\"".into()
+            )
         );
     }
 

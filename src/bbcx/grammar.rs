@@ -93,19 +93,16 @@ fn iword<'a>() -> Parser<'a, IWord> {
     (unsigned_integer() | signed_integer()).name("iword")
 }
 
-// TODO: Line 200 in bbc-3
 // <digit> ::= <oct.dig> | 8 | 9
 fn digit<'a>() -> Parser<'a, char> {
     oct_dig() | one_of("89")
 }
 
-// TODO: Line 205 in bbc-3
 // <oct.dig> ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 fn oct_dig<'a>() -> Parser<'a, char> {
     one_of(&('0'..='7'))
 }
 
-// TODO: Line 211 in bbc-3
 // Added: ++
 // Represents 'space()' in description
 fn inline_ws<'a>() -> Parser<'a, String> {
@@ -116,7 +113,6 @@ fn inline_ws<'a>() -> Parser<'a, String> {
 }
 // Added: --
 
-// TODO: Circa Line 235 in bbc-3
 fn store_operand<'a>() -> Parser<'a, StoreOperand> {
     (address_operand().map(StoreOperand::AddressOperand)
         | const_operand().map(StoreOperand::ConstOperand)
@@ -124,7 +120,6 @@ fn store_operand<'a>() -> Parser<'a, StoreOperand> {
     .name("store_operand")
 }
 
-// TODO: Circa Line 243 in bbc-3
 fn address_operand<'a>() -> Parser<'a, AddressOperand> {
     (simple_address_operand() + index_ref().opt())
         .map(|(o, i)| AddressOperand::new(o, i))
@@ -141,21 +136,18 @@ fn const_operand<'a>() -> Parser<'a, ConstOperand> {
         .name("const_operand")
 }
 
-// TODO: Line 260 in bbc-3
 fn simple_address_operand<'a>() -> Parser<'a, SimpleAddressOperand> {
     (address().map(SimpleAddressOperand::DirectAddress)
         | (sym('*') * address()).map(SimpleAddressOperand::IndirectAddress))
     .name("simple_address_operand")
 }
 
-// TODO: Line 268 in bbc-3
 // <address> ::= <identifier> | <numeric address>
 fn address<'a>() -> Parser<'a, Address> {
     (identifier().map(Address::Identifier) | numeric_address().map(Address::NumericAddress))
         .name("address")
 }
 
-// TODO: Line 274 in bbc-3
 // <identifier> ::= <alpha char.> | <identifier><alpha char.> !
 //                  <identifier><digit>
 fn identifier<'a>() -> Parser<'a, Identifier> {
@@ -201,7 +193,6 @@ fn subscript10<'a>() -> Parser<'a, char> {
     sym('@')
 }
 
-// TODO: Line 293 in bbc-3
 // <numeric address> ::= <absolute address> | <relative address>
 fn numeric_address<'a>() -> Parser<'a, NumericAddress> {
     unsigned_integer()
@@ -209,7 +200,6 @@ fn numeric_address<'a>() -> Parser<'a, NumericAddress> {
         .name("numeric_address")
 }
 
-// TODO: Line 312 in bbc-3
 // TODO: Work out what an Index actually is in bbc-x; it appears to be numeric only and possibly single digit??
 fn index<'a>() -> Parser<'a, Index> {
     digit()
@@ -219,12 +209,10 @@ fn index<'a>() -> Parser<'a, Index> {
         .name("index")
 }
 
-// TODO: Line 320 in bbc-x
 fn index_ref<'a>() -> Parser<'a, Index> {
     (sym('[') * index() - sym(']')).map(|i| i).name("index_ref")
 }
 
-// TODO: Line 329 in bbc-3
 // ****************************************************************************
 // <signed F-word> ::= +<unsigned F-word> | -<unsigned F-word>
 fn signed_fword<'a>() -> Parser<'a, FWord> {
@@ -293,7 +281,6 @@ fn unsigned_integer<'a>() -> Parser<'a, IntType> {
         .name("unsigned_integer")
 }
 
-// TODO: Line 334 in bbc-3
 // An accumulator address (an integer from 0 to 7).
 // The accumulator address and terminating comma can be omitted
 // if the user wishes to use accumulator 1.
@@ -301,7 +288,6 @@ fn acc<'a>() -> Parser<'a, Acc> {
     ((oct_dig() - sym(',')).map(Acc::from) | empty().map(|_| Acc::from(None))).name("acc")
 }
 
-// TODO: Line 344 in bbc-3
 // <absolute address> ::= <Unsigned integer>
 fn absolute_address<'a>() -> Parser<'a, AddressRef> {
     unsigned_integer()
@@ -309,7 +295,6 @@ fn absolute_address<'a>() -> Parser<'a, AddressRef> {
         .name("absolute_address")
 }
 
-// TODO: From line 407 in bbc-3
 fn mnemonic<'a>() -> Parser<'a, Mnemonic> {
     (exact("DBYTE").map(|_| Mnemonic::DBYTE)
         | exact("EXTRA").map(|_| Mnemonic::EXTRA)
@@ -399,7 +384,6 @@ fn mnemonic<'a>() -> Parser<'a, Mnemonic> {
     .name("mnemonic")
 }
 
-// TODO: Lone 546 in bbc-3
 // Utility parsers
 fn exact(tag: &str) -> Parser<'_, String> {
     let assert_tag = move |s| {

@@ -1,4 +1,4 @@
-use super::ast::{Location as AstLocation, SourceProgramWord as AstSourceProgramWord};
+use super::ast::{Label, Location as AstLocation, SourceProgramWord as AstSourceProgramWord};
 
 use std::collections::HashMap;
 
@@ -6,20 +6,28 @@ pub type Location = AstLocation;
 pub type Content = AstSourceProgramWord;
 
 pub type Code = HashMap<Location, Content>;
+pub type Symbols = HashMap<String, Location>;
 
 #[derive(Debug)]
 pub struct Assembly {
-    _code: Code,
+    code: Code,
+    symbols: Symbols,
 }
 
 impl Assembly {
-    pub fn new(code: &Code) -> Self {
+    pub fn new(code: &Code, symbols: &Symbols) -> Self {
         let code = code.clone();
-        Self { _code: code }
+        let symbols = symbols.clone();
+        Self { code, symbols }
     }
 
     #[cfg(test)]
     pub fn content(&self, location: Location) -> Option<Content> {
-        self._code.get(&location).map(|w| w.clone())
+        self.code.get(&location).map(|w| w.clone())
+    }
+
+    #[cfg(test)]
+    pub fn location(&self, label: String) -> Option<Location> {
+        self.symbols.get(&label).map(|l| l.clone())
     }
 }

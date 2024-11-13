@@ -1,6 +1,6 @@
 use super::ast::{
     Address as AstAddress, Identifier, Location as AstLocation,
-    SimpleAddressOperand as AstSimpleAddressOperand, SourceProgramWord as AstSourceProgramWord,
+    SimpleAddressOperand as AstSimpleAddressOperand, SourceWord as AstSourceProgramWord,
     StoreOperand as AstStoreOperand,
 };
 
@@ -25,8 +25,9 @@ impl Assembly {
         Self { code, symbols }
     }
 
+    #[cfg(test)]
     pub fn content(&self, location: Location) -> Option<Content> {
-        self.code.get(&location).map(|w| w.clone())
+        self.code.get(&location).cloned()
     }
 
     pub fn code_iter(&self) -> impl Iterator<Item = (&Location, &Content)> {
@@ -34,7 +35,7 @@ impl Assembly {
     }
 
     pub fn location(&self, label: &str) -> Option<Location> {
-        self.symbols.get(label).map(|l| l.clone())
+        self.symbols.get(label).copied()
     }
 
     pub fn allocate_storage_locations(mut self) -> Self {

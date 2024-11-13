@@ -29,10 +29,7 @@ impl Executor {
     fn can_step(&self) -> bool {
         let context = &self.execution_context;
         let content = &context.memory[context.program_counter];
-        match content {
-            MemoryWord::Instruction(_) => true,
-            _ => false,
-        }
+        matches!(content, MemoryWord::Instruction(_))
     }
 
     fn step(&mut self) {
@@ -72,7 +69,7 @@ impl Executor {
                 ConstOperand::SWord(s) => MemoryWord::String(s.clone()),
             },
             StoreOperand::AddressOperand(address) => {
-                let location = self.address_of(&address.address()) + address.index().unwrap_or(0);
+                let _location = self.address_of(&address.address()) + address.index().unwrap_or(0);
                 // TODO: How to interpret value at or of an address...?
                 unimplemented!()
             }
@@ -81,9 +78,9 @@ impl Executor {
 
     fn address_of(&self, address_operand: &SimpleAddressOperand) -> Location {
         match address_operand {
-            SimpleAddressOperand::DirectAddress(a) => self.location_for(&a),
+            SimpleAddressOperand::DirectAddress(a) => self.location_for(a),
             SimpleAddressOperand::IndirectAddress(a) => {
-                let _content = &self.execution_context.memory[self.location_for(&a)];
+                let _content = &self.execution_context.memory[self.location_for(a)];
                 // TODO: How to interpret undiection with "type" embedded in MemoryWord...
                 unimplemented!()
             }

@@ -6,7 +6,7 @@ use crate::result::{Error, Result};
 pub struct Parser;
 
 impl Parser {
-    pub fn parse_line(input: &str) -> Result<SourceProgramLine> {
+    pub fn parse_line(input: &str) -> Result<SourceLine> {
         Grammar::bbcx_line()
             .parse(input.trim().as_bytes())
             .map_err(|_| Error::FailedToParse(input.into()))
@@ -17,7 +17,7 @@ impl Parser {
 mod test {
     use super::*;
 
-    type SourceProgram = Vec<Result<SourceProgramLine>>;
+    type SourceProgram = Vec<Result<SourceLine>>;
 
     fn parse(input: &str) -> SourceProgram {
         input
@@ -32,10 +32,10 @@ mod test {
             .iter()
             .enumerate()
             .map(|(i, p)| {
-                Ok(SourceProgramLine::new(
+                Ok(SourceLine::new(
                     i + 1,
                     Label::from(None),
-                    SourceProgramWord::PWord(p.clone()),
+                    SourceWord::PWord(p.clone()),
                     "".into(),
                 ))
             })
@@ -52,28 +52,28 @@ mod test {
 "#;
         let actual = parse(program);
         let expected = vec![
-            Ok(SourceProgramLine::new(
+            Ok(SourceLine::new(
                 1,
                 Label::from(None),
-                SourceProgramWord::SWord("    ".into()),
+                SourceWord::SWord("    ".into()),
                 "".into(),
             )),
-            Ok(SourceProgramLine::new(
+            Ok(SourceLine::new(
                 2,
                 Label::from(None),
-                SourceProgramWord::SWord("  C1".into()),
+                SourceWord::SWord("  C1".into()),
                 "; Comment 1".into(),
             )),
-            Ok(SourceProgramLine::new(
+            Ok(SourceLine::new(
                 3,
                 Label::from("LABEL1".to_string()),
-                SourceProgramWord::SWord("    ".into()),
+                SourceWord::SWord("    ".into()),
                 "".into(),
             )),
-            Ok(SourceProgramLine::new(
+            Ok(SourceLine::new(
                 4,
                 Label::from("LABEL2".to_string()),
-                SourceProgramWord::SWord("  C2".into()),
+                SourceWord::SWord("  C2".into()),
                 "; Comment 2".into(),
             )),
         ]
@@ -87,10 +87,10 @@ mod test {
         let program = r#"0001   "TEXT"
 "#;
         let actual = parse(program);
-        let expected = vec![Ok(SourceProgramLine::new(
+        let expected = vec![Ok(SourceLine::new(
             1,
             Label::from(None),
-            SourceProgramWord::SWord("TEXT".into()),
+            SourceWord::SWord("TEXT".into()),
             "".into(),
         ))]
         .into_iter()
@@ -236,10 +236,10 @@ mod test {
 0001   3.14
 "#;
         let actual = parse(program);
-        let expected = vec![Ok(SourceProgramLine::new(
+        let expected = vec![Ok(SourceLine::new(
             1,
             None.into(),
-            SourceProgramWord::FWord(3.14),
+            SourceWord::FWord(3.14),
             "".into(),
         ))];
         assert_eq!(actual[1..], expected)
@@ -251,10 +251,10 @@ mod test {
 0001   +42
 "#;
         let actual = parse(program);
-        let expected = vec![Ok(SourceProgramLine::new(
+        let expected = vec![Ok(SourceLine::new(
             1,
             None.into(),
-            SourceProgramWord::IWord(42),
+            SourceWord::IWord(42),
             "".into(),
         ))];
         assert_eq!(actual[1..], expected)

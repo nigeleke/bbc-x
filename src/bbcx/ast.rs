@@ -1,16 +1,16 @@
 #[derive(Clone, Debug, PartialEq)]
-pub struct SourceProgramLine {
+pub struct SourceLine {
     location: Location,
     label: Label,
-    source_program_word: SourceProgramWord,
+    source_program_word: SourceWord,
     comment: Comment,
 }
 
-impl SourceProgramLine {
+impl SourceLine {
     pub fn new(
         location: Location,
         label: Label,
-        source_program_word: SourceProgramWord,
+        source_program_word: SourceWord,
         comment: Comment,
     ) -> Self {
         Self {
@@ -29,12 +29,12 @@ impl SourceProgramLine {
         &self.label
     }
 
-    pub fn source_program_word(&self) -> &SourceProgramWord {
+    pub fn source_program_word(&self) -> &SourceWord {
         &self.source_program_word
     }
 }
 
-impl std::fmt::Display for SourceProgramLine {
+impl std::fmt::Display for SourceLine {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         let location = format!("{:04}", self.location);
         let label = format!("{:08}", self.label);
@@ -84,20 +84,21 @@ impl std::fmt::Display for Label {
 pub type Identifier = String;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SourceProgramWord {
+#[allow(clippy::enum_variant_names)] // Reflects usage in spec.
+pub enum SourceWord {
     PWord(PWord),
     FWord(FWord),
     IWord(IWord),
     SWord(SWord),
 }
 
-impl std::fmt::Display for SourceProgramWord {
+impl std::fmt::Display for SourceWord {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            SourceProgramWord::SWord(sword) => write!(f, "\"{}\"", sword),
-            SourceProgramWord::PWord(pword) => write!(f, "{}", pword),
-            SourceProgramWord::FWord(fword) => write!(f, "{}", fword),
-            SourceProgramWord::IWord(iword) => write!(f, "{}", iword),
+            SourceWord::SWord(sword) => write!(f, "\"{}\"", sword),
+            SourceWord::PWord(pword) => write!(f, "{}", pword),
+            SourceWord::FWord(fword) => write!(f, "{}", fword),
+            SourceWord::IWord(iword) => write!(f, "{}", iword),
         }
     }
 }
@@ -138,7 +139,7 @@ impl std::fmt::Display for PWord {
             "{:<8}{:>2} {}",
             self.mnemonic.to_string(),
             self.accumulator.to_string(),
-            self.store_operand.to_string()
+            self.store_operand
         )
     }
 }
@@ -186,8 +187,8 @@ impl std::fmt::Display for StoreOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StoreOperand::None => write!(f, ""),
-            StoreOperand::AddressOperand(o) => write!(f, "{}", o.to_string()),
-            StoreOperand::ConstOperand(o) => write!(f, "{}", o.to_string()),
+            StoreOperand::AddressOperand(o) => write!(f, "{}", o),
+            StoreOperand::ConstOperand(o) => write!(f, "{}", o),
         }
     }
 }
@@ -211,7 +212,7 @@ impl AddressOperand {
     }
 
     pub fn index(&self) -> Option<Index> {
-        self.index.clone()
+        self.index
     }
 }
 

@@ -1,11 +1,8 @@
+use super::assembly::Assembly;
 use super::ast::{
-    Address as AstAddress, Identifier, Location as AstLocation,
-    SimpleAddressOperand as AstSimpleAddressOperand, SourceProgramWord as AstSourceProgramWord,
+    Address, AddressOperand, FloatType, IntType, PWord, SWord,
+    SimpleAddressOperand as AstSimpleAddressOperand, SourceWord as AstSourceWord,
     StoreOperand as AstStoreOperand,
-};
-use super::{
-    assembly::{Assembly, Symbols},
-    ast::*,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -41,12 +38,6 @@ impl std::ops::BitOrAssign for MemoryWord {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Memory(Vec<MemoryWord>);
 
-impl Memory {
-    pub fn content(&self, offset: usize) -> MemoryWord {
-        self.0[offset].clone()
-    }
-}
-
 impl Default for Memory {
     fn default() -> Self {
         Self(vec![MemoryWord::Undefined; 128])
@@ -60,7 +51,7 @@ impl From<Assembly> for Memory {
         let link_address = |address: &Address| match address {
             Address::Identifier(identifier) => Address::NumericAddress(
                 value
-                    .location(&identifier)
+                    .location(identifier)
                     .expect("Memory::From<Assembly> identifier expected location to be assigned"),
             ),
             Address::NumericAddress(l) => Address::NumericAddress(*l),
@@ -93,11 +84,11 @@ impl From<Assembly> for Memory {
             )
         };
 
-        let link = |pword: &AstSourceProgramWord| match pword {
-            AstSourceProgramWord::IWord(i) => MemoryWord::Integer(*i),
-            AstSourceProgramWord::FWord(f) => MemoryWord::Float(*f),
-            AstSourceProgramWord::PWord(pword) => MemoryWord::Instruction(link_pword(pword)),
-            AstSourceProgramWord::SWord(s) => MemoryWord::String(s.clone()),
+        let link = |pword: &AstSourceWord| match pword {
+            AstSourceWord::IWord(i) => MemoryWord::Integer(*i),
+            AstSourceWord::FWord(f) => MemoryWord::Float(*f),
+            AstSourceWord::PWord(pword) => MemoryWord::Instruction(link_pword(pword)),
+            AstSourceWord::SWord(s) => MemoryWord::String(s.clone()),
         };
 
         value

@@ -1,5 +1,5 @@
 use super::assembly::{Assembly, Code, Symbols};
-use super::ast::SourceProgramLine;
+use super::ast::SourceLine;
 
 use crate::result::{Error, Result};
 
@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub struct Assembler {}
 
 impl Assembler {
-    pub fn assemble(ast: &[SourceProgramLine]) -> Result<Assembly> {
+    pub fn assemble(ast: &[SourceLine]) -> Result<Assembly> {
         validate_ast(ast)?;
         let code = generate_code(ast);
         let symbols = generate_symbol_table(ast);
@@ -18,7 +18,7 @@ impl Assembler {
     }
 }
 
-fn validate_ast(ast: &[SourceProgramLine]) -> Result<()> {
+fn validate_ast(ast: &[SourceLine]) -> Result<()> {
     let mut invalid_locations = ast
         .iter()
         .fold(HashMap::new(), |mut counts, line| {
@@ -65,13 +65,13 @@ fn validate_ast(ast: &[SourceProgramLine]) -> Result<()> {
     }
 }
 
-fn generate_code(ast: &[SourceProgramLine]) -> Code {
+fn generate_code(ast: &[SourceLine]) -> Code {
     ast.iter()
         .map(|line| (*line.location(), line.source_program_word().clone()))
         .collect::<Code>()
 }
 
-fn generate_symbol_table(ast: &[SourceProgramLine]) -> Symbols {
+fn generate_symbol_table(ast: &[SourceLine]) -> Symbols {
     ast.iter()
         .filter_map(|line| line.label().name().map(|name| (name, *line.location())))
         .collect::<Symbols>()
@@ -82,7 +82,7 @@ mod test {
     use super::*;
     use crate::bbcx::{ast::*, Parser};
 
-    type SourceProgram = Vec<SourceProgramLine>;
+    type SourceProgram = Vec<SourceLine>;
 
     fn parse(input: &str) -> SourceProgram {
         input
@@ -104,7 +104,7 @@ mod test {
         assert_eq!(assembly.content(0), None);
         assert_eq!(
             assembly.content(1),
-            Some(SourceProgramWord::PWord(PWord::new(
+            Some(SourceWord::PWord(PWord::new(
                 Mnemonic::JUMP,
                 None.into(),
                 StoreOperand::AddressOperand(AddressOperand::new(
@@ -115,7 +115,7 @@ mod test {
         );
         assert_eq!(
             assembly.content(2),
-            Some(SourceProgramWord::PWord(PWord::new(
+            Some(SourceWord::PWord(PWord::new(
                 Mnemonic::JUMP,
                 None.into(),
                 StoreOperand::AddressOperand(AddressOperand::new(
@@ -186,7 +186,7 @@ mod test {
         assert_eq!(assembly.content(0), None);
         assert_eq!(
             assembly.content(1),
-            Some(SourceProgramWord::PWord(PWord::new(
+            Some(SourceWord::PWord(PWord::new(
                 Mnemonic::JUMP,
                 None.into(),
                 StoreOperand::AddressOperand(AddressOperand::new(
@@ -197,7 +197,7 @@ mod test {
         );
         assert_eq!(
             assembly.content(2),
-            Some(SourceProgramWord::PWord(PWord::new(
+            Some(SourceWord::PWord(PWord::new(
                 Mnemonic::JUMP,
                 None.into(),
                 StoreOperand::AddressOperand(AddressOperand::new(

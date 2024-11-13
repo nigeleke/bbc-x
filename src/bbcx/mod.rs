@@ -8,7 +8,7 @@ mod parser;
 
 use self::assembler::Assembler;
 use self::assembly::Assembly;
-use self::ast::SourceProgramLine;
+use self::ast::SourceLine;
 use self::executor::Executor;
 use self::parser::Parser;
 
@@ -29,7 +29,7 @@ impl BbcX {
         Self { args }
     }
 
-    fn impl_parse(&self, path: &Path) -> Result<Vec<Result<SourceProgramLine>>> {
+    fn impl_parse(&self, path: &Path) -> Result<Vec<Result<SourceLine>>> {
         let lines = file_lines(path)?;
         let results = lines.iter().map(|line| Parser::parse_line(line));
         Ok(results.collect())
@@ -66,7 +66,7 @@ impl BbcX {
     }
 
     fn impl_run(&self, path: &Path) -> Result<()> {
-        let assembly = self.impl_assemble(&path)?;
+        let assembly = self.impl_assemble(path)?;
         let _ = Executor::execute(assembly)?;
         Ok(())
     }

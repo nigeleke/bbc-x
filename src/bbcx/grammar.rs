@@ -15,7 +15,7 @@ use std::str::FromStr;
 pub struct Grammar;
 
 impl Grammar {
-    pub fn bbcx_line<'a>() -> Parser<'a, SourceProgramLine> {
+    pub fn bbcx_line<'a>() -> Parser<'a, SourceLine> {
         source_program_line()
     }
 }
@@ -24,8 +24,8 @@ impl Grammar {
 // A source program line consists of the address of the location which is to
 // receive the translated version of the source word followed by the source
 // word itself.
-fn source_program_line<'a>() -> Parser<'a, SourceProgramLine> {
-    let as_source_program_line = |(((l, lbl), w), c)| SourceProgramLine::new(l, lbl, w, c);
+fn source_program_line<'a>() -> Parser<'a, SourceLine> {
+    let as_source_program_line = |(((l, lbl), w), c)| SourceLine::new(l, lbl, w, c);
 
     (location() + label() - inline_ws().opt() + source_program_word() - inline_ws().opt()
         + comment()
@@ -46,11 +46,11 @@ fn label<'a>() -> Parser<'a, Label> {
 
 // This source word can be any of the four tyoes (but certain conventions
 // must be kept to if the program is to list correctly)
-fn source_program_word<'a>() -> Parser<'a, SourceProgramWord> {
-    (pword().map(SourceProgramWord::PWord)
-        | fword().map(SourceProgramWord::FWord)
-        | iword().map(SourceProgramWord::IWord)
-        | sword().map(SourceProgramWord::SWord))
+fn source_program_word<'a>() -> Parser<'a, SourceWord> {
+    (pword().map(SourceWord::PWord)
+        | fword().map(SourceWord::FWord)
+        | iword().map(SourceWord::IWord)
+        | sword().map(SourceWord::SWord))
     .name("source_program_word")
 }
 

@@ -3,6 +3,7 @@ mod assembly;
 mod ast;
 mod executor;
 mod grammar;
+mod memory;
 mod parser;
 
 use self::assembler::Assembler;
@@ -66,8 +67,8 @@ impl BbcX {
 
     fn impl_run(&self, path: &Path) -> Result<()> {
         let assembly = self.impl_assemble(&path)?;
-        println!("Assembly {:?}", assembly);
-        Executor::execute(assembly)
+        let _ = Executor::execute(assembly)?;
+        Ok(())
     }
 
     fn impl_list(&self, path: &Path) -> Result<()> {

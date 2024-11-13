@@ -75,7 +75,9 @@ The BBC-X specification has been scanned and uploaded.
 
 ### TODO
 
-  1. Develop BBC-X execution environment.
+  1. The hardware is not emulated exactly but only enough to get this author's historic programs up and running.
+     As a result only a single page memory is defined. Programmatic access to i/o registers etc will not be
+     emulated either.
 
 ## Running the program
 

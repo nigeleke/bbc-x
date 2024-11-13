@@ -1,5 +1,3 @@
-use std::fmt::{format, write};
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct SourceProgramLine {
     location: Location,
@@ -119,6 +117,18 @@ impl PWord {
             store_operand,
         }
     }
+
+    pub fn mnemonic(&self) -> Mnemonic {
+        self.mnemonic
+    }
+
+    pub fn accumulator(&self) -> Acc {
+        self.accumulator.clone()
+    }
+
+    pub fn store_operand(&self) -> StoreOperand {
+        self.store_operand.clone()
+    }
 }
 
 impl std::fmt::Display for PWord {
@@ -137,6 +147,12 @@ pub type SWord = String;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Acc(Option<char>);
+
+impl Acc {
+    pub fn as_usize(&self) -> usize {
+        self.0.map_or(0, |a| (a as u8) - b'0') as usize
+    }
+}
 
 impl From<char> for Acc {
     fn from(a: char) -> Self {
@@ -189,6 +205,14 @@ impl AddressOperand {
     pub fn new(address: SimpleAddressOperand, index: Option<Index>) -> Self {
         Self { address, index }
     }
+
+    pub fn address(&self) -> SimpleAddressOperand {
+        self.address.clone()
+    }
+
+    pub fn index(&self) -> Option<Index> {
+        self.index.clone()
+    }
 }
 
 impl std::fmt::Display for AddressOperand {
@@ -210,7 +234,7 @@ impl std::fmt::Display for ConstOperand {
         match self {
             ConstOperand::SignedInteger(c) => write!(f, "{:+}", c),
             ConstOperand::SignedFWord(c) => write!(f, "{:+}", c),
-            ConstOperand::SWord(c) => write!(f, "<{}>", c),
+            ConstOperand::SWord(c) => write!(f, "\"{}\"", c),
         }
     }
 }
@@ -245,17 +269,17 @@ impl std::fmt::Display for Address {
     }
 }
 
-pub type NumericAddress = u16;
+pub type NumericAddress = usize;
 
 pub type Character = char;
 pub type NumericCharacter = char;
 pub type Punctuation = char;
-pub type IntType = i32;
-pub type FloatType = f32;
+pub type IntType = i64;
+pub type FloatType = f64;
 pub type AddressRef = usize;
 pub type Index = usize;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum Mnemonic {
     NIL,

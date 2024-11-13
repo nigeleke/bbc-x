@@ -101,7 +101,6 @@ mod test {
 "#;
         let program = parse(program);
         let assembly = Assembler::assemble(&program).unwrap();
-        println!("rul: {:?}", assembly);
         assert_eq!(assembly.content(0), None);
         assert_eq!(
             assembly.content(1),
@@ -167,7 +166,6 @@ mod test {
 "#;
         let program = parse(program);
         let result = Assembler::assemble(&program);
-        println!("result {:?}", result);
         let result = result.err().unwrap();
         assert_eq!(
             result,

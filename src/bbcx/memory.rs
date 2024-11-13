@@ -15,12 +15,12 @@ pub enum MemoryWord {
 }
 
 impl MemoryWord {
-    const WORD_MASK: u32 = 0xffffff;
+    // const WORD_MASK: i32 = 0xffffff;
 
-    fn to_24_bits(&self) -> u32 {
+    fn to_24_bits(&self) -> i32 {
         match self {
             MemoryWord::Undefined => 0,
-            MemoryWord::Integer(i) => (*i as u32) & MemoryWord::WORD_MASK,
+            MemoryWord::Integer(i) => *i as i32,
             MemoryWord::Float(_) => unimplemented!(),
             MemoryWord::String(_) => unimplemented!(),
             MemoryWord::Instruction(_) => unimplemented!(),
@@ -30,8 +30,50 @@ impl MemoryWord {
 
 impl std::ops::BitOrAssign for MemoryWord {
     fn bitor_assign(&mut self, rhs: Self) {
-        let ored = self.to_24_bits() | rhs.to_24_bits();
-        *self = MemoryWord::Integer(ored as IntType);
+        let result = self.to_24_bits() | rhs.to_24_bits();
+        *self = MemoryWord::Integer(result as IntType);
+    }
+}
+
+impl std::ops::BitXorAssign for MemoryWord {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        let result = self.to_24_bits() ^ rhs.to_24_bits();
+        *self = MemoryWord::Integer(result as IntType);
+    }
+}
+
+impl std::ops::BitAndAssign for MemoryWord {
+    fn bitand_assign(&mut self, rhs: Self) {
+        let result = self.to_24_bits() & rhs.to_24_bits();
+        *self = MemoryWord::Integer(result as IntType);
+    }
+}
+
+impl std::ops::AddAssign for MemoryWord {
+    fn add_assign(&mut self, rhs: Self) {
+        let result = self.to_24_bits() + rhs.to_24_bits();
+        *self = MemoryWord::Integer(result as IntType);
+    }
+}
+
+impl std::ops::SubAssign for MemoryWord {
+    fn sub_assign(&mut self, rhs: Self) {
+        let result = self.to_24_bits() - rhs.to_24_bits();
+        *self = MemoryWord::Integer(result as IntType);
+    }
+}
+
+impl std::ops::MulAssign for MemoryWord {
+    fn mul_assign(&mut self, rhs: Self) {
+        let result = self.to_24_bits() * rhs.to_24_bits();
+        *self = MemoryWord::Integer(result as IntType);
+    }
+}
+
+impl std::ops::DivAssign for MemoryWord {
+    fn div_assign(&mut self, rhs: Self) {
+        let result = self.to_24_bits() / rhs.to_24_bits();
+        *self = MemoryWord::Integer(result as IntType);
     }
 }
 

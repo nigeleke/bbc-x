@@ -31,7 +31,9 @@ impl Assembly {
     }
 
     pub fn code_iter(&self) -> impl Iterator<Item = (&Location, &Content)> {
-        self.code.iter()
+        let mut keys = Vec::from_iter(self.code.keys());
+        keys.sort();
+        keys.into_iter().map(|k| (k, &self.code[k]))
     }
 
     pub fn location(&self, label: &str) -> Option<Location> {
@@ -43,7 +45,6 @@ impl Assembly {
         let mut store_location: usize = 1024;
         undefined_symbols.into_iter().for_each(|identifier| {
             store_location -= 1;
-            println!("Inserting {} @ {}", identifier, store_location);
             self.symbols.insert(identifier, store_location);
         });
         self

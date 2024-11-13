@@ -50,6 +50,13 @@ impl Executor {
         let execution: HashMap<Mnemonic, ExecFn> = vec![
             (Mnemonic::NIL, Executor::exec_nil as ExecFn),
             (Mnemonic::OR, Executor::exec_or as ExecFn),
+            (Mnemonic::NEQV, Executor::exec_neqv as ExecFn),
+            (Mnemonic::AND, Executor::exec_and as ExecFn),
+            (Mnemonic::ADD, Executor::exec_add as ExecFn),
+            (Mnemonic::SUBT, Executor::exec_subt as ExecFn),
+            (Mnemonic::MULT, Executor::exec_mult as ExecFn),
+            (Mnemonic::DVD, Executor::exec_dvd as ExecFn),
+            (Mnemonic::TAKE, Executor::exec_take as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -69,9 +76,8 @@ impl Executor {
                 ConstOperand::SWord(s) => MemoryWord::String(s.clone()),
             },
             StoreOperand::AddressOperand(address) => {
-                let _location = self.address_of(&address.address()) + address.index().unwrap_or(0);
-                // TODO: How to interpret value at or of an address...?
-                unimplemented!()
+                let location = self.address_of(&address.address()) + address.index().unwrap_or(0);
+                self.execution_context.memory[location].clone()
             }
         }
     }
@@ -98,6 +104,34 @@ impl Executor {
 
     fn exec_or(&mut self, acc: Location, operand: MemoryWord) {
         self.execution_context.memory[acc] |= operand;
+    }
+
+    fn exec_neqv(&mut self, acc: Location, operand: MemoryWord) {
+        self.execution_context.memory[acc] ^= operand;
+    }
+
+    fn exec_and(&mut self, acc: Location, operand: MemoryWord) {
+        self.execution_context.memory[acc] &= operand;
+    }
+
+    fn exec_add(&mut self, acc: Location, operand: MemoryWord) {
+        self.execution_context.memory[acc] += operand;
+    }
+
+    fn exec_subt(&mut self, acc: Location, operand: MemoryWord) {
+        self.execution_context.memory[acc] -= operand;
+    }
+
+    fn exec_mult(&mut self, acc: Location, operand: MemoryWord) {
+        self.execution_context.memory[acc] *= operand;
+    }
+
+    fn exec_dvd(&mut self, acc: Location, operand: MemoryWord) {
+        self.execution_context.memory[acc] /= operand;
+    }
+
+    fn exec_take(&mut self, acc: Location, operand: MemoryWord) {
+        self.execution_context.memory[acc] = operand;
     }
 }
 
@@ -186,8 +220,8 @@ mod test {
     #[test]
     fn test_or() {
         let program = r#"
-0001    +4
-0100    OR 1, +3
+0001    +12
+0100    OR 1, +10
 "#;
         let actual = execute(program).ok().unwrap();
         let expected = ExecutionContext::default()
@@ -196,11 +230,203 @@ mod test {
                 PWord::new(
                     Mnemonic::OR,
                     '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(3)),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(10)),
                 ),
             )
             .with_program_counter(101)
-            .with_memory_word(1, MemoryWord::Integer(7));
+            .with_memory_word(1, MemoryWord::Integer(14));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_neqv() {
+        let program = r#"
+0001    +12
+0100    NEQV 1, +10
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::NEQV,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(10)),
+                ),
+            )
+            .with_program_counter(101)
+            .with_memory_word(1, MemoryWord::Integer(6));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_and() {
+        let program = r#"
+0001    +12
+0100    AND 1, +10
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::AND,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(10)),
+                ),
+            )
+            .with_program_counter(101)
+            .with_memory_word(1, MemoryWord::Integer(8));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_add() {
+        let program = r#"
+0001    +12
+0100    ADD 1, +10
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(10)),
+                ),
+            )
+            .with_program_counter(101)
+            .with_memory_word(1, MemoryWord::Integer(22));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_subt() {
+        let program = r#"
+0001    +12
+0002    +10
+0100    SUBT 1, +10
+0101    SUBT 2, +12
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::SUBT,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(10)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::SUBT,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(12)),
+                ),
+            )
+            .with_program_counter(102)
+            .with_memory_word(1, MemoryWord::Integer(2))
+            .with_memory_word(2, MemoryWord::Integer(-2));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_mult() {
+        let program = r#"
+0001    +12
+0100    MULT 1, +10
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::MULT,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(10)),
+                ),
+            )
+            .with_program_counter(101)
+            .with_memory_word(1, MemoryWord::Integer(120));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_dvd() {
+        let program = r#"
+0001    +12
+0100    DVD 1, +6
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::DVD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(6)),
+                ),
+            )
+            .with_program_counter(101)
+            .with_memory_word(1, MemoryWord::Integer(2));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_take() {
+        let program = r#"
+            0100            TAKE 1, +42
+            0101            TAKE 2, +3.14
+            0102            TAKE 3, "ABCD"
+            0103            TAKE 4, LOC
+            0110    LOC:    +2.718
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedInteger(42)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(3.14)),
+                ),
+            )
+            .with_instruction(
+                102,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '3'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SWord("ABCD".into())),
+                ),
+            )
+            .with_instruction(
+                103,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '4'.into(),
+                    StoreOperand::AddressOperand(AddressOperand::new(
+                        SimpleAddressOperand::DirectAddress(Address::NumericAddress(110)),
+                        None,
+                    )),
+                ),
+            )
+            .with_program_counter(104)
+            .with_memory_word(1, MemoryWord::Integer(42))
+            .with_memory_word(2, MemoryWord::Float(3.14))
+            .with_memory_word(3, MemoryWord::String("ABCD".into()))
+            .with_memory_word(4, MemoryWord::Float(2.718))
+            .with_memory_word(110, MemoryWord::Float(2.718));
         assert_eq!(actual, expected)
     }
 }

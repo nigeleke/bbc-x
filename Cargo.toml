@@ -11,5 +11,8 @@ time = { version = "0.3.34", features = ["formatting", "local-offset"] }
 [dev-dependencies]
 tempdir = "0.3.7"
 
+[profile.test]
+test-threads = 1
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }

@@ -225,7 +225,7 @@ impl std::fmt::Display for AddressOperand {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ConstOperand {
-    SignedInteger(IntType),
+    SignedIWord(IntType),
     SignedFWord(FloatType),
     SWord(SWord),
 }
@@ -233,7 +233,7 @@ pub enum ConstOperand {
 impl std::fmt::Display for ConstOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            ConstOperand::SignedInteger(c) => write!(f, "{:+}", c),
+            ConstOperand::SignedIWord(c) => write!(f, "{:+}", c),
             ConstOperand::SignedFWord(c) => write!(f, "{:+}", c),
             ConstOperand::SWord(c) => write!(f, "\"{}\"", c),
         }

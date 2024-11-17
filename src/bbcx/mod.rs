@@ -1,6 +1,7 @@
 mod assembler;
 mod assembly;
 mod ast;
+mod charset;
 mod executor;
 mod grammar;
 mod memory;
@@ -67,7 +68,8 @@ impl BbcX {
 
     fn impl_run(&self, path: &Path) -> Result<()> {
         let assembly = self.impl_assemble(path)?;
-        let _ = Executor::execute(assembly)?;
+        let executor = Executor::new();
+        _ = executor.execute(&assembly)?;
         Ok(())
     }
 

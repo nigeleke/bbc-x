@@ -131,7 +131,7 @@ fn address_operand<'a>() -> Parser<'a, AddressOperand> {
 fn const_operand<'a>() -> Parser<'a, ConstOperand> {
     inline_ws().opt()
         * (signed_fword().map(ConstOperand::SignedFWord)
-            | signed_integer().map(ConstOperand::SignedInteger)
+            | signed_integer().map(ConstOperand::SignedIWord)
             | sword().map(ConstOperand::SWord))
         .name("const_operand")
 }

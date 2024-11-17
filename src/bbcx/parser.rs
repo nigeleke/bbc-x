@@ -317,7 +317,7 @@ mod test {
             PWord::new(
                 Mnemonic::ADD,
                 None.into(),
-                StoreOperand::ConstOperand(ConstOperand::SignedInteger(-42)),
+                StoreOperand::ConstOperand(ConstOperand::SignedIWord(-42)),
             ),
             PWord::new(
                 Mnemonic::ADD,

@@ -22,7 +22,18 @@ impl MemoryWord {
         match self {
             MemoryWord::Undefined => 0,
             MemoryWord::Integer(i) => *i as i32,
-            MemoryWord::Float(_) => unimplemented!(),
+            MemoryWord::Float(f) => {
+                let dissect_f64 = |value: f64| {
+                    let bits = value.to_bits();
+                    let sign = (bits >> 63) & 1;
+                    let exponent = (bits >> 52) & 0x7FF;
+                    let mantissa = bits & 0xFFFFFFFFFFFFF;
+                    let unbiased_exponent = exponent - 1023;
+                    (sign, unbiased_exponent, mantissa)
+                };
+                let (sign, exponent, mantissa) = dissect_f64(*f);
+                ((sign << 23) | (exponent << 16) | mantissa) as i32
+            }
             MemoryWord::String(s) => s
                 .as_bytes()
                 .into_iter()
@@ -55,29 +66,97 @@ impl std::ops::BitAndAssign for MemoryWord {
 
 impl std::ops::AddAssign for MemoryWord {
     fn add_assign(&mut self, rhs: Self) {
-        let result = self.to_24_bits() + rhs.to_24_bits();
-        *self = MemoryWord::Integer(result as IntType);
+        *self = match self {
+            MemoryWord::Integer(lhs) => match rhs {
+                MemoryWord::Integer(rhs) => MemoryWord::Integer(*lhs + rhs),
+                MemoryWord::Float(rhs) => MemoryWord::Float(*lhs as f64 + rhs),
+                _ => panic!("ADD not supported for type {:?}", rhs),
+            },
+            MemoryWord::Float(lhs) => match rhs {
+                MemoryWord::Integer(rhs) => MemoryWord::Float(*lhs + rhs as f64),
+                MemoryWord::Float(rhs) => MemoryWord::Float(*lhs + rhs),
+                _ => panic!("ADD not supported for type {:?}", rhs),
+            },
+            _ => panic!("ADD not supported for type {:?}", self),
+        };
     }
 }
 
 impl std::ops::SubAssign for MemoryWord {
     fn sub_assign(&mut self, rhs: Self) {
-        let result = self.to_24_bits() - rhs.to_24_bits();
-        *self = MemoryWord::Integer(result as IntType);
+        *self = match self {
+            MemoryWord::Integer(lhs) => match rhs {
+                MemoryWord::Integer(rhs) => MemoryWord::Integer(*lhs - rhs),
+                MemoryWord::Float(rhs) => MemoryWord::Float(*lhs as f64 - rhs),
+                _ => panic!("SUBT not supported for type {:?}", rhs),
+            },
+            MemoryWord::Float(lhs) => match rhs {
+                MemoryWord::Integer(rhs) => MemoryWord::Float(*lhs - rhs as f64),
+                MemoryWord::Float(rhs) => MemoryWord::Float(*lhs - rhs),
+                _ => panic!("SUBT not supported for type {:?}", rhs),
+            },
+            _ => panic!("SUBT not supported for type {:?}", self),
+        };
     }
 }
 
 impl std::ops::MulAssign for MemoryWord {
     fn mul_assign(&mut self, rhs: Self) {
-        let result = self.to_24_bits() * rhs.to_24_bits();
-        *self = MemoryWord::Integer(result as IntType);
+        *self = match self {
+            MemoryWord::Integer(lhs) => match rhs {
+                MemoryWord::Integer(rhs) => MemoryWord::Integer(*lhs * rhs),
+                MemoryWord::Float(rhs) => MemoryWord::Float(*lhs as f64 * rhs),
+                _ => panic!("MULT not supported for type {:?}", rhs),
+            },
+            MemoryWord::Float(lhs) => match rhs {
+                MemoryWord::Integer(rhs) => MemoryWord::Float(*lhs * rhs as f64),
+                MemoryWord::Float(rhs) => MemoryWord::Float(*lhs * rhs),
+                _ => panic!("MULT not supported for type {:?}", rhs),
+            },
+            _ => panic!("MULT not supported for type {:?}", self),
+        };
     }
 }
 
 impl std::ops::DivAssign for MemoryWord {
     fn div_assign(&mut self, rhs: Self) {
-        let result = self.to_24_bits() / rhs.to_24_bits();
-        *self = MemoryWord::Integer(result as IntType);
+        *self = match self {
+            MemoryWord::Integer(lhs) => match rhs {
+                MemoryWord::Integer(rhs) => {
+                    if *lhs % rhs == 0 {
+                        MemoryWord::Integer(*lhs / rhs)
+                    } else {
+                        MemoryWord::Float(*lhs as f64 / rhs as f64)
+                    }
+                }
+                MemoryWord::Float(rhs) => MemoryWord::Float(*lhs as f64 / rhs),
+                _ => panic!("DVD not supported for type {:?}", rhs),
+            },
+            MemoryWord::Float(lhs) => match rhs {
+                MemoryWord::Integer(rhs) => MemoryWord::Float(*lhs / rhs as f64),
+                MemoryWord::Float(rhs) => MemoryWord::Float(*lhs / rhs),
+                _ => panic!("DVD not supported for type {:?}", rhs),
+            },
+            _ => panic!("DVD not supported for type {:?}", self),
+        };
+    }
+}
+
+impl PartialOrd for MemoryWord {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self {
+            MemoryWord::Integer(lhs) => match other {
+                MemoryWord::Integer(rhs) => lhs.partial_cmp(rhs),
+                MemoryWord::Float(rhs) => (*lhs as f64).partial_cmp(rhs),
+                _ => panic!("LESS THAN not supported for type {:?}", other),
+            },
+            MemoryWord::Float(lhs) => match other {
+                MemoryWord::Integer(rhs) => lhs.partial_cmp(&(*rhs as f64)),
+                MemoryWord::Float(rhs) => lhs.partial_cmp(rhs),
+                _ => panic!("LESS THAN not supported for type {:?}", other),
+            },
+            _ => panic!("LESS THAN not supported for type {:?}", self),
+        }
     }
 }
 

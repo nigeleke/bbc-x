@@ -79,6 +79,14 @@ impl Executor {
             (Mnemonic::TTYP, Executor::exec_ttyp as ExecFn),
             (Mnemonic::TTYZ, Executor::exec_ttyz as ExecFn),
             (Mnemonic::TOUT, Executor::exec_tout as ExecFn),
+            (Mnemonic::SKIP, Executor::exec_skip as ExecFn),
+            (Mnemonic::SKAE, Executor::exec_skae as ExecFn),
+            (Mnemonic::SKAN, Executor::exec_skan as ExecFn),
+            (Mnemonic::SKET, Executor::exec_sket as ExecFn),
+            (Mnemonic::SKAL, Executor::exec_skal as ExecFn),
+            (Mnemonic::SKAG, Executor::exec_skag as ExecFn),
+            (Mnemonic::SKED, Executor::exec_sked as ExecFn),
+            (Mnemonic::SKEI, Executor::exec_skei as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -194,6 +202,67 @@ impl Executor {
         let char = vec![CharSet::bits_to_char(bits).unwrap()];
         let mut stdout = (*self.stdout).borrow_mut();
         stdout.write(&char).unwrap();
+    }
+
+    fn exec_skip(&mut self, _acc: Location, _operand: MemoryWord) {
+        self.execution_context.program_counter += 1;
+    }
+
+    fn exec_skae(&mut self, acc: Location, operand: MemoryWord) {
+        if self.execution_context.memory[acc] == operand {
+            self.execution_context.program_counter += 1;
+        }
+    }
+
+    fn exec_skan(&mut self, acc: Location, operand: MemoryWord) {
+        if self.execution_context.memory[acc] != operand {
+            self.execution_context.program_counter += 1;
+        }
+    }
+
+    fn exec_sket(&mut self, acc: Location, operand: MemoryWord) {
+        let same_type = match &self.execution_context.memory[acc] {
+            MemoryWord::Undefined => matches!(operand, MemoryWord::Undefined),
+            MemoryWord::Integer(_) => matches!(operand, MemoryWord::Integer(_)),
+            MemoryWord::Float(_) => matches!(operand, MemoryWord::Float(_)),
+            MemoryWord::String(_) => matches!(operand, MemoryWord::String(_)),
+            MemoryWord::Instruction(_) => matches!(operand, MemoryWord::Instruction(_)),
+        };
+        println!(
+            "Checking acc: {} -> {:?} and operand: {:?} => {}",
+            acc, self.execution_context.memory[acc], operand, same_type
+        );
+        if same_type {
+            self.execution_context.program_counter += 1;
+        }
+    }
+
+    fn exec_skal(&mut self, acc: Location, operand: MemoryWord) {
+        if self.execution_context.memory[acc] < operand {
+            self.execution_context.program_counter += 1
+        }
+    }
+
+    fn exec_skag(&mut self, acc: Location, operand: MemoryWord) {
+        if self.execution_context.memory[acc] > operand {
+            self.execution_context.program_counter += 1
+        }
+    }
+
+    fn exec_sked(&mut self, acc: Location, operand: MemoryWord) {
+        if self.execution_context.memory[acc] == operand {
+            self.execution_context.program_counter += 1
+        } else {
+            self.execution_context.memory[acc] -= MemoryWord::Integer(1)
+        }
+    }
+
+    fn exec_skei(&mut self, acc: Location, operand: MemoryWord) {
+        if self.execution_context.memory[acc] == operand {
+            self.execution_context.program_counter += 1
+        } else {
+            self.execution_context.memory[acc] += MemoryWord::Integer(1)
+        }
     }
 }
 
@@ -750,6 +819,537 @@ mod test {
                 ),
             )
             .with_program_counter(102);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_skip() {
+        let program = r#"
+0001    +0
+0100    ADD 1, +1
+0101    SKIP
+0102    ADD 1, +1
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(Mnemonic::SKIP, None.into(), StoreOperand::None),
+            )
+            .with_instruction(
+                102,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_memory_word(1, MemoryWord::Integer(1))
+            .with_program_counter(103);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_skae() {
+        let program = r#"
+0001    +0
+0002    +0
+0100    ADD 1, +1
+0101    SKAE 1, +1
+0102    ADD 1, +1
+0103    ADD 2, +1
+0104    SKAE 2, +2
+0105    ADD 2, +1
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::SKAE,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                102,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                103,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                104,
+                PWord::new(
+                    Mnemonic::SKAE,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(2)),
+                ),
+            )
+            .with_instruction(
+                105,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_memory_word(1, MemoryWord::Integer(1))
+            .with_memory_word(2, MemoryWord::Integer(2))
+            .with_program_counter(106);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_skan() {
+        let program = r#"
+0001    +0
+0002    +0
+0100    ADD 1, +1
+0101    SKAN 1, +1
+0102    ADD 1, +1
+0103    ADD 2, +1
+0104    SKAN 2, +2
+0105    ADD 2, +1
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::SKAN,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                102,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                103,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                104,
+                PWord::new(
+                    Mnemonic::SKAN,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(2)),
+                ),
+            )
+            .with_instruction(
+                105,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_memory_word(1, MemoryWord::Integer(2))
+            .with_memory_word(2, MemoryWord::Integer(1))
+            .with_program_counter(106);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_sket() {
+        let program = r#"
+0100    TAKE 1, +1.0
+0101    SKET 1, +1.0
+0102    ADD 1, +1.0
+0103    TAKE 2, +1.0
+0104    SKET 2, +1
+0105    ADD 2, +1.0
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::SKET,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                102,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                103,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                104,
+                PWord::new(
+                    Mnemonic::SKET,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                105,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_memory_word(1, MemoryWord::Float(1.0))
+            .with_memory_word(2, MemoryWord::Float(2.0))
+            .with_program_counter(106);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_skal() {
+        let program = r#"
+0100    TAKE 1, +0.0
+0101    SKAL 1, +1.0
+0102    ADD 1, +1.0
+0103    TAKE 2, +1.0
+0104    SKAL 2, +1.0
+0105    ADD 2, +1.0
+0106    TAKE 3, +2.0
+0107    SKAL 3, +1.0
+0108    ADD 3, +1.0
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(0.0)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::SKAL,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                102,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                103,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                104,
+                PWord::new(
+                    Mnemonic::SKAL,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                105,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                106,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '3'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(2.0)),
+                ),
+            )
+            .with_instruction(
+                107,
+                PWord::new(
+                    Mnemonic::SKAL,
+                    '3'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                108,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '3'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_memory_word(1, MemoryWord::Float(0.0))
+            .with_memory_word(2, MemoryWord::Float(2.0))
+            .with_memory_word(3, MemoryWord::Float(3.0))
+            .with_program_counter(109);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_skag() {
+        let program = r#"
+0100    TAKE 1, +0.0
+0101    SKAG 1, +1.0
+0102    ADD 1, +1.0
+0103    TAKE 2, +1.0
+0104    SKAG 2, +1.0
+0105    ADD 2, +1.0
+0106    TAKE 3, +2.0
+0107    SKAG 3, +1.0
+0108    ADD 3, +1.0
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(0.0)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::SKAG,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                102,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                103,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                104,
+                PWord::new(
+                    Mnemonic::SKAG,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                105,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                106,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '3'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(2.0)),
+                ),
+            )
+            .with_instruction(
+                107,
+                PWord::new(
+                    Mnemonic::SKAG,
+                    '3'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_instruction(
+                108,
+                PWord::new(
+                    Mnemonic::ADD,
+                    '3'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
+                ),
+            )
+            .with_memory_word(1, MemoryWord::Float(1.0))
+            .with_memory_word(2, MemoryWord::Float(2.0))
+            .with_memory_word(3, MemoryWord::Float(2.0))
+            .with_program_counter(109);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_sked() {
+        let program = r#"
+0100    TAKE 1, +42
+0101    SKED 1, +42
+0102    NIL
+0103    TAKE 2, +1
+0104    SKED 2, +42
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::SKED,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
+                ),
+            )
+            .with_instruction(
+                102,
+                PWord::new(Mnemonic::NIL, None.into(), StoreOperand::None),
+            )
+            .with_instruction(
+                103,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                104,
+                PWord::new(
+                    Mnemonic::SKED,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
+                ),
+            )
+            .with_memory_word(1, MemoryWord::Integer(42))
+            .with_memory_word(2, MemoryWord::Integer(0))
+            .with_program_counter(105);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_skei() {
+        let program = r#"
+0100    TAKE 1, +42
+0101    SKEI 1, +42
+0102    NIL
+0103    TAKE 2, +1
+0104    SKEI 2, +42
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
+                ),
+            )
+            .with_instruction(
+                101,
+                PWord::new(
+                    Mnemonic::SKEI,
+                    '1'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
+                ),
+            )
+            .with_instruction(
+                102,
+                PWord::new(Mnemonic::NIL, None.into(), StoreOperand::None),
+            )
+            .with_instruction(
+                103,
+                PWord::new(
+                    Mnemonic::TAKE,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
+                ),
+            )
+            .with_instruction(
+                104,
+                PWord::new(
+                    Mnemonic::SKEI,
+                    '2'.into(),
+                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
+                ),
+            )
+            .with_memory_word(1, MemoryWord::Integer(42))
+            .with_memory_word(2, MemoryWord::Integer(2))
+            .with_program_counter(105);
         assert_eq!(actual, expected)
     }
 }

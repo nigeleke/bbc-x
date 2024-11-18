@@ -36,7 +36,7 @@ impl MemoryWord {
             }
             MemoryWord::String(s) => s
                 .as_bytes()
-                .into_iter()
+                .iter()
                 .fold(0, |acc, c| acc << 6 | CharSet::char_to_bits(*c).unwrap()),
             MemoryWord::Instruction(_) => unimplemented!(),
         }

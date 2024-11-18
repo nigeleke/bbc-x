@@ -224,6 +224,7 @@ impl std::fmt::Display for AddressOperand {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::enum_variant_names)] // Reflects usage in spec.
 pub enum ConstOperand {
     SignedIWord(IntType),
     SignedFWord(FloatType),

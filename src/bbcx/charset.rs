@@ -78,10 +78,10 @@ pub struct CharSet {}
 
 impl CharSet {
     pub fn char_to_bits(char: u8) -> Option<i32> {
-        CHAR_TO_BITS.get(&char).map(|i| *i)
+        CHAR_TO_BITS.get(&char).copied()
     }
 
     pub fn bits_to_char(bits: i32) -> Option<u8> {
-        BITS_TO_CHAR.get(&bits).map(|c| *c)
+        BITS_TO_CHAR.get(&bits).copied()
     }
 }

@@ -11,6 +11,7 @@ use std::rc::Rc;
 
 pub struct Executor {
     execution_context: ExecutionContext,
+    #[allow(dead_code)] // TODO: Remove
     stdin: Rc<RefCell<dyn std::io::Read>>,
     stdout: Rc<RefCell<dyn std::io::Write>>,
 }
@@ -201,7 +202,7 @@ impl Executor {
         let bits = operand.to_24_bits() & 0o77;
         let char = vec![CharSet::bits_to_char(bits).unwrap()];
         let mut stdout = (*self.stdout).borrow_mut();
-        stdout.write(&char).unwrap();
+        stdout.write_all(&char).unwrap();
     }
 
     fn exec_skip(&mut self, _acc: Location, _operand: MemoryWord) {
@@ -282,19 +283,10 @@ impl PartialEq for Executor {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExecutionContext {
     program_counter: Location,
     memory: Memory,
-}
-
-impl Default for ExecutionContext {
-    fn default() -> Self {
-        Self {
-            program_counter: Location::default(),
-            memory: Memory::default(),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -325,7 +317,6 @@ impl From<Assembly> for ExecutionContext {
         Self {
             program_counter,
             memory,
-            ..Self::default()
         }
     }
 }

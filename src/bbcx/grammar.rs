@@ -201,15 +201,15 @@ fn numeric_address<'a>() -> Parser<'a, NumericAddress> {
 }
 
 // TODO: Work out what an Index actually is in bbc-x; it appears to be numeric only and possibly single digit??
-fn index<'a>() -> Parser<'a, Index> {
+fn index<'a>() -> Parser<'a, IndexRegister> {
     digit()
         .repeat(1..=2)
         .map(String::from_iter)
-        .convert(|s| Index::from_str(&s))
+        .convert(|s| IndexRegister::from_str(&s))
         .name("index")
 }
 
-fn index_ref<'a>() -> Parser<'a, Index> {
+fn index_ref<'a>() -> Parser<'a, IndexRegister> {
     (sym('[') * index() - sym(']')).map(|i| i).name("index_ref")
 }
 

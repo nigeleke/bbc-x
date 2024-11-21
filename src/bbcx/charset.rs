@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 
 use std::collections::HashMap;
 
-static CHAR_TO_BITS: Lazy<HashMap<u8, i32>> = Lazy::new(|| {
+static CHAR_TO_BITS: Lazy<HashMap<u8, u32>> = Lazy::new(|| {
     HashMap::from_iter(vec![
         (b'\0', 0),
         (b'A', 1),
@@ -71,17 +71,17 @@ static CHAR_TO_BITS: Lazy<HashMap<u8, i32>> = Lazy::new(|| {
     ])
 });
 
-static BITS_TO_CHAR: Lazy<HashMap<i32, u8>> =
+static BITS_TO_CHAR: Lazy<HashMap<u32, u8>> =
     Lazy::new(|| HashMap::from_iter(CHAR_TO_BITS.iter().map(|(c, b)| (*b, *c))));
 
 pub struct CharSet {}
 
 impl CharSet {
-    pub fn char_to_bits(char: u8) -> Option<i32> {
+    pub fn char_to_bits(char: u8) -> Option<u32> {
         CHAR_TO_BITS.get(&char).copied()
     }
 
-    pub fn bits_to_char(bits: i32) -> Option<u8> {
+    pub fn bits_to_char(bits: u32) -> Option<u8> {
         BITS_TO_CHAR.get(&bits).copied()
     }
 }

@@ -130,6 +130,24 @@ impl PWord {
     pub fn store_operand(&self) -> StoreOperand {
         self.store_operand.clone()
     }
+
+    pub fn index_register(&self) -> IndexRegister {
+        match self.store_operand() {
+            StoreOperand::AddressOperand(address_operand) => address_operand.index_register(),
+            _ => 0,
+        }
+    }
+
+    pub fn indirect(&self) -> bool {
+        match self.store_operand() {
+            StoreOperand::AddressOperand(address_operand) => address_operand.indirect(),
+            _ => false,
+        }
+    }
+
+    pub fn page(&self) -> usize {
+        0
+    }
 }
 
 impl std::fmt::Display for PWord {
@@ -183,6 +201,15 @@ pub enum StoreOperand {
     ConstOperand(ConstOperand),
 }
 
+impl StoreOperand {
+    pub fn requires_storage(&self) -> bool {
+        match self {
+            StoreOperand::ConstOperand(_) => true,
+            _ => false,
+        }
+    }
+}
+
 impl std::fmt::Display for StoreOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -199,11 +226,11 @@ pub type Comment = String;
 #[derive(Clone, Debug, PartialEq)]
 pub struct AddressOperand {
     address: SimpleAddressOperand,
-    index: Option<Index>,
+    index: Option<IndexRegister>,
 }
 
 impl AddressOperand {
-    pub fn new(address: SimpleAddressOperand, index: Option<Index>) -> Self {
+    pub fn new(address: SimpleAddressOperand, index: Option<IndexRegister>) -> Self {
         Self { address, index }
     }
 
@@ -211,8 +238,19 @@ impl AddressOperand {
         self.address.clone()
     }
 
-    pub fn index(&self) -> Option<Index> {
+    pub fn index(&self) -> Option<IndexRegister> {
         self.index
+    }
+
+    pub fn index_register(&self) -> IndexRegister {
+        self.index.unwrap_or(0)
+    }
+
+    pub fn indirect(&self) -> bool {
+        match self.address {
+            SimpleAddressOperand::DirectAddress(_) => false,
+            SimpleAddressOperand::IndirectAddress(_) => true,
+        }
     }
 }
 
@@ -279,11 +317,13 @@ pub type Punctuation = char;
 pub type IntType = i64;
 pub type FloatType = f64;
 pub type AddressRef = usize;
-pub type Index = usize;
+pub type IndexRegister = usize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 #[allow(clippy::upper_case_acronyms)]
+#[repr(u32)]
 pub enum Mnemonic {
+    #[default]
     NIL,
     OR,
     NEQV,
@@ -345,6 +385,8 @@ pub enum Mnemonic {
     MOCKP,
     MOCKS,
     DBYTE,
+    #[allow(dead_code)]
+    UNUSED,
     EXEC,
     EXTRA,
     // Library

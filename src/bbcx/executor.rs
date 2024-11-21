@@ -1,5 +1,4 @@
 use super::assembly::Assembly;
-use super::ast::*;
 use super::charset::CharSet;
 use super::memory::*;
 
@@ -46,188 +45,208 @@ impl Executor {
     fn can_step(&self) -> bool {
         let context = &self.execution_context;
         let content = &context.memory[context.program_counter];
-        matches!(content, MemoryWord::Instruction(_))
+        matches!(content, Word::PWord(_))
     }
 
     fn step(&mut self) {
         let program_counter = self.execution_context.program_counter;
         self.execution_context.program_counter += 1;
-        match self.execution_context.memory[program_counter].clone() {
-            MemoryWord::Instruction(pword) => self.step_word(&pword),
+        let content = self.execution_context.memory[program_counter];
+        match content {
+            Word::PWord(instruction) => self.step_word(&instruction),
             _ => unreachable!(),
         }
     }
 
-    fn step_word(&mut self, pword: &PWord) {
-        let acc = pword.accumulator().as_usize();
-        let store_operand = pword.store_operand();
-        let store_operand = self.value_at(&store_operand);
-
-        type ExecFn = fn(&mut Executor, acc: Location, operand: MemoryWord);
-        let execution: HashMap<Mnemonic, ExecFn> = vec![
-            (Mnemonic::NIL, Executor::exec_nil as ExecFn),
-            (Mnemonic::OR, Executor::exec_or as ExecFn),
-            (Mnemonic::NEQV, Executor::exec_neqv as ExecFn),
-            (Mnemonic::AND, Executor::exec_and as ExecFn),
-            (Mnemonic::ADD, Executor::exec_add as ExecFn),
-            (Mnemonic::SUBT, Executor::exec_subt as ExecFn),
-            (Mnemonic::MULT, Executor::exec_mult as ExecFn),
-            (Mnemonic::DVD, Executor::exec_dvd as ExecFn),
-            (Mnemonic::TAKE, Executor::exec_take as ExecFn),
-            (Mnemonic::TSTR, Executor::exec_tstr as ExecFn),
-            (Mnemonic::TNEG, Executor::exec_tneg as ExecFn),
-            (Mnemonic::TNOT, Executor::exec_tnot as ExecFn),
-            (Mnemonic::TTYP, Executor::exec_ttyp as ExecFn),
-            (Mnemonic::TTYZ, Executor::exec_ttyz as ExecFn),
-            (Mnemonic::TOUT, Executor::exec_tout as ExecFn),
-            (Mnemonic::SKIP, Executor::exec_skip as ExecFn),
-            (Mnemonic::SKAE, Executor::exec_skae as ExecFn),
-            (Mnemonic::SKAN, Executor::exec_skan as ExecFn),
-            (Mnemonic::SKET, Executor::exec_sket as ExecFn),
-            (Mnemonic::SKAL, Executor::exec_skal as ExecFn),
-            (Mnemonic::SKAG, Executor::exec_skag as ExecFn),
-            (Mnemonic::SKED, Executor::exec_sked as ExecFn),
-            (Mnemonic::SKEI, Executor::exec_skei as ExecFn),
+    fn step_word(&mut self, instruction: &Instruction) {
+        type ExecFn = fn(&mut Executor, &Instruction);
+        let execution: HashMap<Function, ExecFn> = vec![
+            (Function::NIL, Executor::exec_nil as ExecFn),
+            (Function::OR, Executor::exec_or as ExecFn),
+            (Function::NEQV, Executor::exec_neqv as ExecFn),
+            (Function::AND, Executor::exec_and as ExecFn),
+            (Function::ADD, Executor::exec_add as ExecFn),
+            (Function::SUBT, Executor::exec_subt as ExecFn),
+            (Function::MULT, Executor::exec_mult as ExecFn),
+            (Function::DVD, Executor::exec_dvd as ExecFn),
+            (Function::TAKE, Executor::exec_take as ExecFn),
+            (Function::TSTR, Executor::exec_tstr as ExecFn),
+            (Function::TNEG, Executor::exec_tneg as ExecFn),
+            (Function::TNOT, Executor::exec_tnot as ExecFn),
+            (Function::TTYP, Executor::exec_ttyp as ExecFn),
+            (Function::TTYZ, Executor::exec_ttyz as ExecFn),
+            (Function::TOUT, Executor::exec_tout as ExecFn),
+            (Function::SKIP, Executor::exec_skip as ExecFn),
+            (Function::SKAE, Executor::exec_skae as ExecFn),
+            (Function::SKAN, Executor::exec_skan as ExecFn),
+            (Function::SKET, Executor::exec_sket as ExecFn),
+            (Function::SKAL, Executor::exec_skal as ExecFn),
+            (Function::SKAG, Executor::exec_skag as ExecFn),
+            (Function::SKED, Executor::exec_sked as ExecFn),
+            (Function::SKEI, Executor::exec_skei as ExecFn),
+            (Function::SHL, Executor::exec_shl as ExecFn),
         ]
         .into_iter()
         .collect();
 
         let f = execution
-            .get(&pword.mnemonic())
+            .get(&instruction.function())
             .expect("Expected instruction to be implemented");
-        f(self, acc, store_operand)
+        f(self, instruction)
     }
 
-    fn value_at(&self, store_operand: &StoreOperand) -> MemoryWord {
-        match store_operand {
-            StoreOperand::None => MemoryWord::Undefined,
-            StoreOperand::ConstOperand(value) => match value {
-                ConstOperand::SignedIWord(i) => MemoryWord::Integer(*i),
-                ConstOperand::SignedFWord(f) => MemoryWord::Float(*f),
-                ConstOperand::SWord(s) => MemoryWord::String(s.clone()),
-            },
-            StoreOperand::AddressOperand(address) => {
-                let location = self.address_of(&address.address()) + address.index().unwrap_or(0);
-                self.execution_context.memory[location].clone()
-            }
+    fn operand(&self, instruction: &Instruction) -> Word {
+        let memory = &self.execution_context.memory;
+
+        let indirect = instruction.indirect();
+        let index_register = instruction.index_register();
+
+        let mut address = instruction.address();
+
+        if indirect {
+            address = match memory[address] {
+                Word::PWord(instruction) => instruction.address(),
+                _ => panic!("Indirect address must be another PWord"),
+            };
         }
-    }
 
-    fn address_of(&self, address_operand: &SimpleAddressOperand) -> Location {
-        match address_operand {
-            SimpleAddressOperand::DirectAddress(a) => self.location_for(a),
-            SimpleAddressOperand::IndirectAddress(a) => {
-                let _content = &self.execution_context.memory[self.location_for(a)];
-                // TODO: How to interpret undiection with "type" embedded in MemoryWord...
-                unimplemented!()
-            }
+        if index_register != 0 {
+            assert!(index_register < 7);
+            address += index_register
         }
+
+        memory[address]
     }
 
-    fn location_for(&self, address: &Address) -> Location {
-        match address {
-            Address::NumericAddress(a) => *a,
-            Address::Identifier(_) => unreachable!(), // Identifiers linked to actual addresses
-        }
-    }
+    fn exec_nil(&mut self, _instruction: &Instruction) {}
 
-    fn exec_nil(&mut self, _acc: Location, _operand: MemoryWord) {}
-
-    fn exec_or(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_or(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] |= operand;
     }
 
-    fn exec_neqv(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_neqv(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] ^= operand;
     }
 
-    fn exec_and(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_and(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] &= operand;
     }
 
-    fn exec_add(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_add(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] += operand;
     }
 
-    fn exec_subt(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_subt(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] -= operand;
     }
 
-    fn exec_mult(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_mult(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] *= operand;
     }
 
-    fn exec_dvd(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_dvd(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] /= operand;
     }
 
-    fn exec_take(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_take(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] = operand;
     }
 
-    fn exec_tstr(&mut self, acc: Location, operand: MemoryWord) {
-        if let MemoryWord::Integer(i) = operand {
+    fn exec_tstr(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
+        if let Word::IWord(i) = operand {
             self.execution_context.memory[acc] = operand;
-            self.execution_context.memory[acc - 1] =
-                MemoryWord::Integer(if i < 1 { -1 } else { 0 });
+            self.execution_context.memory[acc - 1] = Word::IWord(if i < 1 { -1 } else { 0 });
         } else {
             panic!("Invalid operand {:?} for TSTR", operand);
         }
     }
 
-    fn exec_tneg(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_tneg(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] = -operand;
     }
 
-    fn exec_tnot(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_tnot(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         self.execution_context.memory[acc] = !operand;
     }
 
-    fn exec_ttyp(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_ttyp(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         let result = match operand {
-            MemoryWord::Integer(_) => MemoryWord::Integer(0),
-            MemoryWord::Float(_) => MemoryWord::Integer(1),
-            MemoryWord::String(_) => MemoryWord::Integer(2),
-            MemoryWord::Instruction(_) => MemoryWord::Integer(3),
+            Word::IWord(_) => Word::IWord(0),
+            Word::FWord(_) => Word::IWord(1),
+            Word::SWord(_) => Word::IWord(2),
+            Word::PWord(_) => Word::IWord(3),
             _ => panic!("Invalid operand {:?} for TTYP", operand),
         };
         self.execution_context.memory[acc] = result;
     }
 
-    fn exec_ttyz(&mut self, acc: Location, operand: MemoryWord) {
-        self.execution_context.memory[acc] = MemoryWord::Integer(operand.to_24_bits() as i64);
+    fn exec_ttyz(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
+        self.execution_context.memory[acc] = Word::IWord(operand.raw_bits() as IntType);
     }
 
-    fn exec_tout(&mut self, _acc: Location, operand: MemoryWord) {
-        let bits = operand.to_24_bits() & 0o77;
+    fn exec_tout(&mut self, instruction: &Instruction) {
+        let operand = self.operand(instruction);
+        let bits = operand.raw_bits() & 0o77;
         let char = vec![CharSet::bits_to_char(bits).unwrap()];
         let mut stdout = (*self.stdout).borrow_mut();
         stdout.write_all(&char).unwrap();
     }
 
-    fn exec_skip(&mut self, _acc: Location, _operand: MemoryWord) {
+    fn exec_skip(&mut self, _instruction: &Instruction) {
         self.execution_context.program_counter += 1;
     }
 
-    fn exec_skae(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_skae(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         if self.execution_context.memory[acc] == operand {
             self.execution_context.program_counter += 1;
         }
     }
 
-    fn exec_skan(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_skan(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         if self.execution_context.memory[acc] != operand {
             self.execution_context.program_counter += 1;
         }
     }
 
-    fn exec_sket(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_sket(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         let same_type = match &self.execution_context.memory[acc] {
-            MemoryWord::Undefined => matches!(operand, MemoryWord::Undefined),
-            MemoryWord::Integer(_) => matches!(operand, MemoryWord::Integer(_)),
-            MemoryWord::Float(_) => matches!(operand, MemoryWord::Float(_)),
-            MemoryWord::String(_) => matches!(operand, MemoryWord::String(_)),
-            MemoryWord::Instruction(_) => matches!(operand, MemoryWord::Instruction(_)),
+            Word::Undefined => matches!(operand, Word::Undefined),
+            Word::IWord(_) => matches!(operand, Word::IWord(_)),
+            Word::FWord(_) => matches!(operand, Word::FWord(_)),
+            Word::SWord(_) => matches!(operand, Word::SWord(_)),
+            Word::PWord(_) => matches!(operand, Word::PWord(_)),
         };
         println!(
             "Checking acc: {} -> {:?} and operand: {:?} => {}",
@@ -238,31 +257,52 @@ impl Executor {
         }
     }
 
-    fn exec_skal(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_skal(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         if self.execution_context.memory[acc] < operand {
             self.execution_context.program_counter += 1
         }
     }
 
-    fn exec_skag(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_skag(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         if self.execution_context.memory[acc] > operand {
             self.execution_context.program_counter += 1
         }
     }
 
-    fn exec_sked(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_sked(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         if self.execution_context.memory[acc] == operand {
             self.execution_context.program_counter += 1
         } else {
-            self.execution_context.memory[acc] -= MemoryWord::Integer(1)
+            self.execution_context.memory[acc] -= Word::IWord(1)
         }
     }
 
-    fn exec_skei(&mut self, acc: Location, operand: MemoryWord) {
+    fn exec_skei(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
         if self.execution_context.memory[acc] == operand {
             self.execution_context.program_counter += 1
         } else {
-            self.execution_context.memory[acc] += MemoryWord::Integer(1)
+            self.execution_context.memory[acc] += Word::IWord(1)
+        }
+    }
+
+    fn exec_shl(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
+        println!(
+            "exec_shl: {:?} => {:?} {:?}",
+            acc, self.execution_context.memory[acc], operand
+        );
+        match operand {
+            Word::IWord(_) => self.execution_context.memory[acc] <<= operand,
+            _ => panic!("SHL requires IWord operand"),
         }
     }
 }
@@ -285,26 +325,26 @@ impl PartialEq for Executor {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExecutionContext {
-    program_counter: Location,
+    program_counter: Offset,
     memory: Memory,
 }
 
 #[cfg(test)]
 impl ExecutionContext {
-    fn with_program_counter(self, location: Location) -> Self {
+    fn with_program_counter(self, program_counter: Offset) -> Self {
         Self {
-            program_counter: location,
+            program_counter,
             ..self
         }
     }
 
-    fn with_memory_word(mut self, location: Location, value: MemoryWord) -> Self {
-        self.memory[location] = value;
+    fn with_memory_word(mut self, offset: Offset, value: Word) -> Self {
+        self.memory[offset] = value;
         self
     }
 
-    fn with_instruction(self, location: Location, pword: PWord) -> Self {
-        self.with_memory_word(location, MemoryWord::Instruction(pword))
+    fn with_instruction(self, location: Offset, instruction: Instruction) -> Self {
+        self.with_memory_word(location, Word::PWord(instruction))
     }
 }
 
@@ -384,10 +424,7 @@ mod test {
         let actual = execute(program).ok().unwrap();
         let expected = ExecutionContext::default()
             .with_program_counter(2)
-            .with_instruction(
-                1,
-                PWord::new(Mnemonic::NIL, None.into(), StoreOperand::None),
-            );
+            .with_instruction(1, Instruction::new(Function::NIL));
         assert_eq!(actual, expected)
     }
 
@@ -401,14 +438,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::OR,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(10)),
-                ),
+                Instruction::new(Function::OR)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_program_counter(101)
-            .with_memory_word(1, MemoryWord::Integer(14));
+            .with_memory_word(1, Word::IWord(14))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
         assert_eq!(actual, expected)
     }
 
@@ -422,14 +458,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::NEQV,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(10)),
-                ),
+                Instruction::new(Function::NEQV)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_program_counter(101)
-            .with_memory_word(1, MemoryWord::Integer(6));
+            .with_memory_word(1, Word::IWord(6))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
         assert_eq!(actual, expected)
     }
 
@@ -443,14 +478,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::AND,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(10)),
-                ),
+                Instruction::new(Function::AND)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_program_counter(101)
-            .with_memory_word(1, MemoryWord::Integer(8));
+            .with_memory_word(1, Word::IWord(8))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
         assert_eq!(actual, expected)
     }
 
@@ -464,14 +498,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(10)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_program_counter(101)
-            .with_memory_word(1, MemoryWord::Integer(22));
+            .with_memory_word(1, Word::IWord(22))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
         assert_eq!(actual, expected)
     }
 
@@ -487,23 +520,21 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::SUBT,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(10)),
-                ),
+                Instruction::new(Function::SUBT)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::SUBT,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(12)),
-                ),
+                Instruction::new(Function::SUBT)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_program_counter(102)
-            .with_memory_word(1, MemoryWord::Integer(2))
-            .with_memory_word(2, MemoryWord::Integer(-2));
+            .with_memory_word(1, Word::IWord(2))
+            .with_memory_word(2, Word::IWord(-2))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(12));
         assert_eq!(actual, expected)
     }
 
@@ -517,14 +548,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::MULT,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(10)),
-                ),
+                Instruction::new(Function::MULT)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_program_counter(101)
-            .with_memory_word(1, MemoryWord::Integer(120));
+            .with_memory_word(1, Word::IWord(120))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
         assert_eq!(actual, expected)
     }
 
@@ -538,14 +568,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::DVD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(6)),
-                ),
+                Instruction::new(Function::DVD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_program_counter(101)
-            .with_memory_word(1, MemoryWord::Integer(2));
+            .with_memory_word(1, Word::IWord(2))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(6));
         assert_eq!(actual, expected)
     }
 
@@ -562,45 +591,37 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(3.14)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_instruction(
                 102,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '3'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SWord("ABCD".into())),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '4'.into(),
-                    StoreOperand::AddressOperand(AddressOperand::new(
-                        SimpleAddressOperand::DirectAddress(Address::NumericAddress(110)),
-                        None,
-                    )),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(110),
             )
             .with_program_counter(104)
-            .with_memory_word(1, MemoryWord::Integer(42))
-            .with_memory_word(2, MemoryWord::Float(3.14))
-            .with_memory_word(3, MemoryWord::String("ABCD".into()))
-            .with_memory_word(4, MemoryWord::Float(2.718))
-            .with_memory_word(110, MemoryWord::Float(2.718));
+            .with_memory_word(1, Word::IWord(42))
+            .with_memory_word(2, Word::FWord(3.14))
+            .with_memory_word(3, "ABCD".into())
+            .with_memory_word(4, Word::FWord(2.718))
+            .with_memory_word(110, Word::FWord(2.718))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
+            .with_memory_word(MEMORY_SIZE - 2, Word::FWord(3.14))
+            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into());
         assert_eq!(actual, expected)
     }
 
@@ -614,25 +635,23 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TSTR,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(2)),
-                ),
+                Instruction::new(Function::TSTR)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::TSTR,
-                    '4'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(-2)),
-                ),
+                Instruction::new(Function::TSTR)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_program_counter(102)
-            .with_memory_word(1, MemoryWord::Integer(0))
-            .with_memory_word(2, MemoryWord::Integer(2))
-            .with_memory_word(3, MemoryWord::Integer(-1))
-            .with_memory_word(4, MemoryWord::Integer(-2));
+            .with_memory_word(1, Word::IWord(0))
+            .with_memory_word(2, Word::IWord(2))
+            .with_memory_word(3, Word::IWord(-1))
+            .with_memory_word(4, Word::IWord(-2))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(2))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-2));
         assert_eq!(actual, expected)
     }
 
@@ -646,23 +665,21 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TNEG,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(6)),
-                ),
+                Instruction::new(Function::TNEG)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::TNEG,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(-6)),
-                ),
+                Instruction::new(Function::TNEG)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_program_counter(102)
-            .with_memory_word(1, MemoryWord::Integer(-6))
-            .with_memory_word(2, MemoryWord::Integer(6));
+            .with_memory_word(1, Word::IWord(-6))
+            .with_memory_word(2, Word::IWord(6))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(6))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-6));
         assert_eq!(actual, expected)
     }
 
@@ -676,23 +693,21 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TNOT,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(5592405)),
-                ),
+                Instruction::new(Function::TNOT)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::TNOT,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(-5592406)),
-                ),
+                Instruction::new(Function::TNOT)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_program_counter(102)
-            .with_memory_word(1, MemoryWord::Integer(-5592406))
-            .with_memory_word(2, MemoryWord::Integer(5592405));
+            .with_memory_word(1, Word::IWord(-5592406))
+            .with_memory_word(2, Word::IWord(5592405))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(5592405))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-5592406));
         assert_eq!(actual, expected)
     }
 
@@ -708,44 +723,36 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TTYP,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::TTYP)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::TTYP,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(3.14)),
-                ),
+                Instruction::new(Function::TTYP)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_instruction(
                 102,
-                PWord::new(
-                    Mnemonic::TTYP,
-                    '3'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SWord("ABCD".into())),
-                ),
+                Instruction::new(Function::TTYP)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::TTYP,
-                    '4'.into(),
-                    StoreOperand::AddressOperand(AddressOperand::new(
-                        SimpleAddressOperand::DirectAddress(Address::NumericAddress(103)),
-                        None,
-                    )),
-                ),
+                Instruction::new(Function::TTYP)
+                    .with_accumulator(4)
+                    .with_address(103),
             )
             .with_program_counter(104)
-            .with_memory_word(1, MemoryWord::Integer(0))
-            .with_memory_word(2, MemoryWord::Integer(1))
-            .with_memory_word(3, MemoryWord::Integer(2))
-            .with_memory_word(4, MemoryWord::Integer(3));
+            .with_memory_word(1, Word::IWord(0))
+            .with_memory_word(2, Word::IWord(1))
+            .with_memory_word(3, Word::IWord(2))
+            .with_memory_word(4, Word::IWord(3))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
+            .with_memory_word(MEMORY_SIZE - 2, Word::FWord(3.14))
+            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into());
         assert_eq!(actual, expected)
     }
 
@@ -759,23 +766,21 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TTYZ,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::TTYZ)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::TTYZ,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SWord("ABCD".into())),
-                ),
+                Instruction::new(Function::TTYZ)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_program_counter(102)
-            .with_memory_word(1, MemoryWord::Integer(42))
-            .with_memory_word(2, MemoryWord::Integer(0o01020304));
+            .with_memory_word(1, Word::IWord(42))
+            .with_memory_word(2, Word::IWord(0o01020304))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
+            .with_memory_word(MEMORY_SIZE - 2, "ABCD".into());
         assert_eq!(actual, expected)
     }
 
@@ -795,21 +800,15 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TOUT,
-                    None.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::TOUT).with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::TOUT,
-                    None.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SWord("ABCD".into())),
-                ),
+                Instruction::new(Function::TOUT).with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(102);
+            .with_program_counter(102)
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 2, "ABCD".into());
         assert_eq!(actual, expected)
     }
 
@@ -825,26 +824,21 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
-            .with_instruction(
-                101,
-                PWord::new(Mnemonic::SKIP, None.into(), StoreOperand::None),
-            )
+            .with_instruction(101, Instruction::new(Function::SKIP))
             .with_instruction(
                 102,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 2),
             )
-            .with_memory_word(1, MemoryWord::Integer(1))
-            .with_program_counter(103);
+            .with_program_counter(103)
+            .with_memory_word(1, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(1));
         assert_eq!(actual, expected)
     }
 
@@ -864,54 +858,48 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::SKAE,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::SKAE)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_instruction(
                 102,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 4),
             )
             .with_instruction(
                 104,
-                PWord::new(
-                    Mnemonic::SKAE,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(2)),
-                ),
+                Instruction::new(Function::SKAE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 5),
             )
             .with_instruction(
                 105,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 6),
             )
-            .with_memory_word(1, MemoryWord::Integer(1))
-            .with_memory_word(2, MemoryWord::Integer(2))
+            .with_memory_word(1, Word::IWord(1))
+            .with_memory_word(2, Word::IWord(2))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 3, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 4, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 5, Word::IWord(2))
+            .with_memory_word(MEMORY_SIZE - 6, Word::IWord(1))
             .with_program_counter(106);
         assert_eq!(actual, expected)
     }
@@ -932,54 +920,48 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::SKAN,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::SKAN)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_instruction(
                 102,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 4),
             )
             .with_instruction(
                 104,
-                PWord::new(
-                    Mnemonic::SKAN,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(2)),
-                ),
+                Instruction::new(Function::SKAN)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 5),
             )
             .with_instruction(
                 105,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 6),
             )
-            .with_memory_word(1, MemoryWord::Integer(2))
-            .with_memory_word(2, MemoryWord::Integer(1))
+            .with_memory_word(1, Word::IWord(2))
+            .with_memory_word(2, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 3, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 4, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 5, Word::IWord(2))
+            .with_memory_word(MEMORY_SIZE - 6, Word::IWord(1))
             .with_program_counter(106);
         assert_eq!(actual, expected)
     }
@@ -998,54 +980,48 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::SKET,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::SKET)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_instruction(
                 102,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 4),
             )
             .with_instruction(
                 104,
-                PWord::new(
-                    Mnemonic::SKET,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::SKET)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 5),
             )
             .with_instruction(
                 105,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 6),
             )
-            .with_memory_word(1, MemoryWord::Float(1.0))
-            .with_memory_word(2, MemoryWord::Float(2.0))
+            .with_memory_word(1, Word::FWord(1.0))
+            .with_memory_word(2, Word::FWord(2.0))
+            .with_memory_word(MEMORY_SIZE - 1, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 2, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 3, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 4, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 5, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 6, Word::FWord(1.0))
             .with_program_counter(106);
         assert_eq!(actual, expected)
     }
@@ -1067,79 +1043,70 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(0.0)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::SKAL,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::SKAL)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_instruction(
                 102,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 4),
             )
             .with_instruction(
                 104,
-                PWord::new(
-                    Mnemonic::SKAL,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::SKAL)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 5),
             )
             .with_instruction(
                 105,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 6),
             )
             .with_instruction(
                 106,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '3'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(2.0)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 7),
             )
             .with_instruction(
                 107,
-                PWord::new(
-                    Mnemonic::SKAL,
-                    '3'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::SKAL)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 8),
             )
             .with_instruction(
                 108,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '3'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 9),
             )
-            .with_memory_word(1, MemoryWord::Float(0.0))
-            .with_memory_word(2, MemoryWord::Float(2.0))
-            .with_memory_word(3, MemoryWord::Float(3.0))
+            .with_memory_word(1, Word::FWord(0.0))
+            .with_memory_word(2, Word::FWord(2.0))
+            .with_memory_word(3, Word::FWord(3.0))
+            .with_memory_word(MEMORY_SIZE - 1, Word::FWord(0.0))
+            .with_memory_word(MEMORY_SIZE - 2, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 3, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 4, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 5, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 6, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 7, Word::FWord(2.0))
+            .with_memory_word(MEMORY_SIZE - 8, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 9, Word::FWord(1.0))
             .with_program_counter(109);
         assert_eq!(actual, expected)
     }
@@ -1161,79 +1128,70 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(0.0)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::SKAG,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::SKAG)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 2),
             )
             .with_instruction(
                 102,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 4),
             )
             .with_instruction(
                 104,
-                PWord::new(
-                    Mnemonic::SKAG,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::SKAG)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 5),
             )
             .with_instruction(
                 105,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 6),
             )
             .with_instruction(
                 106,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '3'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(2.0)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 7),
             )
             .with_instruction(
                 107,
-                PWord::new(
-                    Mnemonic::SKAG,
-                    '3'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::SKAG)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 8),
             )
             .with_instruction(
                 108,
-                PWord::new(
-                    Mnemonic::ADD,
-                    '3'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedFWord(1.0)),
-                ),
+                Instruction::new(Function::ADD)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 9),
             )
-            .with_memory_word(1, MemoryWord::Float(1.0))
-            .with_memory_word(2, MemoryWord::Float(2.0))
-            .with_memory_word(3, MemoryWord::Float(2.0))
+            .with_memory_word(1, Word::FWord(1.0))
+            .with_memory_word(2, Word::FWord(2.0))
+            .with_memory_word(3, Word::FWord(2.0))
+            .with_memory_word(MEMORY_SIZE - 1, Word::FWord(0.0))
+            .with_memory_word(MEMORY_SIZE - 2, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 3, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 4, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 5, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 6, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 7, Word::FWord(2.0))
+            .with_memory_word(MEMORY_SIZE - 8, Word::FWord(1.0))
+            .with_memory_word(MEMORY_SIZE - 9, Word::FWord(1.0))
             .with_program_counter(109);
         assert_eq!(actual, expected)
     }
@@ -1251,42 +1209,35 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::SKED,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::SKED)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 2),
             )
-            .with_instruction(
-                102,
-                PWord::new(Mnemonic::NIL, None.into(), StoreOperand::None),
-            )
+            .with_instruction(102, Instruction::new(Function::NIL))
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 104,
-                PWord::new(
-                    Mnemonic::SKED,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::SKED)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 4),
             )
-            .with_memory_word(1, MemoryWord::Integer(42))
-            .with_memory_word(2, MemoryWord::Integer(0))
+            .with_memory_word(1, Word::IWord(42))
+            .with_memory_word(2, Word::IWord(0))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(42))
+            .with_memory_word(MEMORY_SIZE - 3, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 4, Word::IWord(42))
             .with_program_counter(105);
         assert_eq!(actual, expected)
     }
@@ -1304,43 +1255,76 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
             )
             .with_instruction(
                 101,
-                PWord::new(
-                    Mnemonic::SKEI,
-                    '1'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::SKEI)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 2),
             )
-            .with_instruction(
-                102,
-                PWord::new(Mnemonic::NIL, None.into(), StoreOperand::None),
-            )
+            .with_instruction(102, Instruction::new(Function::NIL))
             .with_instruction(
                 103,
-                PWord::new(
-                    Mnemonic::TAKE,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(1)),
-                ),
+                Instruction::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3),
             )
             .with_instruction(
                 104,
-                PWord::new(
-                    Mnemonic::SKEI,
-                    '2'.into(),
-                    StoreOperand::ConstOperand(ConstOperand::SignedIWord(42)),
-                ),
+                Instruction::new(Function::SKEI)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 4),
             )
-            .with_memory_word(1, MemoryWord::Integer(42))
-            .with_memory_word(2, MemoryWord::Integer(2))
+            .with_memory_word(1, Word::IWord(42))
+            .with_memory_word(2, Word::IWord(2))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(42))
+            .with_memory_word(MEMORY_SIZE - 3, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 4, Word::IWord(42))
             .with_program_counter(105);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_shl() {
+        let program = r#"
+0001    +1
+0002    +1.0
+0003    "  AB"
+0100    SHL 1, +1
+0101    SHL 2, +1
+0102    SHL 3, +6
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::SHL)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_instruction(
+                101,
+                Instruction::new(Function::SHL)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
+            )
+            .with_instruction(
+                102,
+                Instruction::new(Function::SHL)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 3),
+            )
+            .with_memory_word(1, Word::IWord(2))
+            .with_memory_word(2, Word::FWord(9.223372036854776e18))
+            .with_memory_word(3, " AB\0".into())
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 3, Word::IWord(6))
+            .with_program_counter(103);
         assert_eq!(actual, expected)
     }
 }

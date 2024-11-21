@@ -25,6 +25,7 @@ impl Assembly {
         Self { code, symbols }
     }
 
+    #[cfg(test)]
     pub fn content(&self, location: Location) -> Option<Content> {
         self.code.get(&location).cloned()
     }
@@ -46,7 +47,7 @@ impl Assembly {
 
     fn linked_content(&self, content: &Content) -> Content {
         match content {
-            Content::PWord(pword) => Content::PWord(self.linked_pword(&pword)),
+            Content::PWord(pword) => Content::PWord(self.linked_pword(pword)),
             other => other.clone(),
         }
     }

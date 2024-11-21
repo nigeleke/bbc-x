@@ -203,10 +203,7 @@ pub enum StoreOperand {
 
 impl StoreOperand {
     pub fn requires_storage(&self) -> bool {
-        match self {
-            StoreOperand::ConstOperand(_) => true,
-            _ => false,
-        }
+        matches!(self, StoreOperand::ConstOperand(_))
     }
 }
 

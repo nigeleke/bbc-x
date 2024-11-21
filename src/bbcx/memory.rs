@@ -1,5 +1,3 @@
-use crate::main;
-
 use super::assembly::Assembly;
 use super::ast::{
     ConstOperand as AstConstOperand, FloatType as AstFloatType, IndexRegister as AstIndexRegister,
@@ -80,6 +78,7 @@ impl Instruction {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[allow(clippy::enum_variant_names)] // Reflect specification naming
 pub enum Word {
     #[default]
     Undefined,
@@ -92,16 +91,6 @@ pub enum Word {
 pub type RawBits = u32;
 
 const WORD_MASK: RawBits = 0o7777_7777;
-
-const PWORD_FUNCTION_MASK: RawBits = 0o7700_0000;
-const PWORD_ACCUMULATOR_MASK: RawBits = 0o0070_0000;
-const PWORD_INDEX_REGISTER_MASK: RawBits = 0o0007_0000;
-const PWORD_INDIRECT_MASK: RawBits = 0o0000_4000;
-const PWORD_PAGE_MASK: RawBits = 0o0000_2000;
-const PWORD_ADDRESS_MASK: RawBits = 0o0000_1777;
-
-const IWORD_SIGN_MASK: RawBits = 0o4000_0000;
-const IWORD_INTEGER_MASK: RawBits = 0o3777_7777;
 
 const FWORD_SIGN_MASK: RawBits = 0o4000_0000;
 const FWORD_EXPONENT_MASK: RawBits = 0o3760_0000;
@@ -121,7 +110,7 @@ impl Word {
         };
 
         let raw_exponent = (raw & FWORD_EXPONENT_MASK) >> 16;
-        let exponent = (raw_exponent as i32 - 63) as i32;
+        let exponent = raw_exponent as i32 - 63;
 
         let raw_mantissa = raw & FWORD_MANTISSA_MASK;
         let mantissa = (raw_mantissa as f64) / ((1 << 17) as f64);
@@ -157,22 +146,6 @@ impl Word {
             Word::Undefined => 0,
             Word::IWord(i) => *i as RawBits & WORD_MASK,
             Word::FWord(f) => {
-                /*
-                // Extract the components from the 24-bit raw representation (we use u32 for convenience)
-                let sign = (raw >> 23) & 0x1; // Extract the sign bit (1 bit)
-                let exponent = ((raw >> 16) & 0x7F) as i8; // Extract the exponent (7 bits), treat as signed
-                let mantissa = (raw & 0xFFFF) as u16; // Extract the mantissa (16 bits)
-
-                // Calculate the exponent (subtract bias of 63)
-                let exponent = exponent - 63;
-
-                // Convert mantissa to fractional part
-                let mantissa_fraction = mantissa as f64 / (1 << 16) as f64;
-
-                // Recreate the floating-point value
-                let value = (-1.0f64).powi(sign as i32) * 2f64.powi(exponent as i32) * (1.0 + mantissa_fraction);
-
-                value */
                 let dissect_f64 = |value: f64| {
                     let bits = value.to_bits();
                     let sign = (bits >> 63) & 1;
@@ -310,10 +283,10 @@ impl PartialOrd for Word {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         // binary_operation!(self, PartialOrd::partial_cmp, rhs)
         match (self, other) {
-            (Word::IWord(lhs), Word::IWord(rhs)) => lhs.partial_cmp(&rhs),
-            (Word::IWord(lhs), Word::FWord(rhs)) => (*lhs as f64).partial_cmp(&rhs),
+            (Word::IWord(lhs), Word::IWord(rhs)) => lhs.partial_cmp(rhs),
+            (Word::IWord(lhs), Word::FWord(rhs)) => (*lhs as f64).partial_cmp(rhs),
             (Word::FWord(lhs), Word::IWord(rhs)) => lhs.partial_cmp(&(*rhs as f64)),
-            (Word::FWord(lhs), Word::FWord(rhs)) => lhs.partial_cmp(&rhs),
+            (Word::FWord(lhs), Word::FWord(rhs)) => lhs.partial_cmp(rhs),
             (lhs, rhs) => panic!("Operation not supported between {:?} and {:?}", lhs, rhs),
         }
     }
@@ -378,7 +351,7 @@ impl Memory {
     fn next_storage_address(&self) -> Offset {
         self.0
             .iter()
-            .rposition(|foo| *foo == Word::Undefined)
+            .rposition(|content| *content == Word::Undefined)
             .unwrap()
     }
 }

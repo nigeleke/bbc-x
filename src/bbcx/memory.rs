@@ -88,9 +88,12 @@ pub enum Word {
     PWord(Instruction),
 }
 
-pub type RawBits = u32;
+// Use u64 to manipulate RawBits, although only the lower 24 bits are relevant.
+pub type RawBits = u64;
 
-const WORD_MASK: RawBits = 0o7777_7777;
+pub const WORD_SIZE: RawBits = 24;
+pub const WORD_MASK: RawBits = (1 << WORD_SIZE) - 1;
+pub const OVERFLOW_MASK: RawBits = !WORD_MASK;
 
 const FWORD_SIGN_MASK: RawBits = 0o4000_0000;
 const FWORD_EXPONENT_MASK: RawBits = 0o3760_0000;
@@ -131,7 +134,8 @@ impl Word {
         unimplemented!()
     }
 
-    fn same_type_from(&self, raw: RawBits) -> Self {
+    pub fn same_type_from(&self, raw: RawBits) -> Self {
+        let raw = raw & WORD_MASK;
         match self {
             Word::Undefined => *self,
             Word::IWord(_) => Word::iword_from(raw),
@@ -142,7 +146,7 @@ impl Word {
     }
 
     pub fn raw_bits(&self) -> RawBits {
-        match &self {
+        (match &self {
             Word::Undefined => 0,
             Word::IWord(i) => *i as RawBits & WORD_MASK,
             Word::FWord(f) => {
@@ -177,7 +181,15 @@ impl Word {
                     | (page << 10)
                     | address) as RawBits
             }
-        }
+        }) & WORD_MASK
+    }
+
+    pub fn rotate(&mut self, n: i64) {
+        let n = n % 24;
+        let raw = (self.raw_bits() as u64) << n;
+        let overflow = (raw & OVERFLOW_MASK) >> 24;
+        let raw = (raw | overflow) as RawBits & WORD_MASK;
+        *self = self.same_type_from(raw)
     }
 }
 
@@ -189,10 +201,13 @@ impl From<&str> for Word {
         );
 
         let mut buffer = [0u8; 4];
-        for (i, c) in value.as_bytes().iter().enumerate() {
-            let bits = CharSet::char_to_bits(*c).expect("Invalid character for conversion"); // Handle error better if needed
-            buffer[i] = bits as u8;
+        let start_index = 4 - value.len();
+
+        for (i, &c) in value.as_bytes().iter().enumerate() {
+            buffer[start_index + i] =
+                CharSet::char_to_bits(c).expect("Invalid character for conversion") as u8;
         }
+
         Word::SWord(buffer)
     }
 }

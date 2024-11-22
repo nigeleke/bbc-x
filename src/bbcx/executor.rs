@@ -85,6 +85,9 @@ impl Executor {
             (Function::SKED, Executor::exec_sked as ExecFn),
             (Function::SKEI, Executor::exec_skei as ExecFn),
             (Function::SHL, Executor::exec_shl as ExecFn),
+            (Function::ROT, Executor::exec_rot as ExecFn),
+            (Function::DSHL, Executor::exec_dshl as ExecFn),
+            (Function::DROT, Executor::exec_drot as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -248,10 +251,6 @@ impl Executor {
             Word::SWord(_) => matches!(operand, Word::SWord(_)),
             Word::PWord(_) => matches!(operand, Word::PWord(_)),
         };
-        println!(
-            "Checking acc: {} -> {:?} and operand: {:?} => {}",
-            acc, self.execution_context.memory[acc], operand, same_type
-        );
         if same_type {
             self.execution_context.program_counter += 1;
         }
@@ -294,15 +293,69 @@ impl Executor {
     }
 
     fn exec_shl(&mut self, instruction: &Instruction) {
+        // TODO: Right shift
         let acc = instruction.accumulator();
         let operand = self.operand(instruction);
-        println!(
-            "exec_shl: {:?} => {:?} {:?}",
-            acc, self.execution_context.memory[acc], operand
-        );
         match operand {
             Word::IWord(_) => self.execution_context.memory[acc] <<= operand,
             _ => panic!("SHL requires IWord operand"),
+        }
+    }
+
+    fn exec_rot(&mut self, instruction: &Instruction) {
+        // TODO: Right rotate
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
+        match operand {
+            Word::IWord(n) => self.execution_context.memory[acc].rotate(n),
+            _ => panic!("ROT requires IWord operand"),
+        }
+    }
+
+    fn exec_dshl(&mut self, instruction: &Instruction) {
+        // TODO: Right shift
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
+
+        match operand {
+            Word::IWord(n) => {
+                let content = self.execution_context.memory[acc].raw_bits();
+                let lsw = (content << n) & WORD_MASK;
+                let msw = ((content << n) & OVERFLOW_MASK) >> 24;
+                self.execution_context.memory[acc] =
+                    self.execution_context.memory[acc].same_type_from(lsw);
+                self.execution_context.memory[acc - 1] =
+                    self.execution_context.memory[acc - 1].same_type_from(msw);
+            }
+            _ => panic!("DSHL requires IWord operand"),
+        }
+    }
+
+    fn exec_drot(&mut self, instruction: &Instruction) {
+        // TODO: Right rotate
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
+
+        match operand {
+            Word::IWord(n) => {
+                let msw = self.execution_context.memory[acc - 1].raw_bits();
+                let lsw = self.execution_context.memory[acc].raw_bits();
+
+                let shifted_msw = msw << n;
+                let overflowed_msw = (shifted_msw & OVERFLOW_MASK) >> WORD_SIZE;
+
+                let shifted_lsw = lsw << n;
+                let overflowed_lsw = (shifted_lsw & OVERFLOW_MASK) >> WORD_SIZE;
+
+                let updated_msw = (shifted_msw & WORD_MASK) | overflowed_lsw;
+                let updated_lsw = (shifted_lsw & WORD_MASK) | overflowed_msw;
+
+                self.execution_context.memory[acc] =
+                    self.execution_context.memory[acc].same_type_from(updated_lsw);
+                self.execution_context.memory[acc - 1] =
+                    self.execution_context.memory[acc - 1].same_type_from(updated_msw);
+            }
+            _ => panic!("DROT requires IWord operand"),
         }
     }
 }
@@ -402,8 +455,10 @@ mod test {
             .map(Parser::parse_line)
             .filter_map(|l| l.ok())
             .collect::<Vec<_>>();
-        let assembly = Assembler::assemble(&program)?;
-        let execution_context = executor.execute(&assembly)?;
+        let assembly = Assembler::assemble(&program).expect("Valid assembly required");
+        let execution_context = executor
+            .execute(&assembly)
+            .expect("Valid execution required");
         Ok(execution_context.clone())
     }
 
@@ -1325,6 +1380,114 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, Word::IWord(1))
             .with_memory_word(MEMORY_SIZE - 3, Word::IWord(6))
             .with_program_counter(103);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_rot() {
+        let program = r#"
+0001    +1
+0002    +1.0
+0003    "ABCD"
+0100    ROT 1, +25
+0101    ROT 2, +1
+0102    ROT 3, +6
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::ROT)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_instruction(
+                101,
+                Instruction::new(Function::ROT)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
+            )
+            .with_instruction(
+                102,
+                Instruction::new(Function::ROT)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 3),
+            )
+            .with_memory_word(1, Word::IWord(2))
+            .with_memory_word(2, Word::FWord(9.223372036854776e18))
+            .with_memory_word(3, "BCDA".into())
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(25))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(1))
+            .with_memory_word(MEMORY_SIZE - 3, Word::IWord(6))
+            .with_program_counter(103);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_dshl() {
+        let program = r#"
+0001    +0
+0002    +1
+0003    "    "
+0004    "ABCD"
+0100    DSHL 2, +25
+0101    DSHL 4, +12
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::DSHL)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_instruction(
+                101,
+                Instruction::new(Function::DSHL)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 2),
+            )
+            .with_memory_word(1, Word::IWord(2))
+            .with_memory_word(2, Word::IWord(0))
+            .with_memory_word(3, "AB".into())
+            .with_memory_word(4, "CD\0\0".into())
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(25))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(12))
+            .with_program_counter(102);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_drot() {
+        let program = r#"
+0001    +2
+0002    +1
+0003    "WXYZ"
+0004    "ABCD"
+0100    DROT 2, +25
+0101    DROT 4, +12
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::DROT)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_instruction(
+                101,
+                Instruction::new(Function::DROT)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 2),
+            )
+            .with_memory_word(1, Word::IWord(2))
+            .with_memory_word(2, Word::IWord(4))
+            .with_memory_word(3, "YZAB".into())
+            .with_memory_word(4, "CDWX".into())
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(25))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(12))
+            .with_program_counter(102);
         assert_eq!(actual, expected)
     }
 }

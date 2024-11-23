@@ -101,7 +101,7 @@ const FWORD_MANTISSA_MASK: RawBits = 0o0017_7777;
 
 impl Word {
     fn iword_from(raw: RawBits) -> Self {
-        let i64_value = ((raw as i64) << 32) >> 32;
+        let i64_value = ((raw as i64) << 40) >> 40;
         Word::IWord(i64_value)
     }
 
@@ -181,7 +181,7 @@ impl Word {
                     | (page << 10)
                     | address) as RawBits
             }
-        }) & WORD_MASK
+        }) as RawBits
     }
 
     pub fn rotate(&mut self, n: i64) {
@@ -200,6 +200,18 @@ impl Word {
             (Word::FWord(lhs), Word::FWord(rhs)) => Word::FWord(lhs.powf(rhs)),
             (lhs, rhs) => panic!("Operation not supported between {:?} and {:?}", lhs, rhs),
         };
+    }
+}
+
+impl From<i64> for Word {
+    fn from(value: i64) -> Self {
+        Word::iword_from(value as RawBits)
+    }
+}
+
+impl From<f64> for Word {
+    fn from(value: f64) -> Self {
+        Word::FWord(value)
     }
 }
 
@@ -243,15 +255,6 @@ macro_rules! binary_operation {
             (Word::FWord(lhs), Word::IWord(rhs)) => Word::FWord(lhs $op rhs as f64),
             (Word::FWord(lhs), Word::FWord(rhs)) => Word::FWord(lhs $op rhs),
             (lhs, rhs) => panic!("Operation not supported between {:?} and {:?}", lhs, rhs),
-        }
-    };
-}
-
-macro_rules! unary_operation {
-    ($op:tt, $operand:expr) => {
-        match $operand {
-            Word::IWord(i) => Word::IWord($op i),
-            other => panic!("Operation not supported for {:?}", other),
         }
     };
 }
@@ -321,7 +324,11 @@ impl std::ops::Neg for Word {
     type Output = Word;
 
     fn neg(self) -> Self::Output {
-        unary_operation!(-, self)
+        match self {
+            Word::IWord(i) => Word::IWord(-i),
+            Word::FWord(f) => Word::FWord(-f),
+            _ => panic!("NEG operation not supported for {:?}", self),
+        }
     }
 }
 
@@ -329,7 +336,10 @@ impl std::ops::Not for Word {
     type Output = Word;
 
     fn not(self) -> Self::Output {
-        unary_operation!(!, self)
+        let raw = self.raw_bits();
+        let not_raw = !raw;
+        println!("raw: {:#010o} not: {:#010o}", raw, not_raw);
+        self.same_type_from(not_raw)
     }
 }
 

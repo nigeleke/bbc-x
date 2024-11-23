@@ -1,13 +1,13 @@
-use clap::{Parser as ClapParser, ValueEnum};
 #[cfg(test)]
 use clap::error::Error as ClapError;
+use clap::{Parser as ClapParser, ValueEnum};
 
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, PartialEq, ValueEnum)]
 pub enum Language {
     Bbc3,
-    BbcX
+    BbcX,
 }
 
 #[derive(Clone, Debug, ClapParser, PartialEq)]
@@ -91,6 +91,7 @@ impl Args {
 mod test {
     use super::*;
     use clap::error::ErrorKind;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn error_with_zero_args() {
@@ -161,7 +162,9 @@ mod test {
     fn use_trace_path() {
         let args = "bbc-x --trace-path my/trace/path/ infile1.bbc";
         let result = Args::try_from(&args).expect("Expected successful parse");
-        assert_eq!(result.trace_path, Some(PathBuf::new().join("my/trace/path/")))
+        assert_eq!(
+            result.trace_path,
+            Some(PathBuf::new().join("my/trace/path/"))
+        )
     }
-
 }

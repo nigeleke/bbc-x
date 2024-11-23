@@ -4,7 +4,7 @@ use crate::bbcx::BbcX;
 use crate::language::Language;
 use crate::result::{Error, Result};
 
-pub struct Core { }
+pub struct Core {}
 
 impl Core {
     pub fn build_all(args: &Args) -> Result<()> {
@@ -14,18 +14,25 @@ impl Core {
         };
 
         let mut results = vec![];
-    
+
         for file in args.files() {
-            let result = language
-                .assemble(&file)
-                .and_then(|_| if args.run(){ language.run(&file) } else { Ok(()) } );
+            let result = language.assemble(&file).and_then(|_| {
+                if args.run() {
+                    language.run(&file)
+                } else {
+                    Ok(())
+                }
+            });
             results.push(result);
 
-            let _= language.list(&file);
+            let _ = language.list(&file);
         }
-    
-        let results = results.into_iter().filter_map(Result::err).collect::<Vec<Error>>();
-    
+
+        let results = results
+            .into_iter()
+            .filter_map(Result::err)
+            .collect::<Vec<Error>>();
+
         if results.is_empty() {
             Ok(())
         } else {
@@ -37,39 +44,58 @@ impl Core {
 #[cfg(test)]
 mod test {
     use super::*;
-
     use tempdir::TempDir;
 
     #[test]
     fn program_parsed_ok() {
-        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let result = Core::build_all(&args);
-        assert!(result.is_ok())        
+        assert!(result.is_ok())
     }
 
     #[test]
     fn program_parsed_error() {
-        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/invalid_syntax.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec![
+            "bbc-x",
+            "--lang=bbc3",
+            "./examples/test/bbc3/invalid_syntax.bbc",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
         let args = Args::from(args);
         let result = Core::build_all(&args);
-        assert!(result.is_err())        
+        assert!(result.is_err())
     }
 
     #[test]
     fn program_assembled_ok() {
-        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let result = Core::build_all(&args);
-        assert!(result.is_ok())                
+        assert!(result.is_ok())
     }
 
     #[test]
     fn program_assembled_error() {
-        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/invalid_semantics.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec![
+            "bbc-x",
+            "--lang=bbc3",
+            "./examples/test/bbc3/invalid_semantics.bbc",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
         let args = Args::from(args);
         let result = Core::build_all(&args);
-        assert!(result.is_err())                
+        assert!(result.is_err())
     }
 
     #[test]
@@ -81,7 +107,10 @@ mod test {
 
         std::fs::copy("./examples/test/bbc3/nthg.bbc", temp_target).unwrap();
 
-        let args = vec!["bbc-x", "--lang=bbc3", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let _ = Core::build_all(&args);
 
@@ -98,7 +127,10 @@ mod test {
 
         std::fs::copy("./examples/test/bbc3/nthg.bbc", temp_target).unwrap();
 
-        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let _ = Core::build_all(&args);
 
@@ -115,7 +147,10 @@ mod test {
 
         std::fs::copy("./examples/test/bbc3/invalid_syntax.bbc", temp_target).unwrap();
 
-        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let _ = Core::build_all(&args);
 
@@ -132,7 +167,10 @@ mod test {
 
         std::fs::copy("./examples/test/bbc3/invalid_semantics.bbc", temp_target).unwrap();
 
-        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let _ = Core::build_all(&args);
 
@@ -147,12 +185,22 @@ mod test {
         let temp_target = temp_folder.path();
         let temp_target_str = temp_target.display().to_string();
 
-        let args = vec!["bbc-x", "--lang=bbc3", "--list", "--list-path", &temp_target_str, "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec![
+            "bbc-x",
+            "--lang=bbc3",
+            "--list",
+            "--list-path",
+            &temp_target_str,
+            "./examples/test/bbc3/nthg.bbc",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
         let args = Args::from(args);
         let _ = Core::build_all(&args);
 
         let list_target = temp_folder.path().join("nthg.lst");
-        assert!(list_target.exists());        
+        assert!(list_target.exists());
     }
 
     #[test]
@@ -164,7 +212,10 @@ mod test {
 
         std::fs::copy("./examples/test/bbc3/instruction_set.bbc", temp_target).unwrap();
 
-        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let _ = Core::build_all(&args);
 
@@ -174,34 +225,33 @@ mod test {
 
     #[test]
     fn program_bbc3_not_executed() {
-        let args = vec!["bbc-x", "--lang=bbc3", "--run", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec![
+            "bbc-x",
+            "--lang=bbc3",
+            "--run",
+            "./examples/test/bbc3/nthg.bbc",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
         let args = Args::from(args);
         let result = Core::build_all(&args);
-        assert!(result.is_err())                
+        assert!(result.is_err())
     }
 
     #[test]
     #[ignore]
-    fn program_bbcx_executed() {
-
-    }
+    fn program_bbcx_executed() {}
 
     #[test]
     #[ignore]
-    fn trace_file_not_created() {
-
-    }
+    fn trace_file_not_created() {}
 
     #[test]
     #[ignore]
-    fn trace_file_created() {
-        
-    }
+    fn trace_file_created() {}
 
     #[test]
     #[ignore]
-    fn trace_file_created_at_specified_path() {
-        
-    }
-
+    fn trace_file_created_at_specified_path() {}
 }

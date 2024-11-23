@@ -48,14 +48,16 @@ fn validate_ast(ast: &[SourceProgramLine]) -> Result<()> {
             .map(|l| l.to_string())
             .collect::<Vec<_>>()
             .join(", ");
-        let error = format!("Same location(s) used multiple times: {}", invalid_locations);
+        let error = format!(
+            "Same location(s) used multiple times: {}",
+            invalid_locations
+        );
         Err(Error::FailedToAssemble(error))
     }
 }
 
 fn generate_code(ast: &[SourceProgramLine]) -> Code {
-    ast
-        .iter()
+    ast.iter()
         .map(|line| (*line.location(), line.source_program_word().clone()))
         .collect::<Code>()
 }
@@ -64,6 +66,7 @@ fn generate_code(ast: &[SourceProgramLine]) -> Code {
 mod test {
     use super::*;
     use crate::bbc3::{ast::*, Parser};
+    use pretty_assertions::assert_eq;
 
     type SourceProgram = Vec<SourceProgramLine>;
 
@@ -85,12 +88,30 @@ mod test {
         let program = parse(program);
         let assembly = Assembler::assemble(&program).unwrap();
         assert_eq!(assembly.content(0), None);
-        assert_eq!(assembly.content(1), 
-            Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(),
-                AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::NumericAddress(NumericAddress::AbsoluteAddress(1))), None)))));
-        assert_eq!(assembly.content(2), 
-            Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(),
-                AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("HERE".into())), None)))));
+        assert_eq!(
+            assembly.content(1),
+            Some(SourceProgramWord::PWord(PWord::PutType(
+                Mnemonic::JUMP,
+                None.into(),
+                AddressOperand::new(
+                    SimpleAddressOperand::DirectAddress(Address::NumericAddress(
+                        NumericAddress::AbsoluteAddress(1)
+                    )),
+                    None
+                )
+            )))
+        );
+        assert_eq!(
+            assembly.content(2),
+            Some(SourceProgramWord::PWord(PWord::PutType(
+                Mnemonic::JUMP,
+                None.into(),
+                AddressOperand::new(
+                    SimpleAddressOperand::DirectAddress(Address::Identifier("HERE".into())),
+                    None
+                )
+            )))
+        );
     }
 
     #[test]
@@ -103,7 +124,10 @@ mod test {
 "#;
         let program = parse(program);
         let result = Assembler::assemble(&program).err().unwrap();
-        assert_eq!(result, Error::FailedToAssemble("Same location(s) used multiple times: 1, 2".into()));
+        assert_eq!(
+            result,
+            Error::FailedToAssemble("Same location(s) used multiple times: 1, 2".into())
+        );
     }
 
     #[test]
@@ -115,9 +139,28 @@ mod test {
         let program = parse(program);
         let assembly = Assembler::assemble(&program).unwrap();
         assert_eq!(assembly.content(0), None);
-        assert_eq!(assembly.content(1), Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(), AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("ALPHA".into())), None)))));
-        assert_eq!(assembly.content(2), Some(SourceProgramWord::PWord(PWord::PutType(Mnemonic::JUMP, None.into(), AddressOperand::new(SimpleAddressOperand::DirectAddress(Address::Identifier("EPSILON".into())), None)))));
+        assert_eq!(
+            assembly.content(1),
+            Some(SourceProgramWord::PWord(PWord::PutType(
+                Mnemonic::JUMP,
+                None.into(),
+                AddressOperand::new(
+                    SimpleAddressOperand::DirectAddress(Address::Identifier("ALPHA".into())),
+                    None
+                )
+            )))
+        );
+        assert_eq!(
+            assembly.content(2),
+            Some(SourceProgramWord::PWord(PWord::PutType(
+                Mnemonic::JUMP,
+                None.into(),
+                AddressOperand::new(
+                    SimpleAddressOperand::DirectAddress(Address::Identifier("EPSILON".into())),
+                    None
+                )
+            )))
+        );
         assert_eq!(assembly.content(3), None);
     }
-
 }

@@ -122,7 +122,6 @@ impl LanguageModel for BbcX {
 #[cfg(test)]
 mod test {
     use super::*;
-
     use tempdir::TempDir;
 
     #[test]

@@ -81,6 +81,7 @@ fn generate_symbol_table(ast: &[SourceLine]) -> Symbols {
 mod test {
     use super::*;
     use crate::bbcx::{ast::*, Parser};
+    use pretty_assertions::assert_eq;
 
     type SourceProgram = Vec<SourceLine>;
 

@@ -88,6 +88,11 @@ impl Executor {
             (Function::ROT, Executor::exec_rot as ExecFn),
             (Function::DSHL, Executor::exec_dshl as ExecFn),
             (Function::DROT, Executor::exec_drot as ExecFn),
+            (Function::POWR, Executor::exec_powr as ExecFn),
+            (Function::DMULT, Executor::exec_dmult as ExecFn),
+            (Function::DIV, Executor::exec_div as ExecFn),
+            (Function::DDIV, Executor::exec_ddiv as ExecFn),
+            (Function::NILX, Executor::exec_nilx as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -358,6 +363,75 @@ impl Executor {
             _ => panic!("DROT requires IWord operand"),
         }
     }
+
+    fn exec_powr(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
+        self.execution_context.memory[acc].power(operand);
+    }
+
+    fn exec_dmult(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let lhs_msw = self.execution_context.memory[acc - 1];
+        let lhs_lsw = self.execution_context.memory[acc];
+        let rhs = self.operand(instruction);
+        match (lhs_msw, lhs_lsw, rhs) {
+            (Word::IWord(_), Word::IWord(_), Word::IWord(rhs)) => {
+                let lhs = Self::msw_lsw_to_i64(lhs_msw, lhs_lsw);
+                let result = lhs * rhs;
+                let (msw, lsw) = Self::i64_to_msw_lsw(result);
+                self.execution_context.memory[acc - 1] = msw;
+                self.execution_context.memory[acc] = lsw;
+            }
+            _ => panic!("DMULT requires IWord operands"),
+        }
+    }
+
+    fn exec_div(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction);
+        self.execution_context.memory[acc] /= operand;
+    }
+
+    fn msw_lsw_to_i64(msw: Word, lsw: Word) -> i64 {
+        ((msw.raw_bits() << 40) as i64 >> 40) * 2_i64.pow(WORD_SIZE as u32)
+            | (lsw.raw_bits() as i64)
+    }
+
+    fn i64_to_msw_lsw(value: i64) -> (Word, Word) {
+        let lsw = ((value & WORD_MASK as i64) << 40) >> 40;
+        let msw = (value & !WORD_MASK as i64) >> WORD_SIZE;
+        (
+            Word::IWord((msw << 40) >> 40),
+            Word::IWord((lsw << 40) >> 40),
+        )
+    }
+
+    fn exec_ddiv(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let lhs_msw = self.execution_context.memory[acc - 1];
+        let lhs_lsw = self.execution_context.memory[acc];
+        let rhs = self.operand(instruction);
+        match (lhs_msw, lhs_lsw, rhs) {
+            (Word::IWord(_), Word::IWord(_), Word::IWord(rhs)) => {
+                let lhs = Self::msw_lsw_to_i64(lhs_msw, lhs_lsw);
+                let result = lhs / rhs;
+                let (msw, lsw) = Self::i64_to_msw_lsw(result);
+                self.execution_context.memory[acc - 1] = msw;
+                self.execution_context.memory[acc] = lsw;
+            }
+            _ => panic!("DMULT requires IWord operands"),
+        }
+    }
+
+    fn exec_nilx(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let acc_value = self.execution_context.memory[acc];
+        let operand = self.operand(instruction);
+        let operand_address = instruction.address();
+        self.execution_context.memory[acc] = operand;
+        self.execution_context.memory[operand_address] = acc_value;
+    }
 }
 
 impl std::fmt::Debug for Executor {
@@ -416,6 +490,7 @@ impl From<Assembly> for ExecutionContext {
 
 #[cfg(test)]
 mod test {
+    use pretty_assertions::assert_eq;
     use std::io::Cursor;
 
     use super::*;
@@ -474,12 +549,20 @@ mod test {
     #[test]
     fn test_nil() {
         let program = r#"
-0001    NIL
+0001    +3.14
+0100    NIL 1, +2.71
 "#;
         let actual = execute(program).ok().unwrap();
         let expected = ExecutionContext::default()
-            .with_program_counter(2)
-            .with_instruction(1, Instruction::new(Function::NIL));
+            .with_instruction(
+                100,
+                Instruction::new(Function::NIL)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_memory_word(1, Word::FWord(3.14))
+            .with_memory_word(MEMORY_SIZE - 1, Word::FWord(2.71))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -1488,6 +1571,130 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(25))
             .with_memory_word(MEMORY_SIZE - 2, Word::IWord(12))
             .with_program_counter(102);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_powr() {
+        let program = r#"
+0001    +2
+0002    +2.0
+0100    POWR 1, +3
+0101    POWR 2, +3.0
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::POWR)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_instruction(
+                101,
+                Instruction::new(Function::POWR)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
+            )
+            .with_memory_word(1, Word::IWord(8))
+            .with_memory_word(2, Word::FWord(8.0))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(3))
+            .with_memory_word(MEMORY_SIZE - 2, Word::FWord(3.0))
+            .with_program_counter(102);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_dmult() {
+        let program = r#"
+0001    -1
+0002    -16000
+0100    DMULT 2, +12000
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::DMULT)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_memory_word(1, Word::IWord(-12))
+            .with_memory_word(2, Word::IWord(-7450624))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(12000))
+            .with_program_counter(101);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_div() {
+        let program = r#"
+0001    -42
+0002    +41
+0100    DIV 1, +7
+0101    DIV 2, +7
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::DIV)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_instruction(
+                101,
+                Instruction::new(Function::DIV)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
+            )
+            .with_memory_word(1, Word::IWord(-6))
+            .with_memory_word(2, Word::IWord(5))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(7))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(7))
+            .with_program_counter(102);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_ddiv() {
+        let program = r#"
+0001    -12
+0002    -7450624
+0100    DDIV 2, -12000
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::DDIV)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_memory_word(1, Word::IWord(0))
+            .with_memory_word(2, Word::IWord(16000))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(-12000))
+            .with_program_counter(101);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_nilx() {
+        let program = r#"
+0001    +3.14
+0100    NILX 1, +2.71
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::NILX)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_memory_word(1, Word::FWord(2.71))
+            .with_memory_word(MEMORY_SIZE - 1, Word::FWord(3.14))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 }

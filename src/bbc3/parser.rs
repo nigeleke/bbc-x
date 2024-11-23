@@ -16,6 +16,7 @@ impl Parser {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     type SourceProgram = Vec<Result<SourceProgramLine>>;
 

@@ -118,7 +118,6 @@ impl LanguageModel for Bbc3 {
 #[cfg(test)]
 mod test {
     use super::*;
-
     use tempdir::TempDir;
 
     #[test]

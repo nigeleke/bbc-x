@@ -191,6 +191,16 @@ impl Word {
         let raw = (raw | overflow) as RawBits & WORD_MASK;
         *self = self.same_type_from(raw)
     }
+
+    pub fn power(&mut self, operand: Word) {
+        *self = match (&self, operand) {
+            (Word::IWord(lhs), Word::IWord(rhs)) => Word::IWord(lhs.pow(rhs as u32)),
+            (Word::IWord(lhs), Word::FWord(rhs)) => Word::FWord((*lhs as f64).powf(rhs)),
+            (Word::FWord(lhs), Word::IWord(rhs)) => Word::FWord(lhs.powf(rhs as f64)),
+            (Word::FWord(lhs), Word::FWord(rhs)) => Word::FWord(lhs.powf(rhs)),
+            (lhs, rhs) => panic!("Operation not supported between {:?} and {:?}", lhs, rhs),
+        };
+    }
 }
 
 impl From<&str> for Word {
@@ -408,6 +418,7 @@ impl std::ops::IndexMut<usize> for Memory {
 #[cfg(test)]
 mod test {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn can_create_default_word() {

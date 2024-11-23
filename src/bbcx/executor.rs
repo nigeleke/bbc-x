@@ -93,6 +93,12 @@ impl Executor {
             (Function::DIV, Executor::exec_div as ExecFn),
             (Function::DDIV, Executor::exec_ddiv as ExecFn),
             (Function::NILX, Executor::exec_nilx as ExecFn),
+            (Function::ORX, Executor::exec_orx as ExecFn),
+            (Function::NEQVX, Executor::exec_neqvx as ExecFn),
+            (Function::ADDX, Executor::exec_addx as ExecFn),
+            (Function::SUBTX, Executor::exec_subtx as ExecFn),
+            (Function::MULTX, Executor::exec_multx as ExecFn),
+            (Function::DVDX, Executor::exec_dvdx as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -431,6 +437,36 @@ impl Executor {
         let operand_address = instruction.address();
         self.execution_context.memory[acc] = operand;
         self.execution_context.memory[operand_address] = acc_value;
+    }
+
+    fn exec_orx(&mut self, instruction: &Instruction) {
+        self.exec_or(instruction);
+        self.exec_nilx(instruction);
+    }
+
+    fn exec_neqvx(&mut self, instruction: &Instruction) {
+        self.exec_neqv(instruction);
+        self.exec_nilx(instruction);
+    }
+
+    fn exec_addx(&mut self, instruction: &Instruction) {
+        self.exec_add(instruction);
+        self.exec_nilx(instruction);
+    }
+
+    fn exec_subtx(&mut self, instruction: &Instruction) {
+        self.exec_subt(instruction);
+        self.exec_nilx(instruction);
+    }
+
+    fn exec_multx(&mut self, instruction: &Instruction) {
+        self.exec_mult(instruction);
+        self.exec_nilx(instruction);
+    }
+
+    fn exec_dvdx(&mut self, instruction: &Instruction) {
+        self.exec_dvd(instruction);
+        self.exec_nilx(instruction);
     }
 }
 
@@ -1694,6 +1730,136 @@ mod test {
             )
             .with_memory_word(1, Word::FWord(2.71))
             .with_memory_word(MEMORY_SIZE - 1, Word::FWord(3.14))
+            .with_program_counter(101);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_orx() {
+        let program = r#"
+0001    +12
+0100    ORX 1, +10
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::ORX)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_program_counter(101)
+            .with_memory_word(1, Word::IWord(10))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(14));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_neqvx() {
+        let program = r#"
+0001    +12
+0100    NEQVX 1, +10
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::NEQVX)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_program_counter(101)
+            .with_memory_word(1, Word::IWord(10))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(6));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_addx() {
+        let program = r#"
+0001    +12
+0100    ADDX 1, +10
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::ADDX)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_program_counter(101)
+            .with_memory_word(1, Word::IWord(10))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(22));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_subtx() {
+        let program = r#"
+0001    +12
+0002    +10
+0100    SUBTX 1, +10
+0101    SUBTX 2, +12
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::SUBTX)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_instruction(
+                101,
+                Instruction::new(Function::SUBTX)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
+            )
+            .with_program_counter(102)
+            .with_memory_word(1, Word::IWord(10))
+            .with_memory_word(2, Word::IWord(12))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(2))
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-2));
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_multx() {
+        let program = r#"
+0001    +12
+0100    MULTX 1, +10
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::MULTX)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_memory_word(1, Word::IWord(10))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(120))
+            .with_program_counter(101);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_dvdx() {
+        let program = r#"
+0001    +12
+0100    DVDX 1, +6
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::DVDX)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_memory_word(1, Word::IWord(6))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(2))
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }

@@ -99,6 +99,7 @@ impl Executor {
             (Function::SUBTX, Executor::exec_subtx as ExecFn),
             (Function::MULTX, Executor::exec_multx as ExecFn),
             (Function::DVDX, Executor::exec_dvdx as ExecFn),
+            (Function::PUT, Executor::exec_put as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -468,6 +469,13 @@ impl Executor {
         self.exec_dvd(instruction);
         self.exec_nilx(instruction);
     }
+
+    fn exec_put(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let acc_value = self.execution_context.memory[acc];
+        let address = instruction.address();
+        self.execution_context.memory[address] = acc_value;
+    }
 }
 
 impl std::fmt::Debug for Executor {
@@ -616,9 +624,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(14))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -636,9 +644,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(6))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -656,9 +664,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(8))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -676,9 +684,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(22))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -704,11 +712,11 @@ mod test {
                     .with_accumulator(2)
                     .with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(102)
             .with_memory_word(1, Word::IWord(2))
             .with_memory_word(2, Word::IWord(-2))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10))
-            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(12));
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(12))
+            .with_program_counter(102);
         assert_eq!(actual, expected)
     }
 
@@ -726,9 +734,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(120))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(10))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -746,9 +754,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(2))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(6));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(6))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -787,15 +795,15 @@ mod test {
                     .with_accumulator(4)
                     .with_address(110),
             )
-            .with_program_counter(104)
             .with_memory_word(1, Word::IWord(42))
             .with_memory_word(2, Word::FWord(3.14))
             .with_memory_word(3, "ABCD".into())
             .with_memory_word(4, Word::FWord(2.718))
-            .with_memory_word(110, Word::FWord(2.718))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
             .with_memory_word(MEMORY_SIZE - 2, Word::FWord(3.14))
-            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into());
+            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into())
+            .with_memory_word(110, Word::FWord(2.718))
+            .with_program_counter(104);
         assert_eq!(actual, expected)
     }
 
@@ -819,13 +827,13 @@ mod test {
                     .with_accumulator(4)
                     .with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(102)
             .with_memory_word(1, Word::IWord(0))
             .with_memory_word(2, Word::IWord(2))
             .with_memory_word(3, Word::IWord(-1))
             .with_memory_word(4, Word::IWord(-2))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(2))
-            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-2));
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-2))
+            .with_program_counter(102);
         assert_eq!(actual, expected)
     }
 
@@ -849,11 +857,11 @@ mod test {
                     .with_accumulator(2)
                     .with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(102)
             .with_memory_word(1, Word::IWord(-6))
             .with_memory_word(2, Word::IWord(6))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(6))
-            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-6));
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-6))
+            .with_program_counter(102);
         assert_eq!(actual, expected)
     }
 
@@ -877,11 +885,11 @@ mod test {
                     .with_accumulator(2)
                     .with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(102)
             .with_memory_word(1, Word::IWord(-5592406))
             .with_memory_word(2, Word::IWord(5592405))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(5592405))
-            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-5592406));
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-5592406))
+            .with_program_counter(102);
         assert_eq!(actual, expected)
     }
 
@@ -919,14 +927,14 @@ mod test {
                     .with_accumulator(4)
                     .with_address(103),
             )
-            .with_program_counter(104)
             .with_memory_word(1, Word::IWord(0))
             .with_memory_word(2, Word::IWord(1))
             .with_memory_word(3, Word::IWord(2))
             .with_memory_word(4, Word::IWord(3))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
             .with_memory_word(MEMORY_SIZE - 2, Word::FWord(3.14))
-            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into());
+            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into())
+            .with_program_counter(104);
         assert_eq!(actual, expected)
     }
 
@@ -950,11 +958,11 @@ mod test {
                     .with_accumulator(2)
                     .with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(102)
             .with_memory_word(1, Word::IWord(42))
             .with_memory_word(2, Word::IWord(0o01020304))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
-            .with_memory_word(MEMORY_SIZE - 2, "ABCD".into());
+            .with_memory_word(MEMORY_SIZE - 2, "ABCD".into())
+            .with_program_counter(102);
         assert_eq!(actual, expected)
     }
 
@@ -980,9 +988,9 @@ mod test {
                 101,
                 Instruction::new(Function::TOUT).with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(102)
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(1))
-            .with_memory_word(MEMORY_SIZE - 2, "ABCD".into());
+            .with_memory_word(MEMORY_SIZE - 2, "ABCD".into())
+            .with_program_counter(102);
         assert_eq!(actual, expected)
     }
 
@@ -1009,10 +1017,10 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(103)
             .with_memory_word(1, Word::IWord(1))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(1))
-            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(1));
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(1))
+            .with_program_counter(103);
         assert_eq!(actual, expected)
     }
 
@@ -1748,9 +1756,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(10))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(14));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(14))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -1768,9 +1776,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(10))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(6));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(6))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -1788,9 +1796,9 @@ mod test {
                     .with_accumulator(1)
                     .with_address(MEMORY_SIZE - 1),
             )
-            .with_program_counter(101)
             .with_memory_word(1, Word::IWord(10))
-            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(22));
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(22))
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 
@@ -1816,11 +1824,11 @@ mod test {
                     .with_accumulator(2)
                     .with_address(MEMORY_SIZE - 2),
             )
-            .with_program_counter(102)
             .with_memory_word(1, Word::IWord(10))
             .with_memory_word(2, Word::IWord(12))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(2))
-            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-2));
+            .with_memory_word(MEMORY_SIZE - 2, Word::IWord(-2))
+            .with_program_counter(102);
         assert_eq!(actual, expected)
     }
 
@@ -1861,6 +1869,57 @@ mod test {
             .with_memory_word(1, Word::IWord(6))
             .with_memory_word(MEMORY_SIZE - 1, Word::IWord(2))
             .with_program_counter(101);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_put() {
+        let program = r#"
+0001            +42
+0002            +3.14
+0003            "ABCD"
+0004            +2.718
+0100            PUT 1, +0
+0101            PUT 2, +0.0
+0102            PUT 3, "    "
+0103            PUT 4, LOC
+0110    LOC:    +0.0
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                Instruction::new(Function::PUT)
+                    .with_accumulator(1)
+                    .with_address(MEMORY_SIZE - 1),
+            )
+            .with_instruction(
+                101,
+                Instruction::new(Function::PUT)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2),
+            )
+            .with_instruction(
+                102,
+                Instruction::new(Function::PUT)
+                    .with_accumulator(3)
+                    .with_address(MEMORY_SIZE - 3),
+            )
+            .with_instruction(
+                103,
+                Instruction::new(Function::PUT)
+                    .with_accumulator(4)
+                    .with_address(110),
+            )
+            .with_memory_word(1, Word::IWord(42))
+            .with_memory_word(2, Word::FWord(3.14))
+            .with_memory_word(3, "ABCD".into())
+            .with_memory_word(4, Word::FWord(2.718))
+            .with_memory_word(MEMORY_SIZE - 1, Word::IWord(42))
+            .with_memory_word(MEMORY_SIZE - 2, Word::FWord(3.14))
+            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into())
+            .with_memory_word(110, Word::FWord(2.718))
+            .with_program_counter(104);
         assert_eq!(actual, expected)
     }
 }

@@ -1,0 +1,13 @@
+/home/runner/work/bbc-x/bbc-x/target/debug/deps/libpom-a4496837132121bc.rmeta: /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/lib.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/range.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/result.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/set.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/parser.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/char_class.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/utf8.rs
+
+/home/runner/work/bbc-x/bbc-x/target/debug/deps/libpom-a4496837132121bc.rlib: /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/lib.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/range.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/result.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/set.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/parser.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/char_class.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/utf8.rs
+
+/home/runner/work/bbc-x/bbc-x/target/debug/deps/pom-a4496837132121bc.d: /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/lib.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/range.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/result.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/set.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/parser.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/char_class.rs /home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/utf8.rs
+
+/home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/lib.rs:
+/home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/range.rs:
+/home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/result.rs:
+/home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/set.rs:
+/home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/parser.rs:
+/home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/char_class.rs:
+/home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pom-3.4.0/src/utf8.rs:

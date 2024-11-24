@@ -1,6 +1,8 @@
 use super::assembly::Assembly;
 use super::charset::CharSet;
-use super::memory::*;
+use super::memory::{
+    Function, Instruction, Memory, Offset, Word, OVERFLOW_MASK, WORD_MASK, WORD_SIZE,
+};
 
 use crate::result::Result;
 
@@ -594,6 +596,7 @@ mod test {
     use super::*;
 
     use crate::bbcx::assembler::*;
+    use crate::bbcx::memory::MEMORY_SIZE;
     use crate::bbcx::parser::*;
 
     fn execute(input: &str) -> Result<ExecutionContext> {

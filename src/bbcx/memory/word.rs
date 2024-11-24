@@ -1,81 +1,8 @@
-use super::assembly::Assembly;
-use super::ast::{
-    ConstOperand as AstConstOperand, FloatType as AstFloatType, IndexRegister as AstIndexRegister,
-    IntType as AstIntType, Location as AstLocation, Mnemonic as AstMnemonic,
-    SourceWord as AstSourceWord, StoreOperand as AstStoreOperand,
-};
-use super::charset::CharSet;
+use super::instruction::Instruction;
+use super::{FloatType, IntType};
 
-pub type Function = AstMnemonic;
-pub type IndexRegister = AstIndexRegister;
-pub type IntType = AstIntType;
-pub type FloatType = AstFloatType;
-
-pub type Offset = usize;
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Instruction {
-    function: Function,
-    accumulator: Offset,
-    index_register: IndexRegister,
-    indirect: bool,
-    page: usize,
-    address: Offset,
-}
-
-impl Instruction {
-    pub fn new(function: Function) -> Self {
-        Self {
-            function,
-            ..Default::default()
-        }
-    }
-
-    pub fn with_accumulator(mut self, accumulator: Offset) -> Self {
-        self.accumulator = accumulator;
-        self
-    }
-
-    pub fn with_index_register(mut self, index_register: IndexRegister) -> Self {
-        self.index_register = index_register;
-        self
-    }
-
-    pub fn with_indirect(mut self, indirect: bool) -> Self {
-        self.indirect = indirect;
-        self
-    }
-
-    pub fn with_page(mut self, page: usize) -> Self {
-        self.page = page;
-        self
-    }
-
-    pub fn with_address(mut self, address: Offset) -> Self {
-        self.address = address;
-        self
-    }
-
-    pub fn function(&self) -> Function {
-        self.function
-    }
-
-    pub fn accumulator(&self) -> Offset {
-        self.accumulator
-    }
-
-    pub fn index_register(&self) -> IndexRegister {
-        self.index_register
-    }
-
-    pub fn indirect(&self) -> bool {
-        self.indirect
-    }
-
-    pub fn address(&self) -> Offset {
-        self.address
-    }
-}
+use crate::bbcx::ast::{ConstOperand as AstConstOperand, StoreOperand as AstStoreOperand};
+use crate::bbcx::charset::CharSet;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[allow(clippy::enum_variant_names)] // Reflect specification naming
@@ -100,12 +27,12 @@ const FWORD_EXPONENT_MASK: RawBits = 0o3760_0000;
 const FWORD_MANTISSA_MASK: RawBits = 0o0017_7777;
 
 impl Word {
-    fn iword_from(raw: RawBits) -> Self {
+    pub fn iword_from(raw: RawBits) -> Self {
         let i64_value = ((raw as i64) << 40) >> 40;
         Word::IWord(i64_value)
     }
 
-    fn fword_from(raw: RawBits) -> Self {
+    pub fn fword_from(raw: RawBits) -> Self {
         let sign = if (raw & FWORD_SIGN_MASK) != 0 {
             -1.0
         } else {
@@ -121,7 +48,7 @@ impl Word {
         Word::FWord(sign * (1.0 + mantissa) * (2.0_f64).powi(exponent))
     }
 
-    fn sword_from(raw: RawBits) -> Self {
+    pub fn sword_from(raw: RawBits) -> Self {
         Word::SWord([
             ((raw & 0o77000000) >> 18) as u8,
             ((raw & 0o00770000) >> 12) as u8,
@@ -130,7 +57,7 @@ impl Word {
         ])
     }
 
-    fn pword_from(_raw: RawBits) -> Self {
+    pub fn pword_from(_raw: RawBits) -> Self {
         unimplemented!()
     }
 
@@ -168,12 +95,12 @@ impl Word {
                     | s[3] as RawBits
             }
             Word::PWord(instruction) => {
-                let function_code = instruction.function as RawBits;
-                let accumulator = instruction.accumulator as RawBits;
-                let index_register = instruction.index_register as RawBits;
-                let indirect = instruction.indirect as RawBits;
-                let page = instruction.page as RawBits;
-                let address = instruction.address as RawBits;
+                let function_code = instruction.function() as RawBits;
+                let accumulator = instruction.accumulator() as RawBits;
+                let index_register = instruction.index_register() as RawBits;
+                let indirect = instruction.indirect() as RawBits;
+                let page = instruction.page() as RawBits;
+                let address = instruction.address() as RawBits;
                 ((function_code << 18)
                     | (accumulator << 15)
                     | (index_register << 12)
@@ -340,122 +267,5 @@ impl std::ops::Not for Word {
         let not_raw = !raw;
         println!("raw: {:#010o} not: {:#010o}", raw, not_raw);
         self.same_type_from(not_raw)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Memory(Vec<Word>);
-
-impl Memory {
-    fn add_source_word(
-        mut self,
-        location: AstLocation,
-        source_word: &AstSourceWord,
-        assembly: &Assembly,
-    ) -> Self {
-        match source_word {
-            AstSourceWord::IWord(i) => {
-                self[location] = Word::IWord(*i);
-            }
-            AstSourceWord::FWord(f) => {
-                self[location] = Word::FWord(*f);
-            }
-            AstSourceWord::PWord(pword) => {
-                let operand = pword.store_operand();
-                let address = if operand.requires_storage() {
-                    let address = self.next_storage_address();
-                    self[address] = Word::from(operand);
-                    address
-                } else {
-                    assembly.address_used_by_store_operand(operand)
-                };
-
-                let instruction = Instruction::new(pword.mnemonic())
-                    .with_accumulator(pword.accumulator().as_usize())
-                    .with_index_register(pword.index_register())
-                    .with_indirect(pword.indirect())
-                    .with_page(pword.page())
-                    .with_address(address);
-                self[location] = Word::PWord(instruction);
-            }
-            AstSourceWord::SWord(s) => self[location] = s.as_str().into(),
-        };
-        self
-    }
-
-    fn next_storage_address(&self) -> Offset {
-        self.0
-            .iter()
-            .rposition(|content| *content == Word::Undefined)
-            .unwrap()
-    }
-}
-
-pub const MEMORY_SIZE: Offset = 128; // TODO Change to 1024
-
-impl Default for Memory {
-    fn default() -> Self {
-        Self(vec![Word::default(); MEMORY_SIZE])
-    }
-}
-
-impl From<Assembly> for Memory {
-    fn from(value: Assembly) -> Self {
-        let linked_code = value.linked_code();
-        let mut keys = Vec::from_iter(linked_code.keys());
-        keys.sort();
-        keys.into_iter().fold(Memory::default(), |acc, location| {
-            let content = &linked_code[location];
-            acc.add_source_word(*location, content, &value)
-        })
-    }
-}
-
-impl std::ops::Index<usize> for Memory {
-    type Output = Word;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.0[index]
-    }
-}
-
-impl std::ops::IndexMut<usize> for Memory {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.0[index]
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn can_create_default_word() {
-        assert_eq!(Word::default(), Word::Undefined)
-    }
-
-    #[test]
-    fn can_convert_between_iword_and_raw_bits() {
-        let expected = Word::IWord(42);
-        let raw = expected.raw_bits();
-        let actual = Word::iword_from(raw);
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn can_convert_between_fword_and_raw_bits() {
-        let expected = Word::FWord(42.0);
-        let raw = expected.raw_bits();
-        let actual = Word::fword_from(raw);
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn can_convert_between_sword_and_raw_bits() {
-        let expected: Word = "ABCD".into();
-        let raw = expected.raw_bits();
-        let actual = Word::sword_from(raw);
-        assert_eq!(actual, expected);
     }
 }

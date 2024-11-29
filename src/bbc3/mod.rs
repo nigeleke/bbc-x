@@ -16,13 +16,12 @@ use crate::result::{Error, Result};
 
 use std::path::Path;
 
-// #[derive(Clone)]
-pub(crate) struct Bbc3 {
+pub struct Bbc3 {
     args: Args,
 }
 
 impl Bbc3 {
-    pub(crate) fn new(args: &Args) -> Bbc3 {
+    pub fn new(args: &Args) -> Bbc3 {
         let args = args.clone();
         Self { args }
     }
@@ -52,12 +51,11 @@ impl Bbc3 {
             let all_results = parsed_lines
                 .iter()
                 .zip(lines.iter())
-                .map(|(r, l)|
-                    match (r, l) {
-                        (Ok(_), l) => format!("        {}", l), 
-                        (Err(Error::FailedToParse(e)), l) => format!(" *****  {}\n         {}", l, e),
-                        _ => unreachable!(),
-                    })
+                .map(|(r, l)| match (r, l) {
+                    (Ok(_), l) => format!("        {}", l),
+                    (Err(Error::FailedToParse(e)), l) => format!(" *****  {}\n         {}", l, e),
+                    _ => unreachable!(),
+                })
                 .collect::<Vec<_>>()
                 .join("\n");
             Err(Error::FailedToAssemble(all_results))
@@ -65,7 +63,9 @@ impl Bbc3 {
     }
 
     fn impl_run(&self, _path: &Path) -> Result<()> {
-        Err(Error::FailedToRun("BBC-3 run command is not implemented".into()))
+        Err(Error::FailedToRun(
+            "BBC-3 run command is not implemented".into(),
+        ))
     }
 
     fn impl_list(&self, path: &Path) -> Result<()> {
@@ -75,21 +75,22 @@ impl Bbc3 {
         for line in results {
             let line = match line {
                 Ok(line) => format!("        {}", line),
-                Err(Error::FailedToParse(error)) => format!(" *****  {}", error), 
+                Err(Error::FailedToParse(error)) => format!(" *****  {}", error),
                 _ => unreachable!(),
             };
             writer.add_lines_to_listing(&line);
         }
-        writer.write_content_to_file().map_err(|e| Error::CannotToWriteFile(path.display().to_string(), e.to_string()))
+        writer
+            .write_content_to_file()
+            .map_err(|e| Error::CannotToWriteFile(path.display().to_string(), e.to_string()))
     }
-
 }
 
 fn file_lines(path: &Path) -> Result<Vec<String>> {
     let filename = path.display().to_string();
 
-    let content = std::fs::read(path)
-        .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))?;
+    let content =
+        std::fs::read(path).map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))?;
 
     let content = String::from_utf8(content)
         .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))?;
@@ -102,7 +103,7 @@ impl LanguageModel for Bbc3 {
         _ = self.impl_assemble(path)?;
         Ok(())
     }
-    
+
     fn run(&self, path: &Path) -> Result<()> {
         self.impl_run(path)?;
         unreachable!()
@@ -117,37 +118,50 @@ impl LanguageModel for Bbc3 {
 #[cfg(test)]
 mod test {
     use super::*;
-
     use tempdir::TempDir;
 
     #[test]
     fn will_assemble() {
-        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let model = Bbc3::new(&args);
         let result = model.assemble(&args.files().next().unwrap());
-        assert!(result.is_ok())                
+        assert!(result.is_ok())
     }
 
     #[test]
     fn will_not_run() {
-        let args = vec!["bbc-x", "--lang=bbc3", "--run", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec![
+            "bbc-x",
+            "--lang=bbc3",
+            "--run",
+            "./examples/test/bbc3/nthg.bbc",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
         let args = Args::from(args);
         let model = Bbc3::new(&args);
         let result = model.run(&args.files().next().unwrap());
-        assert!(result.is_err())                
+        assert!(result.is_err())
     }
 
     #[test]
     fn will_list() {
-        let temp_folder = TempDir::new("bbcx-tests").unwrap();
+        let temp_folder = TempDir::new("bbcx-tests-bbc3").unwrap();
 
         let temp_target = temp_folder.path().join("nthg.bbc");
         let temp_target_str = temp_target.display().to_string();
 
         std::fs::copy("./examples/test/bbc3/nthg.bbc", temp_target).unwrap();
 
-        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "--list", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let args = Args::from(args);
         let model = Bbc3::new(&args);
         let _ = model.list(&args.files().next().unwrap());

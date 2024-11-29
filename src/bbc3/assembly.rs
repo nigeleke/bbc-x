@@ -2,23 +2,23 @@ use super::ast::{Location as AstLocation, SourceProgramWord as AstSourceProgramW
 
 use std::collections::HashMap;
 
-pub(crate) type Location = AstLocation;
-pub(crate) type Content = AstSourceProgramWord;
+pub type Location = AstLocation;
+pub type Content = AstSourceProgramWord;
 
-pub(crate) type Code = HashMap<Location, Content>;
+pub type Code = HashMap<Location, Content>;
 
-pub(crate) struct Assembly {
+pub struct Assembly {
     _code: Code,
 }
 
 impl Assembly {
-    pub(crate) fn new(code: &Code) -> Self {
+    pub fn new(code: &Code) -> Self {
         let code = code.clone();
         Self { _code: code }
     }
 
     #[cfg(test)]
-    pub(crate) fn content(&self, location: Location) -> Option<Content> {
+    pub fn content(&self, location: Location) -> Option<Content> {
         self._code.get(&location).map(|w| w.clone())
     }
 }

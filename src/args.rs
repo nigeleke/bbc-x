@@ -1,13 +1,13 @@
-use clap::{Parser as ClapParser, ValueEnum};
 #[cfg(test)]
 use clap::error::Error as ClapError;
+use clap::{Parser as ClapParser, ValueEnum};
 
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, PartialEq, ValueEnum)]
-pub(crate) enum Language {
+pub enum Language {
     Bbc3,
-    BbcX
+    BbcX,
 }
 
 #[derive(Clone, Debug, ClapParser, PartialEq)]
@@ -15,7 +15,7 @@ pub(crate) enum Language {
 ///
 /// Resurrection of the educational BBC-X assembler language used at Hatfield Polytechnic.
 ///
-pub(crate) struct Args {
+pub struct Args {
     /// Specify the source file language. It is expected that all source files are in the same
     /// language.
     #[arg(long, visible_alias="lang", value_enum, default_value_t=Language::BbcX)]
@@ -52,36 +52,36 @@ pub(crate) struct Args {
 }
 
 impl Args {
-    pub(crate) fn from(args: Vec<String>) -> Self {
+    pub fn from(args: Vec<String>) -> Self {
         Args::parse_from(args)
     }
 
-    pub(crate) fn language(&self) -> Language {
+    pub fn language(&self) -> Language {
         self.language
     }
 
     #[inline]
-    pub(crate) fn list(&self) -> bool {
+    pub fn list(&self) -> bool {
         self.list
     }
 
     #[inline]
-    pub(crate) fn list_path(&self) -> Option<PathBuf> {
+    pub fn list_path(&self) -> Option<PathBuf> {
         self.list_path.clone()
     }
 
     #[inline]
-    pub(crate) fn files(&self) -> impl Iterator<Item = PathBuf> + '_ {
+    pub fn files(&self) -> impl Iterator<Item = PathBuf> + '_ {
         self.files.iter().cloned()
     }
 
     #[inline]
-    pub(crate) fn run(&self) -> bool {
+    pub fn run(&self) -> bool {
         self.run
     }
 
     #[cfg(test)]
-    pub(crate) fn try_from(args: &str) -> Result<Self, ClapError> {
+    pub fn try_from(args: &str) -> Result<Self, ClapError> {
         let args = Vec::from_iter(args.split(' ').map(String::from));
         Args::try_parse_from(&args)
     }
@@ -91,6 +91,7 @@ impl Args {
 mod test {
     use super::*;
     use clap::error::ErrorKind;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn error_with_zero_args() {
@@ -161,7 +162,9 @@ mod test {
     fn use_trace_path() {
         let args = "bbc-x --trace-path my/trace/path/ infile1.bbc";
         let result = Args::try_from(&args).expect("Expected successful parse");
-        assert_eq!(result.trace_path, Some(PathBuf::new().join("my/trace/path/")))
+        assert_eq!(
+            result.trace_path,
+            Some(PathBuf::new().join("my/trace/path/"))
+        )
     }
-
 }

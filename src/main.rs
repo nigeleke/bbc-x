@@ -1,11 +1,11 @@
-pub(crate) mod args;
-pub(crate) mod bbc3;
-pub(crate) mod bbcx;
-pub(crate) mod core;
-pub(crate) mod language;
-pub(crate) mod list_writer;
-pub(crate) mod model;
-pub(crate) mod result;
+pub mod args;
+pub mod bbc3;
+pub mod bbcx;
+pub mod core;
+pub mod language;
+pub mod list_writer;
+pub mod model;
+pub mod result;
 
 use crate::args::Args;
 use crate::core::Core;
@@ -15,7 +15,7 @@ use crate::result::Result;
 fn main() {
     let args = std::env::args().collect::<Vec<String>>();
     match bbc_x(args) {
-        Ok(_) => {},
+        Ok(_) => {}
         Err(e) => println!("Error: {:?}", e),
     }
 }
@@ -31,7 +31,10 @@ mod test {
 
     #[test]
     fn invoke_core() {
-        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"].into_iter().map(|s| s.to_string()).collect();
+        let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         let result = bbc_x(args);
         assert!(result.is_ok())
     }

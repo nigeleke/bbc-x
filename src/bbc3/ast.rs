@@ -1,23 +1,23 @@
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct SourceProgramLine {
+pub struct SourceProgramLine {
     location: Location,
     source_program_word: SourceProgramWord,
     comment: Comment
 }
 
 impl SourceProgramLine {
-    pub(crate) fn new(
+    pub fn new(
         location: Location,
         source_program_word: SourceProgramWord,
         comment: Comment) -> Self {
         Self { location, source_program_word, comment }
     }
 
-    pub(crate) fn location(&self) -> &Location {
+    pub fn location(&self) -> &Location {
         &self.location
     }
 
-    pub(crate) fn source_program_word(&self) -> &SourceProgramWord {
+    pub fn source_program_word(&self) -> &SourceProgramWord {
         &self.source_program_word
     }
 }
@@ -32,12 +32,12 @@ impl std::fmt::Display for SourceProgramLine {
     }
 }
 
-pub(crate) type Location = AddressRef;
+pub type Location = AddressRef;
 
-pub(crate) type Identifier = String;
+pub type Identifier = String;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum SourceProgramWord {
+pub enum SourceProgramWord {
     SWord(SWord),
     PWord(PWord),
     FWord(FWord),
@@ -57,10 +57,10 @@ impl std::fmt::Display for SourceProgramWord {
     }
 }
 
-pub(crate) type SWord = String;
+pub type SWord = String;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum PWord {
+pub enum PWord {
     TakeType(Mnemonic, Acc, GeneralOperand),
     PutType(Mnemonic, Acc, AddressOperand),
     LoadN(Acc, SimpleAddressOperand, Index),
@@ -83,7 +83,7 @@ impl std::fmt::Display for PWord {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Acc(Option<char>);
+pub struct Acc(Option<char>);
 
 impl From<char> for Acc {
     fn from(a: char) -> Self {
@@ -103,14 +103,14 @@ impl std::fmt::Display for Acc {
     }
 }
 
-pub(crate) type FWord = FloatType;
+pub type FWord = FloatType;
 
-pub(crate) type IWord = IntType;
+pub type IWord = IntType;
 
-pub(crate) type Comment = String;
+pub type Comment = String;
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Octal {
+pub enum Octal {
     S(WordValue),
     P(WordValue),
     F(WordValue),
@@ -129,7 +129,7 @@ impl std::fmt::Display for Octal {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum GeneralOperand {
+pub enum GeneralOperand {
     AddressOperand(AddressOperand),
     ConstOperand(ConstOperand),
 }
@@ -144,13 +144,13 @@ impl std::fmt::Display for GeneralOperand {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) struct AddressOperand {
+pub struct AddressOperand {
     address: SimpleAddressOperand,
     index: Option<Index>,
 }
 
 impl AddressOperand {
-    pub(crate) fn new(
+    pub fn new(
         address: SimpleAddressOperand,
         index:  Option<Index>) -> Self {
         Self { address, index }
@@ -165,7 +165,7 @@ impl std::fmt::Display for AddressOperand {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum ConstOperand {
+pub enum ConstOperand {
     SignedInteger(IntType),
     SignedFWord(FloatType),
     Octal(Octal),
@@ -184,7 +184,7 @@ impl std::fmt::Display for ConstOperand {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum SimpleAddressOperand {
+pub enum SimpleAddressOperand {
     DirectAddress(Address),
     IndirectAddress(Address)
 }
@@ -199,7 +199,7 @@ impl std::fmt::Display for SimpleAddressOperand {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum Address {
+pub enum Address {
     Identifier(Identifier),
     NumericAddress(NumericAddress),
 }
@@ -214,7 +214,7 @@ impl std::fmt::Display for Address {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub(crate) enum NumericAddress {
+pub enum NumericAddress {
     AbsoluteAddress(AddressRef),
     RelativeAddress(RelativeRef),
 }
@@ -228,20 +228,20 @@ impl std::fmt::Display for NumericAddress {
     }
 }
 
-pub(crate) type TypeDesignator = char;
-pub(crate) type Character = char;
-pub(crate) type NumericCharacter = char;
-pub(crate) type Punctuation = char;
-pub(crate) type IntType = i32;
-pub(crate) type FloatType = f32;
-pub(crate) type AddressRef = usize;
-pub(crate) type RelativeRef = usize; // TODO: Implies forward addressing only...
-pub(crate) type Index = usize;
-pub(crate) type WordValue = u32;
+pub type TypeDesignator = char;
+pub type Character = char;
+pub type NumericCharacter = char;
+pub type Punctuation = char;
+pub type IntType = i32;
+pub type FloatType = f32;
+pub type AddressRef = usize;
+pub type RelativeRef = usize; // TODO: Implies forward addressing only...
+pub type Index = usize;
+pub type WordValue = u32;
 
 #[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::upper_case_acronyms)]
-pub(crate) enum Mnemonic {
+pub enum Mnemonic {
     LDN,
     LDR,
     // 0-15 mnemonic

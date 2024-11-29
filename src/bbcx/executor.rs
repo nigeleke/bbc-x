@@ -103,6 +103,7 @@ impl Executor {
             (Function::PSQU, Executor::exec_psqu as ExecFn),
             (Function::PNEG, Executor::exec_pneg as ExecFn),
             (Function::PTYP, Executor::exec_ptyp as ExecFn),
+            (Function::PTYZ, Executor::exec_ptyz as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -393,6 +394,14 @@ impl Executor {
         let (acc, address) = Self::acc_and_address(instruction);
         let acc_value = self.ec[acc];
         self.ec[address].set_word_type(&acc_value);
+    }
+
+    fn exec_ptyz(&mut self, instruction: &Instruction) {
+        let (acc, address) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        let mut result: Word = 0.try_into().unwrap();
+        result.set_word_bits(&acc_value);
+        self.ec[address] = result;
     }
 }
 
@@ -2071,16 +2080,17 @@ mod test {
     }
 
     #[test]
-    fn test_ptyp() {
+    fn test_ptyz() {
         let program = r#"
-0001    +0
-0002    +1
-0003    +2
-0004    +3
-0100            PTYP 1, LOC1
-0101            PTYP 2, LOC2
-0102            PTYP 3, LOC3
-0103            PTYP 4, LOC4
+0001    +1
+0002    +1.0
+0003    "ABCD"
+0004    +0
+0100            PTYZ 1, LOC1
+0101            PTYZ 2, LOC2
+0102            PTYZ 3, LOC3
+0103            TAKE 4, 103
+0104            PTYZ 4, LOC4
 0110    LOC1:   +0.0
 0111    LOC2:   +0.0
 0112    LOC3:   +0.0
@@ -2090,41 +2100,54 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                InstructionBuilder::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYZ)
                     .with_accumulator(1)
                     .with_address(110)
                     .build(),
             )
             .with_instruction(
                 101,
-                InstructionBuilder::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYZ)
                     .with_accumulator(2)
                     .with_address(111)
                     .build(),
             )
             .with_instruction(
                 102,
-                InstructionBuilder::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYZ)
                     .with_accumulator(3)
                     .with_address(112)
                     .build(),
             )
             .with_instruction(
                 103,
-                InstructionBuilder::new(Function::PTYP)
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(103)
+                    .build(),
+            )
+            .with_instruction(
+                104,
+                InstructionBuilder::new(Function::PTYZ)
                     .with_accumulator(4)
                     .with_address(113)
                     .build(),
             )
-            .with_memory_word(1, 0)
-            .with_memory_word(2, 1)
-            .with_memory_word(3, 2)
-            .with_memory_word(4, 3)
-            .with_memory_word(110, 0)
-            .with_memory_word(111, 0.0)
-            .with_memory_word(112, "\0\0\0\0")
-            .with_instruction(113, InstructionBuilder::new(Function::NIL).build())
-            .with_program_counter(104);
+            .with_memory_word(1, 1)
+            .with_memory_word(2, 1.0)
+            .with_memory_word(3, "ABCD")
+            .with_instruction(
+                4,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(103)
+                    .build(),
+            )
+            .with_memory_word(110, 0o00000001)
+            .with_memory_word(111, 0o17600000)
+            .with_memory_word(112, 0o01020304)
+            .with_memory_word(113, 0o10400147)
+            .with_program_counter(105);
         assert_eq!(actual, expected)
     }
 }

@@ -369,7 +369,7 @@ pub enum Mnemonic {
     PNOT,
     PTYP,
     PTYZ,
-    PFFP,
+    PPPP,
     PIN,
     JUMP,
     JEZ,

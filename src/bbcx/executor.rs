@@ -4,26 +4,26 @@ use super::result::{Error, Result};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::io::{self, Read, Write};
 use std::rc::Rc;
 
 pub struct Executor {
     ec: ExecutionContext,
-    #[allow(dead_code)] // TODO: Remove
-    stdin: Rc<RefCell<dyn std::io::Read>>,
-    stdout: Rc<RefCell<dyn std::io::Write>>,
+    stdin: Rc<RefCell<dyn Read>>,
+    stdout: Rc<RefCell<dyn Write>>,
 }
 
 impl Executor {
     pub fn new() -> Self {
-        let stdin = Rc::new(RefCell::new(std::io::stdin()));
-        let stdout = Rc::new(RefCell::new(std::io::stdout()));
+        let stdin = Rc::new(RefCell::new(io::stdin()));
+        let stdout = Rc::new(RefCell::new(io::stdout()));
         Self::with_io(stdin, stdout)
     }
 
     pub fn with_io<R, W>(stdin: Rc<RefCell<R>>, stdout: Rc<RefCell<W>>) -> Self
     where
-        R: std::io::Read + 'static,
-        W: std::io::Write + 'static,
+        R: Read + 'static,
+        W: Write + 'static,
     {
         Self {
             ec: ExecutionContext::default(),
@@ -51,7 +51,6 @@ impl Executor {
         let pc = self.ec.pc;
         self.ec.pc += 1;
         let content = self.ec[pc];
-        println!("exec {:?} @ {:?}", content, pc);
         let instruction = word_to_instruction(&content)
             .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))?;
         self.step_word(&instruction);
@@ -104,6 +103,7 @@ impl Executor {
             (Function::PNEG, Executor::exec_pneg as ExecFn),
             (Function::PTYP, Executor::exec_ptyp as ExecFn),
             (Function::PTYZ, Executor::exec_ptyz as ExecFn),
+            (Function::PIN, Executor::exec_pin as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -199,7 +199,6 @@ impl Executor {
 
     fn exec_tneg(&mut self, instruction: &Instruction) {
         let (acc, operand) = self.acc_and_operand(instruction);
-        println!("operand {:?} neg_operand {:?}", operand, -operand);
         self.ec[acc] = -operand;
     }
 
@@ -402,6 +401,31 @@ impl Executor {
         let mut result: Word = 0.try_into().unwrap();
         result.set_word_bits(&acc_value);
         self.ec[address] = result;
+    }
+
+    fn exec_pin(&mut self, instruction: &Instruction) {
+        let (_acc, address) = Self::acc_and_address(instruction);
+
+        let mut stdin = (*self.stdin).borrow_mut();
+        let mut stdout = (*self.stdout).borrow_mut();
+
+        let mut buffer = vec![0u8; 1];
+
+        match stdin.read(&mut buffer) {
+            Ok(0) => {
+                stdout.write_all("DATA*".as_bytes()).unwrap();
+            }
+            Ok(_) => {
+                // TODO: May not want to echo here, but just set `self.ec[address]`
+                stdout.write_all(&buffer).unwrap();
+                self.ec[address] = String::from_utf8(buffer)
+                    .map(|s| s.as_str().try_into().unwrap())
+                    .unwrap();
+            }
+            Err(e) => {
+                panic!("Error reading from stdin: {}", e);
+            }
+        }
     }
 }
 
@@ -2148,6 +2172,45 @@ mod test {
             .with_memory_word(112, 0o01020304)
             .with_memory_word(113, 0o10400147)
             .with_program_counter(105);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_pppp() {
+        // Spec: "not used at present"
+        assert!(true)
+    }
+
+    #[test]
+    fn test_pin() {
+        let program = r#"
+0100            PIN  IO
+0101            PIN  IO
+0102            PIN  IO
+0110    IO:     +0
+"#;
+        let actual = execute_io(program, "12", "12DATA*").ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::PIN)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::PIN)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::PIN)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_memory_word(110, "2")
+            .with_program_counter(103);
         assert_eq!(actual, expected)
     }
 }

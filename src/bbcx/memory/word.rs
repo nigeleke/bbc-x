@@ -280,13 +280,9 @@ impl TryFrom<f64> for Word {
                     >> (Word::F64_MANTISSA_MASK.trailing_ones()
                         - Word::FWORD_MANTISSA_MASK.trailing_ones());
 
-                let raw_bits = bits::set(sign, Word::FWORD_SIGN_MASK)
+                bits::set(sign, Word::FWORD_SIGN_MASK)
                     | bits::set(f24_exponent as u64, Word::FWORD_EXPONENT_MASK)
-                    | bits::set(f24_mantissa, Word::FWORD_MANTISSA_MASK);
-
-                println!("f24 raw_bits {:08o}", raw_bits);
-
-                raw_bits as RawBits
+                    | bits::set(f24_mantissa, Word::FWORD_MANTISSA_MASK) as RawBits
             })
         }
 

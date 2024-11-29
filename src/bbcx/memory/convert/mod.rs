@@ -41,10 +41,7 @@ pub fn store_operand_to_word(operand: &StoreOperand) -> Result<Word> {
     match operand {
         StoreOperand::ConstOperand(operand) => match operand {
             ConstOperand::SignedIWord(i) => (*i).try_into(),
-            ConstOperand::SignedFWord(f) => {
-                println!("store_operand_to_word");
-                (*f).try_into()
-            }
+            ConstOperand::SignedFWord(f) => (*f).try_into(),
             ConstOperand::SWord(s) => s.as_str().try_into(),
         },
         _ => Err(Error::CannotCreateWordFromStoreOperand(operand.to_string())),

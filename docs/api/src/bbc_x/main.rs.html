@@ -36,14 +36,17 @@
 <a href="#36" id="36">36</a>
 <a href="#37" id="37">37</a>
 <a href="#38" id="38">38</a>
-</pre></div><pre class="rust"><code><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>args;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>bbc3;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>bbcx;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>core;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>language;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>list_writer;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>model;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>result;
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+</pre></div><pre class="rust"><code><span class="kw">pub mod </span>args;
+<span class="kw">pub mod </span>bbc3;
+<span class="kw">pub mod </span>bbcx;
+<span class="kw">pub mod </span>core;
+<span class="kw">pub mod </span>language;
+<span class="kw">pub mod </span>list_writer;
+<span class="kw">pub mod </span>model;
+<span class="kw">pub mod </span>result;
 
 <span class="kw">use </span><span class="kw">crate</span>::args::Args;
 <span class="kw">use </span><span class="kw">crate</span>::core::Core;
@@ -53,7 +56,7 @@
 </span><span class="kw">fn </span>main() {
     <span class="kw">let </span>args = std::env::args().collect::&lt;Vec&lt;String&gt;&gt;();
     <span class="kw">match </span>bbc_x(args) {
-        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {},
+        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
         <span class="prelude-val">Err</span>(e) =&gt; <span class="macro">println!</span>(<span class="string">"Error: {:?}"</span>, e),
     }
 }
@@ -69,7 +72,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>invoke_core() {
-        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc3"</span>, <span class="string">"./examples/test/bbc3/nthg.bbc"</span>].into_iter().map(|s| s.to_string()).collect();
+        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc3"</span>, <span class="string">"./examples/test/bbc3/nthg.bbc"</span>]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         <span class="kw">let </span>result = bbc_x(args);
         <span class="macro">assert!</span>(result.is_ok())
     }

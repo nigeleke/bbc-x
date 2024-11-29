@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"static":["BITS_TO_CHAR","CHAR_TO_BITS"],"struct":["CharSet"],"type":["Bits"]};

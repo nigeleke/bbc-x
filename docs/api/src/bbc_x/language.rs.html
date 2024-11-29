@@ -40,27 +40,27 @@
 
 <span class="kw">use </span>std::path::Path;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>Language {
+<span class="kw">pub enum </span>Language {
     Bbc3(Bbc3),
     BbcX(BbcX),
 }
 
 <span class="kw">impl </span>Language {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>assemble(<span class="kw-2">&amp;</span><span class="self">self</span>, file: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub fn </span>assemble(<span class="kw-2">&amp;</span><span class="self">self</span>, file: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Language::Bbc3(model) =&gt; model.assemble(file),
             Language::BbcX(model) =&gt; model.assemble(file),
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>, file: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>, file: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Language::Bbc3(model) =&gt; model.run(file),
             Language::BbcX(model) =&gt; model.run(file),
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>list(<span class="kw-2">&amp;</span><span class="self">self</span>, file: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">pub fn </span>list(<span class="kw-2">&amp;</span><span class="self">self</span>, file: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Language::Bbc3(model) =&gt; model.list(file),
             Language::BbcX(model) =&gt; model.list(file),

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["instruction_to_word","store_operand_to_word","word_to_instruction"]};

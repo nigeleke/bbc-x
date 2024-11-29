@@ -26,23 +26,23 @@
 
 <span class="kw">use </span>std::collections::HashMap;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Location = AstLocation;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Content = AstSourceProgramWord;
+<span class="kw">pub type </span>Location = AstLocation;
+<span class="kw">pub type </span>Content = AstSourceProgramWord;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Code = HashMap&lt;Location, Content&gt;;
+<span class="kw">pub type </span>Code = HashMap&lt;Location, Content&gt;;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Assembly {
+<span class="kw">pub struct </span>Assembly {
     _code: Code,
 }
 
 <span class="kw">impl </span>Assembly {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(code: <span class="kw-2">&amp;</span>Code) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(code: <span class="kw-2">&amp;</span>Code) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>code = code.clone();
         <span class="self">Self </span>{ _code: code }
     }
 
     <span class="attr">#[cfg(test)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>, location: Location) -&gt; <span class="prelude-ty">Option</span>&lt;Content&gt; {
+    </span><span class="kw">pub fn </span>content(<span class="kw-2">&amp;</span><span class="self">self</span>, location: Location) -&gt; <span class="prelude-ty">Option</span>&lt;Content&gt; {
         <span class="self">self</span>._code.get(<span class="kw-2">&amp;</span>location).map(|w| w.clone())
     }
 }

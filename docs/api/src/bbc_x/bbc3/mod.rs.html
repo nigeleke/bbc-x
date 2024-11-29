@@ -156,6 +156,20 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>assembler;
 <span class="kw">mod </span>assembly;
 <span class="kw">mod </span>ast;
@@ -174,13 +188,12 @@
 
 <span class="kw">use </span>std::path::Path;
 
-<span class="comment">// #[derive(Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Bbc3 {
+<span class="kw">pub struct </span>Bbc3 {
     args: Args,
 }
 
 <span class="kw">impl </span>Bbc3 {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(args: <span class="kw-2">&amp;</span>Args) -&gt; Bbc3 {
+    <span class="kw">pub fn </span>new(args: <span class="kw-2">&amp;</span>Args) -&gt; Bbc3 {
         <span class="kw">let </span>args = args.clone();
         <span class="self">Self </span>{ args }
     }
@@ -210,12 +223,11 @@
             <span class="kw">let </span>all_results = parsed_lines
                 .iter()
                 .zip(lines.iter())
-                .map(|(r, l)|
-                    <span class="kw">match </span>(r, l) {
-                        (<span class="prelude-val">Ok</span>(<span class="kw">_</span>), l) =&gt; <span class="macro">format!</span>(<span class="string">"        {}"</span>, l), 
-                        (<span class="prelude-val">Err</span>(Error::FailedToParse(e)), l) =&gt; <span class="macro">format!</span>(<span class="string">" *****  {}\n         {}"</span>, l, e),
-                        <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
-                    })
+                .map(|(r, l)| <span class="kw">match </span>(r, l) {
+                    (<span class="prelude-val">Ok</span>(<span class="kw">_</span>), l) =&gt; <span class="macro">format!</span>(<span class="string">"        {}"</span>, l),
+                    (<span class="prelude-val">Err</span>(Error::FailedToParse(e)), l) =&gt; <span class="macro">format!</span>(<span class="string">" *****  {}\n         {}"</span>, l, e),
+                    <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+                })
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
                 .join(<span class="string">"\n"</span>);
             <span class="prelude-val">Err</span>(Error::FailedToAssemble(all_results))
@@ -223,7 +235,9 @@
     }
 
     <span class="kw">fn </span>impl_run(<span class="kw-2">&amp;</span><span class="self">self</span>, _path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="prelude-val">Err</span>(Error::FailedToRun(<span class="string">"BBC-3 run command is not implemented"</span>.into()))
+        <span class="prelude-val">Err</span>(Error::FailedToRun(
+            <span class="string">"BBC-3 run command is not implemented"</span>.into(),
+        ))
     }
 
     <span class="kw">fn </span>impl_list(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -233,21 +247,22 @@
         <span class="kw">for </span>line <span class="kw">in </span>results {
             <span class="kw">let </span>line = <span class="kw">match </span>line {
                 <span class="prelude-val">Ok</span>(line) =&gt; <span class="macro">format!</span>(<span class="string">"        {}"</span>, line),
-                <span class="prelude-val">Err</span>(Error::FailedToParse(error)) =&gt; <span class="macro">format!</span>(<span class="string">" *****  {}"</span>, error), 
+                <span class="prelude-val">Err</span>(Error::FailedToParse(error)) =&gt; <span class="macro">format!</span>(<span class="string">" *****  {}"</span>, error),
                 <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
             };
             writer.add_lines_to_listing(<span class="kw-2">&amp;</span>line);
         }
-        writer.write_content_to_file().map_err(|e| Error::CannotToWriteFile(path.display().to_string(), e.to_string()))
+        writer
+            .write_content_to_file()
+            .map_err(|e| Error::CannotToWriteFile(path.display().to_string(), e.to_string()))
     }
-
 }
 
 <span class="kw">fn </span>file_lines(path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;String&gt;&gt; {
     <span class="kw">let </span>filename = path.display().to_string();
 
-    <span class="kw">let </span>content = std::fs::read(path)
-        .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))<span class="question-mark">?</span>;
+    <span class="kw">let </span>content =
+        std::fs::read(path).map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>content = String::from_utf8(content)
         .map_err(|e| Error::CannotReadFile(filename.clone(), e.to_string()))<span class="question-mark">?</span>;
@@ -260,7 +275,7 @@
         <span class="kw">_ </span>= <span class="self">self</span>.impl_assemble(path)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
-    
+
     <span class="kw">fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="self">self</span>.impl_run(path)<span class="question-mark">?</span>;
         <span class="macro">unreachable!</span>()
@@ -275,37 +290,50 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-
     <span class="kw">use </span>tempdir::TempDir;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>will_assemble() {
-        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc3"</span>, <span class="string">"./examples/test/bbc3/nthg.bbc"</span>].into_iter().map(|s| s.to_string()).collect();
+        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc3"</span>, <span class="string">"./examples/test/bbc3/nthg.bbc"</span>]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         <span class="kw">let </span>args = Args::from(args);
         <span class="kw">let </span>model = Bbc3::new(<span class="kw-2">&amp;</span>args);
         <span class="kw">let </span>result = model.assemble(<span class="kw-2">&amp;</span>args.files().next().unwrap());
-        <span class="macro">assert!</span>(result.is_ok())                
+        <span class="macro">assert!</span>(result.is_ok())
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>will_not_run() {
-        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc3"</span>, <span class="string">"--run"</span>, <span class="string">"./examples/test/bbc3/nthg.bbc"</span>].into_iter().map(|s| s.to_string()).collect();
+        <span class="kw">let </span>args = <span class="macro">vec!</span>[
+            <span class="string">"bbc-x"</span>,
+            <span class="string">"--lang=bbc3"</span>,
+            <span class="string">"--run"</span>,
+            <span class="string">"./examples/test/bbc3/nthg.bbc"</span>,
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
         <span class="kw">let </span>args = Args::from(args);
         <span class="kw">let </span>model = Bbc3::new(<span class="kw-2">&amp;</span>args);
         <span class="kw">let </span>result = model.run(<span class="kw-2">&amp;</span>args.files().next().unwrap());
-        <span class="macro">assert!</span>(result.is_err())                
+        <span class="macro">assert!</span>(result.is_err())
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>will_list() {
-        <span class="kw">let </span>temp_folder = TempDir::new(<span class="string">"bbcx-tests"</span>).unwrap();
+        <span class="kw">let </span>temp_folder = TempDir::new(<span class="string">"bbcx-tests-bbc3"</span>).unwrap();
 
         <span class="kw">let </span>temp_target = temp_folder.path().join(<span class="string">"nthg.bbc"</span>);
         <span class="kw">let </span>temp_target_str = temp_target.display().to_string();
 
         std::fs::copy(<span class="string">"./examples/test/bbc3/nthg.bbc"</span>, temp_target).unwrap();
 
-        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc3"</span>, <span class="string">"--list"</span>, <span class="kw-2">&amp;</span>temp_target_str].into_iter().map(|s| s.to_string()).collect();
+        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc3"</span>, <span class="string">"--list"</span>, <span class="kw-2">&amp;</span>temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
         <span class="kw">let </span>args = Args::from(args);
         <span class="kw">let </span>model = Bbc3::new(<span class="kw-2">&amp;</span>args);
         <span class="kw">let _ </span>= model.list(<span class="kw-2">&amp;</span>args.files().next().unwrap());
@@ -313,4 +341,5 @@
         <span class="kw">let </span>list_target = temp_folder.path().join(<span class="string">"nthg.lst"</span>);
         <span class="macro">assert!</span>(list_target.exists());
     }
-}</code></pre></div></section></main></body></html>
+}
+</code></pre></div></section></main></body></html>

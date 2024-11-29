@@ -17,7 +17,7 @@
 
 <span class="kw">use </span>std::path::Path;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>LanguageModel {
+<span class="kw">pub trait </span>LanguageModel {
     <span class="kw">fn </span>assemble(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;;
     <span class="kw">fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;;
     <span class="kw">fn </span>list(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;;

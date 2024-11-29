@@ -67,14 +67,14 @@
 
 <span class="kw">use </span>std::path::{Path, PathBuf};
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ListWriter {
+<span class="kw">pub struct </span>ListWriter {
     list_file: <span class="prelude-ty">Option</span>&lt;PathBuf&gt;,
     listing: Vec&lt;String&gt;,
 }
 
 <span class="kw">impl </span>ListWriter {
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(file: <span class="kw-2">&amp;</span>Path, args: <span class="kw-2">&amp;</span>Args) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>new(file: <span class="kw-2">&amp;</span>Path, args: <span class="kw-2">&amp;</span>Args) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>list_file = ListWriter::get_list_file(file, args);
         <span class="kw">let </span>listing = Vec::new();
         <span class="kw">let </span><span class="kw-2">mut </span>me = <span class="self">Self </span>{ list_file, listing };
@@ -107,7 +107,7 @@
         <span class="self">self</span>.add_line_to_listing(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:&lt;14}{:&lt;42} {}\n"</span>, <span class="string">""</span>, filename, now).to_uppercase());
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add_lines_to_listing(<span class="kw-2">&amp;mut </span><span class="self">self</span>, text: <span class="kw-2">&amp;</span>str) {
+    <span class="kw">pub fn </span>add_lines_to_listing(<span class="kw-2">&amp;mut </span><span class="self">self</span>, text: <span class="kw-2">&amp;</span>str) {
         <span class="kw">let </span>text = text.split(<span class="string">'\n'</span>);
         text.into_iter().for_each(|s| <span class="self">self</span>.add_line_to_listing(s));
     }
@@ -119,7 +119,7 @@
     }
 
     <span class="attr">#[inline]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write_content_to_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::result::Result&lt;(), std::io::Error&gt; {
+    </span><span class="kw">pub fn </span>write_content_to_file(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::result::Result&lt;(), std::io::Error&gt; {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(list_file) = <span class="kw-2">&amp;</span><span class="self">self</span>.list_file {
             std::fs::write(list_file, <span class="self">self</span>.listing.join(<span class="string">"\n"</span>))
         } <span class="kw">else </span>{

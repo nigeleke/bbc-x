@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Address","ConstOperand","Mnemonic","SimpleAddressOperand","SourceWord","StoreOperand"],"struct":["Acc","AddressOperand","Label","PWord","SourceLine"],"type":["AddressRef","Character","Comment","FWord","FloatType","IWord","Identifier","IndexRegister","IntType","Location","NumericAddress","NumericCharacter","Punctuation","SWord"]};

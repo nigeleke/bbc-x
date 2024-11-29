@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Accumulator","Address","Builder","IndexRegister","Indirect","Instruction","Page"],"trait":["AsBits","MemoryRef"],"type":["Function"]};

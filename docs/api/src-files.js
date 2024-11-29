@@ -1,3 +1,3 @@
-var srcIndex = new Map(JSON.parse('[["bbc_x",["",[["bbc3",[],["assembler.rs","assembly.rs","ast.rs","grammar.rs","mod.rs","parser.rs"]],["bbcx",[],["mod.rs"]]],["args.rs","core.rs","language.rs","list_writer.rs","main.rs","model.rs","result.rs"]]]]'));
+var srcIndex = new Map(JSON.parse('[["bbc_x",["",[["bbc3",[],["assembler.rs","assembly.rs","ast.rs","grammar.rs","mod.rs","parser.rs"]],["bbcx",[["memory",[["convert",[],["mod.rs"]]],["instruction.rs","mod.rs","result.rs","state.rs","word.rs"]]],["assembler.rs","assembly.rs","ast.rs","charset.rs","executor.rs","grammar.rs","mod.rs","parser.rs","result.rs"]]],["args.rs","core.rs","language.rs","list_writer.rs","main.rs","model.rs","result.rs"]]]]'));
 createSrcSidebar();
-//{"start":36,"fragment_lengths":[211]}
+//{"start":36,"fragment_lengths":[412]}

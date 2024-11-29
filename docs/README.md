@@ -19,13 +19,13 @@ I'm now having a nostalgic recreation of some of the programs that I wrote durin
 
 During those years we were taught a pseudo-assembly language known as BBC-X, to teach us low-level programming. This repository started as a "simple" store for my BBC-X programs, to run to run on a [PiDP-10](https://obsolescence.wixsite.com/obsolescence/pidp10), which is a 2/3 scale replica of a PDP-10 KA emulated with [SIMH](https://github.com/open-simh/simh) running on a [Raspberry Pi](https://www.raspberrypi.com/).
 
-A Google search for *BBC-X* did not uncover very much either in terms of fundamental documentation, or existing emulators, so my project changed to correct that oversight. The aim of the project now is to create an assembler / interpreter for BBC-X source code; there is no longer any dependence on the [PiDP-10](https://obsolescence.wixsite.com/obsolescence/pidp10) / [Raspberry Pi](https://www.raspberrypi.com/). 
+A Google search for *BBC-X* did not uncover very much either in terms of fundamental documentation, or existing emulators, so my project changed to correct that oversight. The aim of the project now is to create an assembler / interpreter for BBC-X source code; there is no longer any dependence on the [PiDP-10](https://obsolescence.wixsite.com/obsolescence/pidp10) / [Raspberry Pi](https://www.raspberrypi.com/).
 
 ## History
 
 > I wrote the compiler for BBCX using the BBCX Assembler; I was employed by Hatfield Poly for 4 weeks and it formed part of my S-Level in Applied Maths so I have quite a lot of documentation (all handwritten) and what looks like print out of the compiler in July 1971.  I’m not sure what the simulator was written in but I have a printed preliminary spec for it written by my father Bill Tagg in 1970.  The simulator was written by a programmer at the Poly.
 >
-> BBCX was based on BBC3 which I think my father wrote for the Elliot 803 as his PhD. 
+> BBCX was based on BBC3 which I think my father wrote for the Elliot 803 as his PhD.
 >
 > [Clare Tagg](https://www.claretagg.net/) *Feb 2024*
 
@@ -47,7 +47,7 @@ and unusual diagnostic capabilities.
 code of the hypothetical computer takes place in such a
 way that the student is continually made aware of many of
 the techniques and associated problems.
-> 
+>
 > [William Tagg - PhD Thesis](https://spiral.imperial.ac.uk/bitstream/10044/1/21019/2/Tagg-W-1971-PhD-Thesis.pdf) *May 1970*
 
 The BBC had a TV series about computing, but both BBC-3 & BBC-X seem to have been developed before the Beeb's programs and their famous [BBC Micro](https://en.wikipedia.org/wiki/BBC_Micro).
@@ -75,8 +75,9 @@ The BBC-X specification has been scanned and uploaded.
 
 ### TODO
 
-  1. Develop BBC-X assembler.
-  2. Develop BBC-X execution environment.
+  1. The hardware is not emulated exactly but only enough to get this author's historic programs up and running.
+     As a result only a single page memory is defined. Programmatic access to i/o registers etc will not be
+     emulated either.
 
 ## Running the program
 

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BbcX"]};
+window.SIDEBAR_ITEMS = {"fn":["file_lines"],"mod":["assembler","assembly","ast","charset","executor","grammar","memory","parser","result"],"struct":["BbcX"]};

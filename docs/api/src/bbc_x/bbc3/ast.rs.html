@@ -335,25 +335,25 @@
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
 </pre></div><pre class="rust"><code><span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>SourceProgramLine {
+</span><span class="kw">pub struct </span>SourceProgramLine {
     location: Location,
     source_program_word: SourceProgramWord,
     comment: Comment
 }
 
 <span class="kw">impl </span>SourceProgramLine {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+    <span class="kw">pub fn </span>new(
         location: Location,
         source_program_word: SourceProgramWord,
         comment: Comment) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ location, source_program_word, comment }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>location(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Location {
+    <span class="kw">pub fn </span>location(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Location {
         <span class="kw-2">&amp;</span><span class="self">self</span>.location
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>source_program_word(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>SourceProgramWord {
+    <span class="kw">pub fn </span>source_program_word(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>SourceProgramWord {
         <span class="kw-2">&amp;</span><span class="self">self</span>.source_program_word
     }
 }
@@ -368,12 +368,12 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Location = AddressRef;
+<span class="kw">pub type </span>Location = AddressRef;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Identifier = String;
+<span class="kw">pub type </span>Identifier = String;
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>SourceProgramWord {
+</span><span class="kw">pub enum </span>SourceProgramWord {
     SWord(SWord),
     PWord(PWord),
     FWord(FWord),
@@ -393,10 +393,10 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>SWord = String;
+<span class="kw">pub type </span>SWord = String;
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>PWord {
+</span><span class="kw">pub enum </span>PWord {
     TakeType(Mnemonic, Acc, GeneralOperand),
     PutType(Mnemonic, Acc, AddressOperand),
     LoadN(Acc, SimpleAddressOperand, Index),
@@ -419,7 +419,7 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Acc(<span class="prelude-ty">Option</span>&lt;char&gt;);
+</span><span class="kw">pub struct </span>Acc(<span class="prelude-ty">Option</span>&lt;char&gt;);
 
 <span class="kw">impl </span>From&lt;char&gt; <span class="kw">for </span>Acc {
     <span class="kw">fn </span>from(a: char) -&gt; <span class="self">Self </span>{
@@ -439,14 +439,14 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>FWord = FloatType;
+<span class="kw">pub type </span>FWord = FloatType;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>IWord = IntType;
+<span class="kw">pub type </span>IWord = IntType;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Comment = String;
+<span class="kw">pub type </span>Comment = String;
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>Octal {
+</span><span class="kw">pub enum </span>Octal {
     S(WordValue),
     P(WordValue),
     F(WordValue),
@@ -465,7 +465,7 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>GeneralOperand {
+</span><span class="kw">pub enum </span>GeneralOperand {
     AddressOperand(AddressOperand),
     ConstOperand(ConstOperand),
 }
@@ -480,13 +480,13 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>AddressOperand {
+</span><span class="kw">pub struct </span>AddressOperand {
     address: SimpleAddressOperand,
     index: <span class="prelude-ty">Option</span>&lt;Index&gt;,
 }
 
 <span class="kw">impl </span>AddressOperand {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+    <span class="kw">pub fn </span>new(
         address: SimpleAddressOperand,
         index:  <span class="prelude-ty">Option</span>&lt;Index&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{ address, index }
@@ -501,7 +501,7 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>ConstOperand {
+</span><span class="kw">pub enum </span>ConstOperand {
     SignedInteger(IntType),
     SignedFWord(FloatType),
     Octal(Octal),
@@ -520,7 +520,7 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>SimpleAddressOperand {
+</span><span class="kw">pub enum </span>SimpleAddressOperand {
     DirectAddress(Address),
     IndirectAddress(Address)
 }
@@ -535,7 +535,7 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>Address {
+</span><span class="kw">pub enum </span>Address {
     Identifier(Identifier),
     NumericAddress(NumericAddress),
 }
@@ -550,7 +550,7 @@
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>NumericAddress {
+</span><span class="kw">pub enum </span>NumericAddress {
     AbsoluteAddress(AddressRef),
     RelativeAddress(RelativeRef),
 }
@@ -564,20 +564,20 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>TypeDesignator = char;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Character = char;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>NumericCharacter = char;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Punctuation = char;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>IntType = i32;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>FloatType = f32;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>AddressRef = usize;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>RelativeRef = usize; <span class="comment">// TODO: Implies forward addressing only...
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>Index = usize;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type </span>WordValue = u32;
+<span class="kw">pub type </span>TypeDesignator = char;
+<span class="kw">pub type </span>Character = char;
+<span class="kw">pub type </span>NumericCharacter = char;
+<span class="kw">pub type </span>Punctuation = char;
+<span class="kw">pub type </span>IntType = i32;
+<span class="kw">pub type </span>FloatType = f32;
+<span class="kw">pub type </span>AddressRef = usize;
+<span class="kw">pub type </span>RelativeRef = usize; <span class="comment">// TODO: Implies forward addressing only...
+</span><span class="kw">pub type </span>Index = usize;
+<span class="kw">pub type </span>WordValue = u32;
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::upper_case_acronyms)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum </span>Mnemonic {
+</span><span class="kw">pub enum </span>Mnemonic {
     LDN,
     LDR,
     <span class="comment">// 0-15 mnemonic

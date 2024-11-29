@@ -1,17 +1,13 @@
 use super::assembly::Assembly;
-use super::charset::CharSet;
-use super::memory::{
-    Function, Instruction, Memory, Offset, Word, OVERFLOW_MASK, WORD_MASK, WORD_SIZE,
-};
-
-use crate::result::Result;
+use super::memory::{word_to_instruction, Instruction, *};
+use super::result::{Error, Result};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct Executor {
-    execution_context: ExecutionContext,
+    ec: ExecutionContext,
     #[allow(dead_code)] // TODO: Remove
     stdin: Rc<RefCell<dyn std::io::Read>>,
     stdout: Rc<RefCell<dyn std::io::Write>>,
@@ -30,34 +26,36 @@ impl Executor {
         W: std::io::Write + 'static,
     {
         Self {
-            execution_context: ExecutionContext::default(),
+            ec: ExecutionContext::default(),
             stdin,
             stdout,
         }
     }
 
     pub fn execute(mut self, assembly: &Assembly) -> Result<ExecutionContext> {
-        self.execution_context = assembly.clone().into();
+        self.ec = assembly.clone().try_into()?;
+
         while self.can_step() {
-            self.step();
+            self.step()?;
         }
-        Ok(self.execution_context.clone())
+        Ok(self.ec.clone())
     }
 
     fn can_step(&self) -> bool {
-        let context = &self.execution_context;
-        let content = &context.memory[context.program_counter];
-        matches!(content, Word::PWord(_))
+        let context = &self.ec;
+        let content = &context[context.pc];
+        content.is_instruction()
     }
 
-    fn step(&mut self) {
-        let program_counter = self.execution_context.program_counter;
-        self.execution_context.program_counter += 1;
-        let content = self.execution_context.memory[program_counter];
-        match content {
-            Word::PWord(instruction) => self.step_word(&instruction),
-            _ => unreachable!(),
-        }
+    fn step(&mut self) -> Result<()> {
+        let pc = self.ec.pc;
+        self.ec.pc += 1;
+        let content = self.ec[pc];
+        println!("exec {:?} @ {:?}", content, pc);
+        let instruction = word_to_instruction(&content)
+            .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))?;
+        self.step_word(&instruction);
+        Ok(())
     }
 
     fn step_word(&mut self, instruction: &Instruction) {
@@ -104,7 +102,7 @@ impl Executor {
             (Function::PUT, Executor::exec_put as ExecFn),
             (Function::PSQU, Executor::exec_psqu as ExecFn),
             (Function::PNEG, Executor::exec_pneg as ExecFn),
-            // (Function::PTYP, Executor::exec_ptyp as ExecFn),
+            (Function::PTYP, Executor::exec_ptyp as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -115,341 +113,229 @@ impl Executor {
         f(self, instruction)
     }
 
-    fn operand(&self, instruction: &Instruction) -> Word {
-        let memory = &self.execution_context.memory;
+    fn operand(&self, instruction: &Instruction) -> Result<Word> {
+        let ec = &self.ec;
 
-        let indirect = instruction.indirect();
         let index_register = instruction.index_register();
-
         let mut address = instruction.address();
 
-        if indirect {
-            address = match memory[address] {
-                Word::PWord(instruction) => instruction.address(),
-                _ => panic!("Indirect address must be another PWord"),
-            };
+        if instruction.is_indirect() {
+            let indirect_instruction = word_to_instruction(&ec[address])
+                .map_err(|err| Error::CannotDetermineOperand(err.to_string()))?;
+            address = indirect_instruction.address()
         }
 
-        if index_register != 0 {
-            assert!(index_register < 7);
-            address += index_register
+        if index_register.is_indexable() {
+            let index = ec[index_register]
+                .as_i64()
+                .map_err(|err| Error::CannotDetermineOperand(err.to_string()))?;
+            address += index as isize;
         }
 
-        memory[address]
+        Ok(ec[address])
+    }
+
+    fn acc_and_operand(&self, instruction: &Instruction) -> (Accumulator, Word) {
+        let acc = instruction.accumulator();
+        let operand = self.operand(instruction).expect("Invalid operand");
+        (acc, operand)
+    }
+
+    fn acc_and_address(&instruction: &Instruction) -> (Accumulator, Address) {
+        let acc = instruction.accumulator();
+        let address = instruction.address();
+        (acc, address)
     }
 
     fn exec_nil(&mut self, _instruction: &Instruction) {}
 
     fn exec_or(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] |= operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] |= operand;
     }
 
     fn exec_neqv(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] ^= operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] ^= operand;
     }
 
     fn exec_and(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] &= operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] &= operand;
     }
 
     fn exec_add(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] += operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] += operand;
     }
 
     fn exec_subt(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] -= operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] -= operand;
     }
 
     fn exec_mult(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] *= operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] *= operand;
     }
 
     fn exec_dvd(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] /= operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] /= operand;
     }
 
     fn exec_take(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] = operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] = operand;
     }
 
     fn exec_tstr(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        if let Word::IWord(i) = operand {
-            self.execution_context.memory[acc] = operand;
-            self.execution_context.memory[acc - 1] = (if i < 1 { -1 } else { 0 }).into();
-        } else {
-            panic!("Invalid operand {:?} for TSTR", operand);
-        }
+        let (acc, operand) = self.acc_and_operand(instruction);
+        let value = operand.as_i64().expect("TSTR invalid operand");
+        self.ec[acc] = operand;
+        self.ec[acc - 1] = (if value < 1 { -1 } else { 0 }).try_into().unwrap();
     }
 
     fn exec_tneg(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] = -operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        println!("operand {:?} neg_operand {:?}", operand, -operand);
+        self.ec[acc] = -operand;
     }
 
     fn exec_tnot(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] = !operand;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] = !operand;
     }
 
     fn exec_ttyp(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        let result = match operand {
-            Word::IWord(_) => 0.into(),
-            Word::FWord(_) => 1.into(),
-            Word::SWord(_) => 2.into(),
-            Word::PWord(_) => 3.into(),
-            _ => panic!("Invalid operand {:?} for TTYP", operand),
-        };
-        self.execution_context.memory[acc] = result;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] = operand.word_type();
     }
 
     fn exec_ttyz(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] = (operand.raw_bits() as i64).into();
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] = operand.word_bits();
     }
 
     fn exec_tout(&mut self, instruction: &Instruction) {
-        let operand = self.operand(instruction);
-        let bits = operand.raw_bits() & 0o77;
-        let char = vec![CharSet::bits_to_char(bits).unwrap()];
+        let (_acc, operand) = self.acc_and_operand(instruction);
+        let chars = vec![operand.as_char().expect("TOUT invalid operand")];
         let mut stdout = (*self.stdout).borrow_mut();
-        stdout.write_all(&char).unwrap();
+        stdout.write_all(&chars).unwrap();
     }
 
     fn exec_skip(&mut self, _instruction: &Instruction) {
-        self.execution_context.program_counter += 1;
+        self.ec.pc += 1;
     }
 
     fn exec_skae(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        if self.execution_context.memory[acc] == operand {
-            self.execution_context.program_counter += 1;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        if self.ec[acc] == operand {
+            self.ec.pc += 1;
         }
     }
 
     fn exec_skan(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        if self.execution_context.memory[acc] != operand {
-            self.execution_context.program_counter += 1;
+        let (acc, operand) = self.acc_and_operand(instruction);
+        if self.ec[acc] != operand {
+            self.ec.pc += 1;
         }
     }
 
     fn exec_sket(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        let same_type = match &self.execution_context.memory[acc] {
-            Word::Undefined => matches!(operand, Word::Undefined),
-            Word::IWord(_) => matches!(operand, Word::IWord(_)),
-            Word::FWord(_) => matches!(operand, Word::FWord(_)),
-            Word::SWord(_) => matches!(operand, Word::SWord(_)),
-            Word::PWord(_) => matches!(operand, Word::PWord(_)),
-        };
+        let (acc, operand) = self.acc_and_operand(instruction);
+        let same_type = self.ec[acc].word_type() == operand.word_type();
         if same_type {
-            self.execution_context.program_counter += 1;
+            self.ec.pc += 1;
         }
     }
 
     fn exec_skal(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        if self.execution_context.memory[acc] < operand {
-            self.execution_context.program_counter += 1
+        let (acc, operand) = self.acc_and_operand(instruction);
+        if self.ec[acc] < operand {
+            self.ec.pc += 1
         }
     }
 
     fn exec_skag(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        if self.execution_context.memory[acc] > operand {
-            self.execution_context.program_counter += 1
+        let (acc, operand) = self.acc_and_operand(instruction);
+        if self.ec[acc] > operand {
+            self.ec.pc += 1
         }
     }
 
     fn exec_sked(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        if self.execution_context.memory[acc] == operand {
-            self.execution_context.program_counter += 1
+        let (acc, operand) = self.acc_and_operand(instruction);
+        if self.ec[acc] == operand {
+            self.ec.pc += 1
         } else {
-            self.execution_context.memory[acc] -= 1.into()
+            self.ec[acc] -= 1.try_into().unwrap()
         }
     }
 
     fn exec_skei(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        if self.execution_context.memory[acc] == operand {
-            self.execution_context.program_counter += 1
+        let (acc, operand) = self.acc_and_operand(instruction);
+        if self.ec[acc] == operand {
+            self.ec.pc += 1
         } else {
-            self.execution_context.memory[acc] += 1.into()
+            self.ec[acc] += 1.try_into().unwrap()
         }
     }
 
     fn exec_shl(&mut self, instruction: &Instruction) {
-        // TODO: Right shift
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        match operand {
-            Word::IWord(_) => self.execution_context.memory[acc] <<= operand,
-            _ => panic!("SHL requires IWord operand"),
-        }
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] <<= operand;
     }
 
     fn exec_rot(&mut self, instruction: &Instruction) {
-        // TODO: Right rotate
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        match operand {
-            Word::IWord(n) => self.execution_context.memory[acc].rotate(n),
-            _ => panic!("ROT requires IWord operand"),
-        }
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc].rotate(operand.as_i64().unwrap());
     }
 
     fn exec_dshl(&mut self, instruction: &Instruction) {
-        // TODO: Right shift
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-
-        match operand {
-            Word::IWord(n) => {
-                let content = self.execution_context.memory[acc].raw_bits();
-                let lsw = (content << n) & WORD_MASK;
-                let msw = ((content << n) & OVERFLOW_MASK) >> 24;
-                self.execution_context.memory[acc] =
-                    self.execution_context.memory[acc].same_type_from(lsw);
-                self.execution_context.memory[acc - 1] =
-                    self.execution_context.memory[acc - 1].same_type_from(msw);
-            }
-            _ => panic!("DSHL requires IWord operand"),
-        }
+        let (acc, operand) = self.acc_and_operand(instruction);
+        let (msw, lsw) = double_shift_left(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
+        self.ec[acc - 1].set_word_bits(&msw);
+        self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_drot(&mut self, instruction: &Instruction) {
-        // TODO: Right rotate
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-
-        match operand {
-            Word::IWord(n) => {
-                let msw = self.execution_context.memory[acc - 1].raw_bits();
-                let lsw = self.execution_context.memory[acc].raw_bits();
-
-                let shifted_msw = msw << n;
-                let overflowed_msw = (shifted_msw & OVERFLOW_MASK) >> WORD_SIZE;
-
-                let shifted_lsw = lsw << n;
-                let overflowed_lsw = (shifted_lsw & OVERFLOW_MASK) >> WORD_SIZE;
-
-                let updated_msw = (shifted_msw & WORD_MASK) | overflowed_lsw;
-                let updated_lsw = (shifted_lsw & WORD_MASK) | overflowed_msw;
-
-                self.execution_context.memory[acc] =
-                    self.execution_context.memory[acc].same_type_from(updated_lsw);
-                self.execution_context.memory[acc - 1] =
-                    self.execution_context.memory[acc - 1].same_type_from(updated_msw);
-            }
-            _ => panic!("DROT requires IWord operand"),
-        }
+        let (acc, operand) = self.acc_and_operand(instruction);
+        let (msw, lsw) = double_rotate_left(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
+        self.ec[acc - 1].set_word_bits(&msw);
+        self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_powr(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc].power(operand);
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc].power(&operand);
     }
 
     fn exec_dmult(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let lhs_msw = self.execution_context.memory[acc - 1];
-        let lhs_lsw = self.execution_context.memory[acc];
-        let rhs = self.operand(instruction);
-        match (lhs_msw, lhs_lsw, rhs) {
-            (Word::IWord(_), Word::IWord(_), Word::IWord(rhs)) => {
-                let lhs = Self::msw_lsw_to_i64(lhs_msw, lhs_lsw);
-                let result = lhs * rhs;
-                let (msw, lsw) = Self::i64_to_msw_lsw(result);
-                self.execution_context.memory[acc - 1] = msw;
-                self.execution_context.memory[acc] = lsw;
-            }
-            _ => panic!("DMULT requires IWord operands"),
-        }
+        let (acc, operand) = self.acc_and_operand(instruction);
+        let (msw, lsw) = double_mult(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
+        self.ec[acc - 1].set_word_bits(&msw);
+        self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_div(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let operand = self.operand(instruction);
-        self.execution_context.memory[acc] /= operand;
-    }
-
-    fn msw_lsw_to_i64(msw: Word, lsw: Word) -> i64 {
-        println!(
-            "m: {:?} mr: {:#010o} l: {:?} lr: {:#010o}",
-            msw,
-            msw.raw_bits(),
-            lsw,
-            lsw.raw_bits()
-        );
-        ((msw.raw_bits() << 40) as i64 >> 40) * 2_i64.pow(WORD_SIZE as u32)
-            | (lsw.raw_bits() as i64)
-    }
-
-    fn i64_to_msw_lsw(value: i64) -> (Word, Word) {
-        let lsw = ((value & WORD_MASK as i64) << 40) >> 40;
-        let msw = (value & !WORD_MASK as i64) >> WORD_SIZE;
-        (
-            Word::IWord((msw << 40) >> 40),
-            Word::IWord((lsw << 40) >> 40),
-        )
+        let (acc, operand) = self.acc_and_operand(instruction);
+        self.ec[acc] /= operand;
     }
 
     fn exec_ddiv(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let lhs_msw = self.execution_context.memory[acc - 1];
-        let lhs_lsw = self.execution_context.memory[acc];
-        let rhs = self.operand(instruction);
-        match (lhs_msw, lhs_lsw, rhs) {
-            (Word::IWord(_), Word::IWord(_), Word::IWord(rhs)) => {
-                let lhs = Self::msw_lsw_to_i64(lhs_msw, lhs_lsw);
-                let result = lhs / rhs;
-                let (msw, lsw) = Self::i64_to_msw_lsw(result);
-                self.execution_context.memory[acc - 1] = msw;
-                self.execution_context.memory[acc] = lsw;
-            }
-            _ => panic!("DMULT requires IWord operands"),
-        }
+        let (acc, operand) = self.acc_and_operand(instruction);
+        let (msw, lsw) = double_div(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
+        self.ec[acc - 1].set_word_bits(&msw);
+        self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_nilx(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let acc_value = self.execution_context.memory[acc];
-        let operand = self.operand(instruction);
+        let (acc, operand) = self.acc_and_operand(instruction);
+        let acc_value = self.ec[acc];
         let operand_address = instruction.address();
-        self.execution_context.memory[acc] = operand;
-        self.execution_context.memory[operand_address] = acc_value;
+        self.ec[acc] = operand;
+        self.ec[operand_address] = acc_value;
     }
 
     fn exec_orx(&mut self, instruction: &Instruction) {
@@ -483,61 +369,37 @@ impl Executor {
     }
 
     fn exec_put(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let acc_value = self.execution_context.memory[acc];
-        let address = instruction.address();
-        self.execution_context.memory[address] = acc_value;
+        let (acc, address) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        self.ec[address] = acc_value;
     }
 
     fn exec_psqu(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let lhs_msw = self.execution_context.memory[acc - 1];
-        let lhs_lsw = self.execution_context.memory[acc];
-        match (lhs_msw, lhs_lsw) {
-            (Word::IWord(l), Word::IWord(r)) => {
-                assert!(if r >= 0 { l == 0 } else { l == -1 });
-                let squashed = Self::msw_lsw_to_i64(lhs_msw, lhs_lsw);
-                let address = instruction.address();
-                self.execution_context.memory[address] = squashed.into();
-            }
-            _ => panic!("DMULT requires IWord operands"),
-        }
+        let (acc, address) = Self::acc_and_address(instruction);
+        let msw0 = self.ec[acc - 1];
+        let lsw0 = self.ec[acc];
+        let (_, mut lsw1) = squash(&msw0, &lsw0).unwrap();
+        lsw1.set_word_type(&lsw0);
+        self.ec[address] = lsw1;
     }
 
     fn exec_pneg(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let acc_value = self.execution_context.memory[acc];
-        let address = instruction.address();
-        self.execution_context.memory[address] = -acc_value;
+        let (acc, address) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        self.ec[address] = -acc_value;
     }
 
     fn exec_ptyp(&mut self, instruction: &Instruction) {
-        let acc = instruction.accumulator();
-        let acc_value = self.execution_context.memory[acc];
-        let address = instruction.address();
-        let address_value = self.execution_context.memory[address].raw_bits();
-        match acc_value {
-            Word::IWord(_) => {
-                self.execution_context.memory[address] = acc_value.same_type_from(address_value)
-            }
-            Word::FWord(_) => {
-                self.execution_context.memory[address] = acc_value.same_type_from(address_value)
-            }
-            Word::SWord(_) => {
-                self.execution_context.memory[address] = acc_value.same_type_from(address_value)
-            }
-            Word::PWord(_) => {
-                self.execution_context.memory[address] = acc_value.same_type_from(address_value)
-            }
-            Word::Undefined => panic!("PTYP source is not defined"),
-        }
+        let (acc, address) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        self.ec[address].set_word_type(&acc_value);
     }
 }
 
 impl std::fmt::Debug for Executor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Executor")
-            .field("execution_context", &self.execution_context)
+            .field("execution_context", &self.ec)
             .field("stdin", &"Box<std::io::Read>")
             .field("stdout", &"Box<std::io::Write>")
             .finish()
@@ -546,13 +408,13 @@ impl std::fmt::Debug for Executor {
 
 impl PartialEq for Executor {
     fn eq(&self, other: &Self) -> bool {
-        self.execution_context.eq(&other.execution_context)
+        self.ec.eq(&other.ec)
     }
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExecutionContext {
-    program_counter: Offset,
+    pc: Offset,
     memory: Memory,
 }
 
@@ -560,31 +422,98 @@ pub struct ExecutionContext {
 impl ExecutionContext {
     fn with_program_counter(self, program_counter: Offset) -> Self {
         Self {
-            program_counter,
+            pc: program_counter,
             ..self
         }
     }
 
-    fn with_memory_word(mut self, offset: Offset, value: Word) -> Self {
-        self.memory[offset] = value;
+    fn with_memory_word<T>(mut self, offset: Offset, value: T) -> Self
+    where
+        T: TryInto<Word>,
+        T::Error: std::fmt::Debug,
+    {
+        self.memory[offset] = value
+            .try_into()
+            .expect("required valid value to create word");
         self
     }
 
     fn with_instruction(self, location: Offset, instruction: Instruction) -> Self {
-        self.with_memory_word(location, Word::PWord(instruction))
+        use crate::bbcx::memory::*;
+
+        self.with_memory_word(location, instruction_to_word(&instruction).unwrap())
     }
 }
 
-impl From<Assembly> for ExecutionContext {
-    fn from(value: Assembly) -> Self {
+impl TryFrom<Assembly> for ExecutionContext {
+    type Error = Error;
+
+    fn try_from(value: Assembly) -> std::result::Result<Self, Self::Error> {
         let value = value.allocate_storage_locations();
         let program_counter = value.first_pword_location().unwrap_or(0);
-        let memory = Memory::from(value);
+        let memory = Memory::try_from(value)
+            .map_err(|err| Error::FailedToCreateExecutionContext(err.to_string()))?;
 
-        Self {
-            program_counter,
+        Ok(Self {
+            pc: program_counter,
             memory,
-        }
+        })
+    }
+}
+
+impl std::ops::Index<usize> for ExecutionContext {
+    type Output = Word;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.memory[index]
+    }
+}
+
+impl std::ops::IndexMut<usize> for ExecutionContext {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.memory[index]
+    }
+}
+
+impl std::ops::Index<Accumulator> for ExecutionContext {
+    type Output = Word;
+
+    fn index(&self, acc: Accumulator) -> &Self::Output {
+        &self.memory[acc]
+    }
+}
+
+impl std::ops::IndexMut<Accumulator> for ExecutionContext {
+    fn index_mut(&mut self, acc: Accumulator) -> &mut Self::Output {
+        &mut self.memory[acc]
+    }
+}
+
+impl std::ops::Index<IndexRegister> for ExecutionContext {
+    type Output = Word;
+
+    fn index(&self, index_register: IndexRegister) -> &Self::Output {
+        &self.memory[index_register]
+    }
+}
+
+impl std::ops::IndexMut<IndexRegister> for ExecutionContext {
+    fn index_mut(&mut self, index_register: IndexRegister) -> &mut Self::Output {
+        &mut self.memory[index_register]
+    }
+}
+
+impl std::ops::Index<Address> for ExecutionContext {
+    type Output = Word;
+
+    fn index(&self, address: Address) -> &Self::Output {
+        &self.memory[address]
+    }
+}
+
+impl std::ops::IndexMut<Address> for ExecutionContext {
+    fn index_mut(&mut self, address: Address) -> &mut Self::Output {
+        &mut self.memory[address]
     }
 }
 
@@ -596,7 +525,6 @@ mod test {
     use super::*;
 
     use crate::bbcx::assembler::*;
-    use crate::bbcx::memory::MEMORY_SIZE;
     use crate::bbcx::parser::*;
 
     fn execute(input: &str) -> Result<ExecutionContext> {
@@ -613,7 +541,7 @@ mod test {
         let stdout = Rc::new(RefCell::new(std::io::BufWriter::new(stdout_buffer)));
 
         let executor = Executor::with_io(stdin, stdout.clone());
-        let execution_context = do_execute(input, executor).unwrap().clone();
+        let ec = do_execute(input, executor).unwrap().clone();
 
         let stdout = stdout.borrow();
         let bytes = stdout.buffer();
@@ -621,7 +549,7 @@ mod test {
 
         assert_eq!(actual, String::from(expected));
 
-        Ok(execution_context)
+        Ok(ec)
     }
 
     fn do_execute(input: &str, executor: Executor) -> Result<ExecutionContext> {
@@ -631,11 +559,12 @@ mod test {
             .map(Parser::parse_line)
             .filter_map(|l| l.ok())
             .collect::<Vec<_>>();
-        let assembly = Assembler::assemble(&program).expect("Valid assembly required");
-        let execution_context = executor
+        let assembly =
+            Assembler::assemble(&program).expect(&format!("Failed to assemble {}", input));
+        let ec = executor
             .execute(&assembly)
-            .expect("Valid execution required");
-        Ok(execution_context.clone())
+            .expect(&format!("Failed to execute {}", input));
+        Ok(ec.clone())
     }
 
     #[test]
@@ -657,12 +586,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::NIL)
+                InstructionBuilder::new(Function::NIL)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 3.14.into())
-            .with_memory_word(MEMORY_SIZE - 1, 2.71.into())
+            .with_memory_word(1, 3.14)
+            .with_memory_word(MEMORY_SIZE - 1, 2.71)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -677,12 +607,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::OR)
+                InstructionBuilder::new(Function::OR)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 14.into())
-            .with_memory_word(MEMORY_SIZE - 1, 10.into())
+            .with_memory_word(1, 14)
+            .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -697,12 +628,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::NEQV)
+                InstructionBuilder::new(Function::NEQV)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 6.into())
-            .with_memory_word(MEMORY_SIZE - 1, 10.into())
+            .with_memory_word(1, 6)
+            .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -717,12 +649,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::AND)
+                InstructionBuilder::new(Function::AND)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 8.into())
-            .with_memory_word(MEMORY_SIZE - 1, 10.into())
+            .with_memory_word(1, 8)
+            .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -737,12 +670,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 22.into())
-            .with_memory_word(MEMORY_SIZE - 1, 10.into())
+            .with_memory_word(1, 22)
+            .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -759,20 +693,22 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::SUBT)
+                InstructionBuilder::new(Function::SUBT)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SUBT)
+                InstructionBuilder::new(Function::SUBT)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, 2.into())
-            .with_memory_word(2, (-2).into())
-            .with_memory_word(MEMORY_SIZE - 1, 10.into())
-            .with_memory_word(MEMORY_SIZE - 2, 12.into())
+            .with_memory_word(1, 2)
+            .with_memory_word(2, -2)
+            .with_memory_word(MEMORY_SIZE - 1, 10)
+            .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -787,12 +723,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::MULT)
+                InstructionBuilder::new(Function::MULT)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 120.into())
-            .with_memory_word(MEMORY_SIZE - 1, 10.into())
+            .with_memory_word(1, 120)
+            .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -807,12 +744,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::DVD)
+                InstructionBuilder::new(Function::DVD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 2.into())
-            .with_memory_word(MEMORY_SIZE - 1, 6.into())
+            .with_memory_word(1, 2)
+            .with_memory_word(MEMORY_SIZE - 1, 6)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -830,36 +768,40 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(4)
-                    .with_address(110),
+                    .with_address(110)
+                    .build(),
             )
-            .with_memory_word(1, 42.into())
-            .with_memory_word(2, 3.14.into())
-            .with_memory_word(3, "ABCD".into())
-            .with_memory_word(4, 2.718.into())
-            .with_memory_word(MEMORY_SIZE - 1, 42.into())
-            .with_memory_word(MEMORY_SIZE - 2, 3.14.into())
-            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into())
-            .with_memory_word(110, 2.718.into())
+            .with_memory_word(1, 42)
+            .with_memory_word(2, 3.14)
+            .with_memory_word(3, "ABCD")
+            .with_memory_word(4, 2.718)
+            .with_memory_word(MEMORY_SIZE - 1, 42)
+            .with_memory_word(MEMORY_SIZE - 2, 3.14)
+            .with_memory_word(MEMORY_SIZE - 3, "ABCD")
+            .with_memory_word(110, 2.718)
             .with_program_counter(104);
         assert_eq!(actual, expected)
     }
@@ -874,22 +816,24 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TSTR)
+                InstructionBuilder::new(Function::TSTR)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::TSTR)
+                InstructionBuilder::new(Function::TSTR)
                     .with_accumulator(4)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, 0.into())
-            .with_memory_word(2, 2.into())
-            .with_memory_word(3, (-1).into())
-            .with_memory_word(4, (-2).into())
-            .with_memory_word(MEMORY_SIZE - 1, 2.into())
-            .with_memory_word(MEMORY_SIZE - 2, (-2).into())
+            .with_memory_word(1, 0)
+            .with_memory_word(2, 2)
+            .with_memory_word(3, -1)
+            .with_memory_word(4, -2)
+            .with_memory_word(MEMORY_SIZE - 1, 2)
+            .with_memory_word(MEMORY_SIZE - 2, -2)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -904,20 +848,22 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TNEG)
+                InstructionBuilder::new(Function::TNEG)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::TNEG)
+                InstructionBuilder::new(Function::TNEG)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, (-6).into())
-            .with_memory_word(2, 6.into())
-            .with_memory_word(MEMORY_SIZE - 1, 6.into())
-            .with_memory_word(MEMORY_SIZE - 2, (-6).into())
+            .with_memory_word(1, -6)
+            .with_memory_word(2, 6)
+            .with_memory_word(MEMORY_SIZE - 1, 6)
+            .with_memory_word(MEMORY_SIZE - 2, -6)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -932,20 +878,22 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TNOT)
+                InstructionBuilder::new(Function::TNOT)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::TNOT)
+                InstructionBuilder::new(Function::TNOT)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, (-5592406).into())
-            .with_memory_word(2, 5592405.into())
-            .with_memory_word(MEMORY_SIZE - 1, 5592405.into())
-            .with_memory_word(MEMORY_SIZE - 2, (-5592406).into())
+            .with_memory_word(1, -5592406)
+            .with_memory_word(2, 5592405)
+            .with_memory_word(MEMORY_SIZE - 1, 5592405)
+            .with_memory_word(MEMORY_SIZE - 2, -5592406)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -962,35 +910,39 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TTYP)
+                InstructionBuilder::new(Function::TTYP)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::TTYP)
+                InstructionBuilder::new(Function::TTYP)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::TTYP)
+                InstructionBuilder::new(Function::TTYP)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::TTYP)
+                InstructionBuilder::new(Function::TTYP)
                     .with_accumulator(4)
-                    .with_address(103),
+                    .with_address(103)
+                    .build(),
             )
-            .with_memory_word(1, 0.into())
-            .with_memory_word(2, 1.into())
-            .with_memory_word(3, 2.into())
-            .with_memory_word(4, 3.into())
-            .with_memory_word(MEMORY_SIZE - 1, 42.into())
-            .with_memory_word(MEMORY_SIZE - 2, 3.14.into())
-            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into())
+            .with_memory_word(1, 0)
+            .with_memory_word(2, 1)
+            .with_memory_word(3, 2)
+            .with_memory_word(4, 3)
+            .with_memory_word(MEMORY_SIZE - 1, 42)
+            .with_memory_word(MEMORY_SIZE - 2, 3.14)
+            .with_memory_word(MEMORY_SIZE - 3, "ABCD")
             .with_program_counter(104);
         assert_eq!(actual, expected)
     }
@@ -1005,20 +957,22 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TTYZ)
+                InstructionBuilder::new(Function::TTYZ)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::TTYZ)
+                InstructionBuilder::new(Function::TTYZ)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, 42.into())
-            .with_memory_word(2, 0o01020304.into())
-            .with_memory_word(MEMORY_SIZE - 1, 42.into())
-            .with_memory_word(MEMORY_SIZE - 2, "ABCD".into())
+            .with_memory_word(1, 42)
+            .with_memory_word(2, 0o01020304)
+            .with_memory_word(MEMORY_SIZE - 1, 42)
+            .with_memory_word(MEMORY_SIZE - 2, "ABCD")
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -1039,14 +993,18 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TOUT).with_address(MEMORY_SIZE - 1),
+                InstructionBuilder::new(Function::TOUT)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::TOUT).with_address(MEMORY_SIZE - 2),
+                InstructionBuilder::new(Function::TOUT)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(MEMORY_SIZE - 1, 1.into())
-            .with_memory_word(MEMORY_SIZE - 2, "ABCD".into())
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, "ABCD")
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -1063,20 +1021,22 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_instruction(101, Instruction::new(Function::SKIP))
+            .with_instruction(101, InstructionBuilder::new(Function::SKIP).build())
             .with_instruction(
                 102,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, 1.into())
-            .with_memory_word(MEMORY_SIZE - 1, 1.into())
-            .with_memory_word(MEMORY_SIZE - 2, 1.into())
+            .with_memory_word(1, 1)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 1)
             .with_program_counter(103);
         assert_eq!(actual, expected)
     }
@@ -1097,48 +1057,54 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SKAE)
+                InstructionBuilder::new(Function::SKAE)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 4),
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
             )
             .with_instruction(
                 104,
-                Instruction::new(Function::SKAE)
+                InstructionBuilder::new(Function::SKAE)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 5),
+                    .with_address(MEMORY_SIZE - 5)
+                    .build(),
             )
             .with_instruction(
                 105,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 6),
+                    .with_address(MEMORY_SIZE - 6)
+                    .build(),
             )
-            .with_memory_word(1, 1.into())
-            .with_memory_word(2, 2.into())
-            .with_memory_word(MEMORY_SIZE - 1, 1.into())
-            .with_memory_word(MEMORY_SIZE - 2, 1.into())
-            .with_memory_word(MEMORY_SIZE - 3, 1.into())
-            .with_memory_word(MEMORY_SIZE - 4, 1.into())
-            .with_memory_word(MEMORY_SIZE - 5, 2.into())
-            .with_memory_word(MEMORY_SIZE - 6, 1.into())
+            .with_memory_word(1, 1)
+            .with_memory_word(2, 2)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 1)
+            .with_memory_word(MEMORY_SIZE - 3, 1)
+            .with_memory_word(MEMORY_SIZE - 4, 1)
+            .with_memory_word(MEMORY_SIZE - 5, 2)
+            .with_memory_word(MEMORY_SIZE - 6, 1)
             .with_program_counter(106);
         assert_eq!(actual, expected)
     }
@@ -1159,48 +1125,54 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SKAN)
+                InstructionBuilder::new(Function::SKAN)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 4),
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
             )
             .with_instruction(
                 104,
-                Instruction::new(Function::SKAN)
+                InstructionBuilder::new(Function::SKAN)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 5),
+                    .with_address(MEMORY_SIZE - 5)
+                    .build(),
             )
             .with_instruction(
                 105,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 6),
+                    .with_address(MEMORY_SIZE - 6)
+                    .build(),
             )
-            .with_memory_word(1, 2.into())
-            .with_memory_word(2, 1.into())
-            .with_memory_word(MEMORY_SIZE - 1, 1.into())
-            .with_memory_word(MEMORY_SIZE - 2, 1.into())
-            .with_memory_word(MEMORY_SIZE - 3, 1.into())
-            .with_memory_word(MEMORY_SIZE - 4, 1.into())
-            .with_memory_word(MEMORY_SIZE - 5, 2.into())
-            .with_memory_word(MEMORY_SIZE - 6, 1.into())
+            .with_memory_word(1, 2)
+            .with_memory_word(2, 1)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 1)
+            .with_memory_word(MEMORY_SIZE - 3, 1)
+            .with_memory_word(MEMORY_SIZE - 4, 1)
+            .with_memory_word(MEMORY_SIZE - 5, 2)
+            .with_memory_word(MEMORY_SIZE - 6, 1)
             .with_program_counter(106);
         assert_eq!(actual, expected)
     }
@@ -1219,48 +1191,54 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SKET)
+                InstructionBuilder::new(Function::SKET)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 4),
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
             )
             .with_instruction(
                 104,
-                Instruction::new(Function::SKET)
+                InstructionBuilder::new(Function::SKET)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 5),
+                    .with_address(MEMORY_SIZE - 5)
+                    .build(),
             )
             .with_instruction(
                 105,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 6),
+                    .with_address(MEMORY_SIZE - 6)
+                    .build(),
             )
-            .with_memory_word(1, 1.0.into())
-            .with_memory_word(2, 2.0.into())
-            .with_memory_word(MEMORY_SIZE - 1, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 2, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 3, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 4, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 5, 1.into())
-            .with_memory_word(MEMORY_SIZE - 6, 1.0.into())
+            .with_memory_word(1, 1.0)
+            .with_memory_word(2, 2.0)
+            .with_memory_word(MEMORY_SIZE - 1, 1.0)
+            .with_memory_word(MEMORY_SIZE - 2, 1.0)
+            .with_memory_word(MEMORY_SIZE - 3, 1.0)
+            .with_memory_word(MEMORY_SIZE - 4, 1.0)
+            .with_memory_word(MEMORY_SIZE - 5, 1)
+            .with_memory_word(MEMORY_SIZE - 6, 1.0)
             .with_program_counter(106);
         assert_eq!(actual, expected)
     }
@@ -1282,70 +1260,79 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SKAL)
+                InstructionBuilder::new(Function::SKAL)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 4),
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
             )
             .with_instruction(
                 104,
-                Instruction::new(Function::SKAL)
+                InstructionBuilder::new(Function::SKAL)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 5),
+                    .with_address(MEMORY_SIZE - 5)
+                    .build(),
             )
             .with_instruction(
                 105,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 6),
+                    .with_address(MEMORY_SIZE - 6)
+                    .build(),
             )
             .with_instruction(
                 106,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 7),
+                    .with_address(MEMORY_SIZE - 7)
+                    .build(),
             )
             .with_instruction(
                 107,
-                Instruction::new(Function::SKAL)
+                InstructionBuilder::new(Function::SKAL)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 8),
+                    .with_address(MEMORY_SIZE - 8)
+                    .build(),
             )
             .with_instruction(
                 108,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 9),
+                    .with_address(MEMORY_SIZE - 9)
+                    .build(),
             )
-            .with_memory_word(1, 0.0.into())
-            .with_memory_word(2, 2.0.into())
-            .with_memory_word(3, 3.0.into())
-            .with_memory_word(MEMORY_SIZE - 1, 0.0.into())
-            .with_memory_word(MEMORY_SIZE - 2, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 3, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 4, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 5, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 6, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 7, 2.0.into())
-            .with_memory_word(MEMORY_SIZE - 8, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 9, 1.0.into())
+            .with_memory_word(1, 0.0)
+            .with_memory_word(2, 2.0)
+            .with_memory_word(3, 3.0)
+            .with_memory_word(MEMORY_SIZE - 1, 0.0)
+            .with_memory_word(MEMORY_SIZE - 2, 1.0)
+            .with_memory_word(MEMORY_SIZE - 3, 1.0)
+            .with_memory_word(MEMORY_SIZE - 4, 1.0)
+            .with_memory_word(MEMORY_SIZE - 5, 1.0)
+            .with_memory_word(MEMORY_SIZE - 6, 1.0)
+            .with_memory_word(MEMORY_SIZE - 7, 2.0)
+            .with_memory_word(MEMORY_SIZE - 8, 1.0)
+            .with_memory_word(MEMORY_SIZE - 9, 1.0)
             .with_program_counter(109);
         assert_eq!(actual, expected)
     }
@@ -1367,70 +1354,79 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SKAG)
+                InstructionBuilder::new(Function::SKAG)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 4),
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
             )
             .with_instruction(
                 104,
-                Instruction::new(Function::SKAG)
+                InstructionBuilder::new(Function::SKAG)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 5),
+                    .with_address(MEMORY_SIZE - 5)
+                    .build(),
             )
             .with_instruction(
                 105,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 6),
+                    .with_address(MEMORY_SIZE - 6)
+                    .build(),
             )
             .with_instruction(
                 106,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 7),
+                    .with_address(MEMORY_SIZE - 7)
+                    .build(),
             )
             .with_instruction(
                 107,
-                Instruction::new(Function::SKAG)
+                InstructionBuilder::new(Function::SKAG)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 8),
+                    .with_address(MEMORY_SIZE - 8)
+                    .build(),
             )
             .with_instruction(
                 108,
-                Instruction::new(Function::ADD)
+                InstructionBuilder::new(Function::ADD)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 9),
+                    .with_address(MEMORY_SIZE - 9)
+                    .build(),
             )
-            .with_memory_word(1, 1.0.into())
-            .with_memory_word(2, 2.0.into())
-            .with_memory_word(3, 2.0.into())
-            .with_memory_word(MEMORY_SIZE - 1, 0.0.into())
-            .with_memory_word(MEMORY_SIZE - 2, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 3, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 4, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 5, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 6, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 7, 2.0.into())
-            .with_memory_word(MEMORY_SIZE - 8, 1.0.into())
-            .with_memory_word(MEMORY_SIZE - 9, 1.0.into())
+            .with_memory_word(1, 1.0)
+            .with_memory_word(2, 2.0)
+            .with_memory_word(3, 2.0)
+            .with_memory_word(MEMORY_SIZE - 1, 0.0)
+            .with_memory_word(MEMORY_SIZE - 2, 1.0)
+            .with_memory_word(MEMORY_SIZE - 3, 1.0)
+            .with_memory_word(MEMORY_SIZE - 4, 1.0)
+            .with_memory_word(MEMORY_SIZE - 5, 1.0)
+            .with_memory_word(MEMORY_SIZE - 6, 1.0)
+            .with_memory_word(MEMORY_SIZE - 7, 2.0)
+            .with_memory_word(MEMORY_SIZE - 8, 1.0)
+            .with_memory_word(MEMORY_SIZE - 9, 1.0)
             .with_program_counter(109);
         assert_eq!(actual, expected)
     }
@@ -1448,35 +1444,39 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SKED)
+                InstructionBuilder::new(Function::SKED)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_instruction(102, Instruction::new(Function::NIL))
+            .with_instruction(102, InstructionBuilder::new(Function::NIL).build())
             .with_instruction(
                 103,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 104,
-                Instruction::new(Function::SKED)
+                InstructionBuilder::new(Function::SKED)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 4),
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
             )
-            .with_memory_word(1, 42.into())
-            .with_memory_word(2, 0.into())
-            .with_memory_word(MEMORY_SIZE - 1, 42.into())
-            .with_memory_word(MEMORY_SIZE - 2, 42.into())
-            .with_memory_word(MEMORY_SIZE - 3, 1.into())
-            .with_memory_word(MEMORY_SIZE - 4, 42.into())
+            .with_memory_word(1, 42)
+            .with_memory_word(2, 0)
+            .with_memory_word(MEMORY_SIZE - 1, 42)
+            .with_memory_word(MEMORY_SIZE - 2, 42)
+            .with_memory_word(MEMORY_SIZE - 3, 1)
+            .with_memory_word(MEMORY_SIZE - 4, 42)
             .with_program_counter(105);
         assert_eq!(actual, expected)
     }
@@ -1494,35 +1494,39 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SKEI)
+                InstructionBuilder::new(Function::SKEI)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_instruction(102, Instruction::new(Function::NIL))
+            .with_instruction(102, InstructionBuilder::new(Function::NIL).build())
             .with_instruction(
                 103,
-                Instruction::new(Function::TAKE)
+                InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 104,
-                Instruction::new(Function::SKEI)
+                InstructionBuilder::new(Function::SKEI)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 4),
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
             )
-            .with_memory_word(1, 42.into())
-            .with_memory_word(2, 2.into())
-            .with_memory_word(MEMORY_SIZE - 1, 42.into())
-            .with_memory_word(MEMORY_SIZE - 2, 42.into())
-            .with_memory_word(MEMORY_SIZE - 3, 1.into())
-            .with_memory_word(MEMORY_SIZE - 4, 42.into())
+            .with_memory_word(1, 42)
+            .with_memory_word(2, 2)
+            .with_memory_word(MEMORY_SIZE - 1, 42)
+            .with_memory_word(MEMORY_SIZE - 2, 42)
+            .with_memory_word(MEMORY_SIZE - 3, 1)
+            .with_memory_word(MEMORY_SIZE - 4, 42)
             .with_program_counter(105);
         assert_eq!(actual, expected)
     }
@@ -1541,28 +1545,31 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::SHL)
+                InstructionBuilder::new(Function::SHL)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SHL)
+                InstructionBuilder::new(Function::SHL)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::SHL)
+                InstructionBuilder::new(Function::SHL)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
-            .with_memory_word(1, 2.into())
-            .with_memory_word(2, 9.223372036854776e18.into())
-            .with_memory_word(3, " AB\0".into())
-            .with_memory_word(MEMORY_SIZE - 1, 1.into())
-            .with_memory_word(MEMORY_SIZE - 2, 1.into())
-            .with_memory_word(MEMORY_SIZE - 3, 6.into())
+            .with_memory_word(1, 2)
+            .with_memory_word(2, 9_223_372_036_854_775_808.0)
+            .with_memory_word(3, " AB\0")
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 1)
+            .with_memory_word(MEMORY_SIZE - 3, 6)
             .with_program_counter(103);
         assert_eq!(actual, expected)
     }
@@ -1581,28 +1588,31 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::ROT)
+                InstructionBuilder::new(Function::ROT)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::ROT)
+                InstructionBuilder::new(Function::ROT)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::ROT)
+                InstructionBuilder::new(Function::ROT)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
-            .with_memory_word(1, 2.into())
-            .with_memory_word(2, 9.223372036854776e18.into())
-            .with_memory_word(3, "BCDA".into())
-            .with_memory_word(MEMORY_SIZE - 1, 25.into())
-            .with_memory_word(MEMORY_SIZE - 2, 1.into())
-            .with_memory_word(MEMORY_SIZE - 3, 6.into())
+            .with_memory_word(1, 2)
+            .with_memory_word(2, 9_223_372_036_854_775_808.0)
+            .with_memory_word(3, "BCDA")
+            .with_memory_word(MEMORY_SIZE - 1, 25)
+            .with_memory_word(MEMORY_SIZE - 2, 1)
+            .with_memory_word(MEMORY_SIZE - 3, 6)
             .with_program_counter(103);
         assert_eq!(actual, expected)
     }
@@ -1621,22 +1631,24 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::DSHL)
+                InstructionBuilder::new(Function::DSHL)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::DSHL)
+                InstructionBuilder::new(Function::DSHL)
                     .with_accumulator(4)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, 2.into())
-            .with_memory_word(2, 0.into())
-            .with_memory_word(3, "AB".into())
-            .with_memory_word(4, "CD\0\0".into())
-            .with_memory_word(MEMORY_SIZE - 1, 25.into())
-            .with_memory_word(MEMORY_SIZE - 2, 12.into())
+            .with_memory_word(1, 2)
+            .with_memory_word(2, 0)
+            .with_memory_word(3, "  AB")
+            .with_memory_word(4, "CD\0\0")
+            .with_memory_word(MEMORY_SIZE - 1, 25)
+            .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -1655,22 +1667,24 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::DROT)
+                InstructionBuilder::new(Function::DROT)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::DROT)
+                InstructionBuilder::new(Function::DROT)
                     .with_accumulator(4)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, 2.into())
-            .with_memory_word(2, 4.into())
-            .with_memory_word(3, "YZAB".into())
-            .with_memory_word(4, "CDWX".into())
-            .with_memory_word(MEMORY_SIZE - 1, 25.into())
-            .with_memory_word(MEMORY_SIZE - 2, 12.into())
+            .with_memory_word(1, 2)
+            .with_memory_word(2, 4)
+            .with_memory_word(3, "YZAB")
+            .with_memory_word(4, "CDWX")
+            .with_memory_word(MEMORY_SIZE - 1, 25)
+            .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -1687,20 +1701,22 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::POWR)
+                InstructionBuilder::new(Function::POWR)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::POWR)
+                InstructionBuilder::new(Function::POWR)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, 8.into())
-            .with_memory_word(2, 8.0.into())
-            .with_memory_word(MEMORY_SIZE - 1, 3.into())
-            .with_memory_word(MEMORY_SIZE - 2, 3.0.into())
+            .with_memory_word(1, 8)
+            .with_memory_word(2, 8.0)
+            .with_memory_word(MEMORY_SIZE - 1, 3)
+            .with_memory_word(MEMORY_SIZE - 2, 3.0)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -1716,13 +1732,14 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::DMULT)
+                InstructionBuilder::new(Function::DMULT)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, (-12).into())
-            .with_memory_word(2, (-7450624).into())
-            .with_memory_word(MEMORY_SIZE - 1, 12000.into())
+            .with_memory_word(1, -12)
+            .with_memory_word(2, -7450624)
+            .with_memory_word(MEMORY_SIZE - 1, 12000)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -1739,20 +1756,22 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::DIV)
+                InstructionBuilder::new(Function::DIV)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::DIV)
+                InstructionBuilder::new(Function::DIV)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, (-6).into())
-            .with_memory_word(2, 5.into())
-            .with_memory_word(MEMORY_SIZE - 1, 7.into())
-            .with_memory_word(MEMORY_SIZE - 2, 7.into())
+            .with_memory_word(1, -6)
+            .with_memory_word(2, 5)
+            .with_memory_word(MEMORY_SIZE - 1, 7)
+            .with_memory_word(MEMORY_SIZE - 2, 7)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -1768,13 +1787,14 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::DDIV)
+                InstructionBuilder::new(Function::DDIV)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 0.into())
-            .with_memory_word(2, 16000.into())
-            .with_memory_word(MEMORY_SIZE - 1, (-12000).into())
+            .with_memory_word(1, 0)
+            .with_memory_word(2, 16000)
+            .with_memory_word(MEMORY_SIZE - 1, -12000)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -1789,12 +1809,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::NILX)
+                InstructionBuilder::new(Function::NILX)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 2.71.into())
-            .with_memory_word(MEMORY_SIZE - 1, 3.14.into())
+            .with_memory_word(1, 2.71)
+            .with_memory_word(MEMORY_SIZE - 1, 3.14)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -1809,12 +1830,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::ORX)
+                InstructionBuilder::new(Function::ORX)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 10.into())
-            .with_memory_word(MEMORY_SIZE - 1, 14.into())
+            .with_memory_word(1, 10)
+            .with_memory_word(MEMORY_SIZE - 1, 14)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -1829,12 +1851,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::NEQVX)
+                InstructionBuilder::new(Function::NEQVX)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 10.into())
-            .with_memory_word(MEMORY_SIZE - 1, 6.into())
+            .with_memory_word(1, 10)
+            .with_memory_word(MEMORY_SIZE - 1, 6)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -1849,12 +1872,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::ADDX)
+                InstructionBuilder::new(Function::ADDX)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 10.into())
-            .with_memory_word(MEMORY_SIZE - 1, 22.into())
+            .with_memory_word(1, 10)
+            .with_memory_word(MEMORY_SIZE - 1, 22)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -1871,20 +1895,22 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::SUBTX)
+                InstructionBuilder::new(Function::SUBTX)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::SUBTX)
+                InstructionBuilder::new(Function::SUBTX)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
-            .with_memory_word(1, 10.into())
-            .with_memory_word(2, 12.into())
-            .with_memory_word(MEMORY_SIZE - 1, 2.into())
-            .with_memory_word(MEMORY_SIZE - 2, (-2).into())
+            .with_memory_word(1, 10)
+            .with_memory_word(2, 12)
+            .with_memory_word(MEMORY_SIZE - 1, 2)
+            .with_memory_word(MEMORY_SIZE - 2, -2)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -1899,12 +1925,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::MULTX)
+                InstructionBuilder::new(Function::MULTX)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 10.into())
-            .with_memory_word(MEMORY_SIZE - 1, 120.into())
+            .with_memory_word(1, 10)
+            .with_memory_word(MEMORY_SIZE - 1, 120)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -1919,12 +1946,13 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::DVDX)
+                InstructionBuilder::new(Function::DVDX)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
-            .with_memory_word(1, 6.into())
-            .with_memory_word(MEMORY_SIZE - 1, 2.into())
+            .with_memory_word(1, 6)
+            .with_memory_word(MEMORY_SIZE - 1, 2)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -1946,36 +1974,40 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::PUT)
+                InstructionBuilder::new(Function::PUT)
                     .with_accumulator(1)
-                    .with_address(MEMORY_SIZE - 1),
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::PUT)
+                InstructionBuilder::new(Function::PUT)
                     .with_accumulator(2)
-                    .with_address(MEMORY_SIZE - 2),
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::PUT)
+                InstructionBuilder::new(Function::PUT)
                     .with_accumulator(3)
-                    .with_address(MEMORY_SIZE - 3),
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::PUT)
+                InstructionBuilder::new(Function::PUT)
                     .with_accumulator(4)
-                    .with_address(110),
+                    .with_address(110)
+                    .build(),
             )
-            .with_memory_word(1, 42.into())
-            .with_memory_word(2, 3.14.into())
-            .with_memory_word(3, "ABCD".into())
-            .with_memory_word(4, 2.718.into())
-            .with_memory_word(MEMORY_SIZE - 1, 42.into())
-            .with_memory_word(MEMORY_SIZE - 2, 3.14.into())
-            .with_memory_word(MEMORY_SIZE - 3, "ABCD".into())
-            .with_memory_word(110, 2.718.into())
+            .with_memory_word(1, 42)
+            .with_memory_word(2, 3.14)
+            .with_memory_word(3, "ABCD")
+            .with_memory_word(4, 2.718)
+            .with_memory_word(MEMORY_SIZE - 1, 42)
+            .with_memory_word(MEMORY_SIZE - 2, 3.14)
+            .with_memory_word(MEMORY_SIZE - 3, "ABCD")
+            .with_memory_word(110, 2.718)
             .with_program_counter(104);
         assert_eq!(actual, expected)
     }
@@ -1986,19 +2018,20 @@ mod test {
 0001            -1
 0002            -12
 0100            PSQU 2, LOC
-0110    LOC:     +0
+0110    LOC:    +0
 "#;
         let actual = execute(program).ok().unwrap();
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::PSQU)
+                InstructionBuilder::new(Function::PSQU)
                     .with_accumulator(2)
-                    .with_address(110),
+                    .with_address(110)
+                    .build(),
             )
-            .with_memory_word(1, (-1).into())
-            .with_memory_word(2, (-12).into())
-            .with_memory_word(110, (-12).into())
+            .with_memory_word(1, -1)
+            .with_memory_word(2, -12)
+            .with_memory_word(110, -12)
             .with_program_counter(101);
         assert_eq!(actual, expected)
     }
@@ -2010,27 +2043,29 @@ mod test {
 0002            -3.14
 0100            PNEG 1, LOC1
 0101            PNEG 2, LOC2
-0110    LOC1:    +0
-0111    LOC2:    +0
+0110    LOC1:   +0
+0111    LOC2:   +0
 "#;
         let actual = execute(program).ok().unwrap();
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::PNEG)
+                InstructionBuilder::new(Function::PNEG)
                     .with_accumulator(1)
-                    .with_address(110),
+                    .with_address(110)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::PNEG)
+                InstructionBuilder::new(Function::PNEG)
                     .with_accumulator(2)
-                    .with_address(111),
+                    .with_address(111)
+                    .build(),
             )
-            .with_memory_word(1, 3.into())
-            .with_memory_word(2, (-3.14).into())
-            .with_memory_word(110, (-3).into())
-            .with_memory_word(111, 3.14.into())
+            .with_memory_word(1, 3)
+            .with_memory_word(2, -3.14)
+            .with_memory_word(110, -3)
+            .with_memory_word(111, 3.14)
             .with_program_counter(102);
         assert_eq!(actual, expected)
     }
@@ -2055,36 +2090,40 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                Instruction::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYP)
                     .with_accumulator(1)
-                    .with_address(110),
+                    .with_address(110)
+                    .build(),
             )
             .with_instruction(
                 101,
-                Instruction::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYP)
                     .with_accumulator(2)
-                    .with_address(111),
+                    .with_address(111)
+                    .build(),
             )
             .with_instruction(
                 102,
-                Instruction::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYP)
                     .with_accumulator(3)
-                    .with_address(112),
+                    .with_address(112)
+                    .build(),
             )
             .with_instruction(
                 103,
-                Instruction::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYP)
                     .with_accumulator(4)
-                    .with_address(113),
+                    .with_address(113)
+                    .build(),
             )
-            .with_memory_word(1, 42.into())
-            .with_memory_word(2, 3.14.into())
-            .with_memory_word(3, "ABCD".into())
-            // .with_memory_word(4, 2.718.into())
-            .with_memory_word(110, 0.into())
-            .with_memory_word(111, 0.0.into())
-            .with_memory_word(112, "\0\0\0\0".into())
-            .with_memory_word(113, 0.into())
+            .with_memory_word(1, 0)
+            .with_memory_word(2, 1)
+            .with_memory_word(3, 2)
+            .with_memory_word(4, 3)
+            .with_memory_word(110, 0)
+            .with_memory_word(111, 0.0)
+            .with_memory_word(112, "\0\0\0\0")
+            .with_instruction(113, InstructionBuilder::new(Function::NIL).build())
             .with_program_counter(104);
         assert_eq!(actual, expected)
     }

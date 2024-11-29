@@ -6,6 +6,7 @@ mod executor;
 mod grammar;
 mod memory;
 mod parser;
+mod result;
 
 use self::assembler::Assembler;
 use self::assembly::Assembly;
@@ -69,7 +70,9 @@ impl BbcX {
     fn impl_run(&self, path: &Path) -> Result<()> {
         let assembly = self.impl_assemble(path)?;
         let executor = Executor::new();
-        _ = executor.execute(&assembly)?;
+        _ = executor
+            .execute(&assembly)
+            .map_err(|err| Error::FailedToRun(err.to_string()))?;
         Ok(())
     }
 
@@ -142,7 +145,7 @@ mod test {
             "bbc-x",
             "--lang=bbc-x",
             "--run",
-            "./examples/test/bbcx/stop.bbc",
+            "./examples/test/bbcx/nil.bbc",
         ]
         .into_iter()
         .map(|s| s.to_string())

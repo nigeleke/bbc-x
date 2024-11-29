@@ -1,3 +1,5 @@
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SourceLine {
     location: Location,
@@ -316,7 +318,7 @@ pub type FloatType = f64;
 pub type AddressRef = usize;
 pub type IndexRegister = usize;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, IntoPrimitive, TryFromPrimitive)]
 #[allow(clippy::upper_case_acronyms)]
 #[repr(u32)]
 pub enum Mnemonic {

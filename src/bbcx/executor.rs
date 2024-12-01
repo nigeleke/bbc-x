@@ -532,11 +532,9 @@ impl Executor {
         let function = Function::try_from_primitive(code).unwrap();
 
         match function {
-            Function::SQRT
-            | Function::LN
-            | Function::EXP
-            | Function::READ
-            | Function::PRINT
+            Function::SQRT | Function::LN | Function::EXP => unimplemented!("{:?}", function),
+            Function::READ => self.exec_extra_read(instruction),
+            Function::PRINT
             | Function::SIN
             | Function::COS
             | Function::TAN
@@ -545,11 +543,95 @@ impl Executor {
             | Function::LINE
             | Function::INT
             | Function::FRAC
-            | Function::FLOAT => unimplemented!(),
+            | Function::FLOAT => unimplemented!("{:?}", function),
             Function::CAPN => self.exec_extra_capn(instruction),
-            Function::PAGE | Function::RND | Function::ABS => unimplemented!(),
+            Function::PAGE | Function::RND | Function::ABS => unimplemented!("{:?}", function),
             other => panic!("Invalid EXTRA code {:?}", other),
         }
+    }
+
+    fn exec_extra_read(&mut self, instruction: &Instruction) {
+        let mut stdin = (*self.stdin).borrow_mut();
+        let acc = instruction.accumulator();
+
+        let mut buffer = [0u8; 1];
+        let mut result = String::new();
+
+        if self.ec.quote_marker {
+            // Read until 4 characters, a newline, or a quote
+            while result.len() < 4 {
+                if stdin.read(&mut buffer).unwrap_or(0) == 0 {
+                    break;
+                }
+                let c = buffer[0] as char;
+
+                if c == '\n' {
+                    break;
+                }
+
+                if c == '"' {
+                    self.ec.quote_marker = !self.ec.quote_marker;
+                    break;
+                }
+                result.push(c);
+            }
+
+            self.ec[acc] = result.as_str().try_into().unwrap();
+            return;
+        }
+
+        while stdin.read(&mut buffer).is_ok() {
+            let c = buffer[0] as char;
+            if !c.is_whitespace() && c != ',' {
+                result.push(c);
+                break;
+            }
+        }
+
+        if let Some(first_char) = result.chars().next() {
+            if first_char.is_alphabetic() {
+                // Read up to 4 more alphanumeric characters
+                while result.len() < 5 {
+                    if stdin.read(&mut buffer).unwrap_or(0) == 0 {
+                        break;
+                    }
+                    let c = buffer[0] as char;
+                    if c.is_alphanumeric() {
+                        result.push(c);
+                    } else {
+                        break;
+                    }
+                }
+                self.ec[acc] = result.as_str().try_into().unwrap();
+                return;
+            } else if first_char.is_numeric() || "+-.".contains(first_char) {
+                // Read numeric characters, including '@' for exponential
+                while stdin.read(&mut buffer).is_ok() {
+                    let c = buffer[0] as char;
+                    if !"+-0123456789.@".contains(c) {
+                        break;
+                    }
+                    result.push(c);
+                }
+
+                // Try to interpret as integer or float
+                if result.chars().all(|c| "+-0123456789".contains(c)) {
+                    if let Ok(int_value) = result.parse::<i64>() {
+                        self.ec[acc] = int_value.try_into().unwrap();
+                        return;
+                    }
+                } else {
+                    let normalized = result.replace('@', "e");
+                    if let Ok(float_value) = normalized.parse::<f64>() {
+                        self.ec[acc] = float_value.try_into().unwrap();
+                        return;
+                    }
+                }
+            }
+        }
+
+        // If no match, return a String Word with whatever was read
+        self.ec[acc] = result.as_str().try_into().unwrap();
     }
 
     fn exec_extra_capn(&mut self, _instruction: &Instruction) {
@@ -583,6 +665,7 @@ impl PartialEq for Executor {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExecutionContext {
     pc: Address,
+    quote_marker: bool,
     memory: Memory,
 }
 
@@ -634,6 +717,7 @@ impl TryFrom<Assembly> for ExecutionContext {
 
         Ok(Self {
             pc: program_counter.try_into().unwrap(),
+            quote_marker: false,
             memory,
         })
     }
@@ -745,13 +829,26 @@ mod test {
         Ok(ec.clone())
     }
 
+    fn test_result(actual: &ExecutionContext, expected: &ExecutionContext) {
+        assert_eq!(actual.pc, expected.pc);
+        assert_eq!(actual.quote_marker, expected.quote_marker);
+        let (actual, expected): (Vec<_>, Vec<_>) = actual
+            .memory
+            .iter()
+            .enumerate()
+            .zip(expected.memory.iter().enumerate())
+            .filter_map(|(a, e)| (a != e).then_some((a, e)))
+            .unzip();
+        assert_eq!(actual, expected);
+    }
+
     #[test]
     fn default_execution_context() {
         let program = r#"
 "#;
         let actual = execute(program).ok().unwrap();
         let expected = ExecutionContext::default().with_program_counter(0);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -772,7 +869,7 @@ mod test {
             .with_memory_word(1, 3.14)
             .with_memory_word(MEMORY_SIZE - 1, 2.71)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -793,7 +890,7 @@ mod test {
             .with_memory_word(1, 14)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -814,7 +911,7 @@ mod test {
             .with_memory_word(1, 6)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -835,7 +932,7 @@ mod test {
             .with_memory_word(1, 8)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -856,7 +953,7 @@ mod test {
             .with_memory_word(1, 22)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -888,7 +985,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -909,7 +1006,7 @@ mod test {
             .with_memory_word(1, 120)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -930,7 +1027,7 @@ mod test {
             .with_memory_word(1, 2)
             .with_memory_word(MEMORY_SIZE - 1, 6)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -981,7 +1078,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, "ABCD")
             .with_memory_word(110, 2.718)
             .with_program_counter(104);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1013,7 +1110,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 2)
             .with_memory_word(MEMORY_SIZE - 2, -2)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1043,7 +1140,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 6)
             .with_memory_word(MEMORY_SIZE - 2, -6)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1073,7 +1170,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 5592405)
             .with_memory_word(MEMORY_SIZE - 2, -5592406)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1122,7 +1219,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, 3.14)
             .with_memory_word(MEMORY_SIZE - 3, "ABCD")
             .with_program_counter(104);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1152,7 +1249,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 42)
             .with_memory_word(MEMORY_SIZE - 2, "ABCD")
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1184,7 +1281,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 1)
             .with_memory_word(MEMORY_SIZE - 2, "ABCD")
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1216,7 +1313,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 1)
             .with_memory_word(MEMORY_SIZE - 2, 1)
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1284,7 +1381,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 5, 2)
             .with_memory_word(MEMORY_SIZE - 6, 1)
             .with_program_counter(106);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1352,7 +1449,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 5, 2)
             .with_memory_word(MEMORY_SIZE - 6, 1)
             .with_program_counter(106);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1418,7 +1515,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 5, 1)
             .with_memory_word(MEMORY_SIZE - 6, 1.0)
             .with_program_counter(106);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1512,7 +1609,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 8, 1.0)
             .with_memory_word(MEMORY_SIZE - 9, 1.0)
             .with_program_counter(109);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1606,7 +1703,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 8, 1.0)
             .with_memory_word(MEMORY_SIZE - 9, 1.0)
             .with_program_counter(109);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1656,7 +1753,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 1)
             .with_memory_word(MEMORY_SIZE - 4, 42)
             .with_program_counter(105);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1706,7 +1803,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 1)
             .with_memory_word(MEMORY_SIZE - 4, 42)
             .with_program_counter(105);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1749,7 +1846,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, 1)
             .with_memory_word(MEMORY_SIZE - 3, 6)
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1792,7 +1889,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, 1)
             .with_memory_word(MEMORY_SIZE - 3, 6)
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1828,7 +1925,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 25)
             .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1864,7 +1961,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 25)
             .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1896,7 +1993,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 3)
             .with_memory_word(MEMORY_SIZE - 2, 3.0)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1919,7 +2016,7 @@ mod test {
             .with_memory_word(2, -7450624)
             .with_memory_word(MEMORY_SIZE - 1, 12000)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1951,7 +2048,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 7)
             .with_memory_word(MEMORY_SIZE - 2, 7)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1974,7 +2071,7 @@ mod test {
             .with_memory_word(2, 16000)
             .with_memory_word(MEMORY_SIZE - 1, -12000)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1995,7 +2092,7 @@ mod test {
             .with_memory_word(1, 2.71)
             .with_memory_word(MEMORY_SIZE - 1, 3.14)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2016,7 +2113,7 @@ mod test {
             .with_memory_word(1, 10)
             .with_memory_word(MEMORY_SIZE - 1, 14)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2037,7 +2134,7 @@ mod test {
             .with_memory_word(1, 10)
             .with_memory_word(MEMORY_SIZE - 1, 6)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2058,7 +2155,7 @@ mod test {
             .with_memory_word(1, 10)
             .with_memory_word(MEMORY_SIZE - 1, 22)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2090,7 +2187,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 2)
             .with_memory_word(MEMORY_SIZE - 2, -2)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2111,7 +2208,7 @@ mod test {
             .with_memory_word(1, 10)
             .with_memory_word(MEMORY_SIZE - 1, 120)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2132,7 +2229,7 @@ mod test {
             .with_memory_word(1, 6)
             .with_memory_word(MEMORY_SIZE - 1, 2)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2187,7 +2284,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, "ABCD")
             .with_memory_word(110, 2.718)
             .with_program_counter(104);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2211,7 +2308,7 @@ mod test {
             .with_memory_word(2, -12)
             .with_memory_word(110, -12)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2245,7 +2342,7 @@ mod test {
             .with_memory_word(110, -3)
             .with_memory_word(111, 3.14)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2317,7 +2414,7 @@ mod test {
             .with_memory_word(112, 0o01020304)
             .with_memory_word(113, 0o10400147)
             .with_program_counter(105);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2356,7 +2453,7 @@ mod test {
             )
             .with_memory_word(110, "2")
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2419,7 +2516,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, 2)
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_program_counter(121);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2504,7 +2601,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2589,7 +2686,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2674,7 +2771,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2759,7 +2856,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2844,7 +2941,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2929,7 +3026,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -3014,7 +3111,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -3049,7 +3146,7 @@ mod test {
             .with_memory_word(110, 2)
             .with_memory_word(111, 2.14)
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -3084,7 +3181,7 @@ mod test {
             .with_memory_word(110, 4)
             .with_memory_word(111, 4.14)
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -3150,7 +3247,7 @@ mod test {
             )
             .with_memory_word(111, 4.14)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -3172,9 +3269,40 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn test_extra_read() {
-        // Will implement if required.
+        let program = r#"
+0100    EXTRA   1, 4
+0101    READ    3
+0102    READ    5
+"#;
+        let actual = execute_io(program, "1,3.14,ABC", "").ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(1)
+                    .with_address(4)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(3)
+                    .with_address(4)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(5)
+                    .with_address(4)
+                    .build(),
+            )
+            .with_memory_word(1, 1)
+            .with_memory_word(3, 3.14)
+            .with_memory_word(5, "ABC")
+            .with_program_counter(103);
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -3268,7 +3396,7 @@ mod test {
             .with_memory_word(105, "UVWX")
             .with_memory_word(106, "YZ")
             .with_program_counter(107);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]

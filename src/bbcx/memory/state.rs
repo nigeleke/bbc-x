@@ -43,8 +43,13 @@ impl State {
                         .build()
                 } else {
                     let pseudo_address = pword.mnemonic() as usize - Mnemonic::EXTRA as usize;
+                    let acc = if pword.accumulator().as_usize() != 0 {
+                        pword.accumulator().as_usize()
+                    } else {
+                        address.memory_index()
+                    };
                     Builder::new(Mnemonic::EXTRA)
-                        .with_accumulator(pword.accumulator().as_usize())
+                        .with_accumulator(acc)
                         .with_address(pseudo_address)
                         .build()
                 };
@@ -61,6 +66,11 @@ impl State {
             .rposition(Word::is_undefined)
             .and_then(|i| i.try_into().ok())
             .ok_or(Error::OutOfMemory)
+    }
+
+    #[cfg(test)]
+    pub fn iter(&self) -> std::slice::Iter<'_, Word> {
+        self.0.iter()
     }
 }
 

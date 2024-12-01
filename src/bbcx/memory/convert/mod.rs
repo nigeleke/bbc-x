@@ -21,11 +21,11 @@ pub fn word_to_instruction(word: &Word) -> Result<Instruction> {
 
 pub fn instruction_to_word(instruction: &Instruction) -> Result<Word> {
     let function: u32 = instruction.function().into();
-    let acc = instruction.accumulator().as_bits();
-    let index_register = instruction.index_register().as_bits();
-    let indirect = instruction.indirect().as_bits();
-    let page = instruction.page().as_bits();
-    let address = instruction.address().as_bits();
+    let acc = instruction.accumulator().bits();
+    let index_register = instruction.index_register().bits();
+    let indirect = instruction.indirect().bits();
+    let page = instruction.page().bits();
+    let address = instruction.address().bits();
 
     let raw = bits::set(function, Word::PWORD_FUNCTION_MASK)
         | bits::set(acc, Word::PWORD_ACCUMULATOR_MASK)

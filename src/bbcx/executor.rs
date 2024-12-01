@@ -1,5 +1,5 @@
 use super::assembly::Assembly;
-use super::memory::{word_to_instruction, Instruction, *};
+use super::memory::{word_to_instruction, Address, Instruction, MemoryIndex, *};
 use super::result::{Error, Result};
 
 use std::cell::RefCell;
@@ -53,6 +53,7 @@ impl Executor {
         let content = self.ec[pc];
         let instruction = word_to_instruction(&content)
             .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))?;
+        println!("Exec: {:?} -> {:?}", self.ec.pc - 1, instruction);
         self.step_word(&instruction);
         Ok(())
     }
@@ -104,6 +105,7 @@ impl Executor {
             (Function::PTYP, Executor::exec_ptyp as ExecFn),
             (Function::PTYZ, Executor::exec_ptyz as ExecFn),
             (Function::PIN, Executor::exec_pin as ExecFn),
+            (Function::JUMP, Executor::exec_jump as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -427,6 +429,13 @@ impl Executor {
             }
         }
     }
+
+    fn exec_jump(&mut self, instruction: &Instruction) {
+        let pc = self.ec.pc - 1;
+        let (acc, address) = Self::acc_and_address(instruction);
+        self.ec[acc - 1] = (pc.memory_index() as i64).try_into().unwrap();
+        self.ec.pc = address;
+    }
 }
 
 impl std::fmt::Debug for Executor {
@@ -447,34 +456,44 @@ impl PartialEq for Executor {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExecutionContext {
-    pc: Offset,
+    pc: Address,
     memory: Memory,
 }
 
 #[cfg(test)]
 impl ExecutionContext {
-    fn with_program_counter(self, program_counter: Offset) -> Self {
+    fn with_program_counter<A>(self, program_counter: A) -> Self
+    where
+        A: TryInto<Address>,
+        A::Error: std::fmt::Debug,
+    {
         Self {
-            pc: program_counter,
+            pc: program_counter.try_into().unwrap(),
             ..self
         }
     }
 
-    fn with_memory_word<T>(mut self, offset: Offset, value: T) -> Self
+    fn with_memory_word<A, T>(mut self, address: A, value: T) -> Self
     where
+        A: TryInto<Address>,
+        A::Error: std::fmt::Debug,
         T: TryInto<Word>,
         T::Error: std::fmt::Debug,
     {
-        self.memory[offset] = value
+        let address = address.try_into().unwrap();
+        self.memory[address.memory_index()] = value
             .try_into()
             .expect("required valid value to create word");
         self
     }
 
-    fn with_instruction(self, location: Offset, instruction: Instruction) -> Self {
+    fn with_instruction<A>(self, address: A, instruction: Instruction) -> Self
+    where
+        A: TryInto<Address>,
+        A::Error: std::fmt::Debug,
+    {
         use crate::bbcx::memory::*;
-
-        self.with_memory_word(location, instruction_to_word(&instruction).unwrap())
+        self.with_memory_word(address, instruction_to_word(&instruction).unwrap())
     }
 }
 
@@ -488,7 +507,7 @@ impl TryFrom<Assembly> for ExecutionContext {
             .map_err(|err| Error::FailedToCreateExecutionContext(err.to_string()))?;
 
         Ok(Self {
-            pc: program_counter,
+            pc: program_counter.try_into().unwrap(),
             memory,
         })
     }
@@ -2211,6 +2230,69 @@ mod test {
             )
             .with_memory_word(110, "2")
             .with_program_counter(103);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jump() {
+        let program = r#"
+0100    JUMP    1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
+            .with_memory_word(2, 2)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_program_counter(121);
         assert_eq!(actual, expected)
     }
 }

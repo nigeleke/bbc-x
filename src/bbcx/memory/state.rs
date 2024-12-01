@@ -6,8 +6,6 @@ use super::word::*;
 use crate::bbcx::ast::{Location as AstLocation, SourceWord as AstSourceWord};
 use crate::bbcx::Assembly;
 
-pub type Offset = usize;
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct State(Vec<Word>);
 
@@ -32,7 +30,7 @@ impl State {
                     self[address] = store_operand_to_word(&operand)?;
                     address
                 } else {
-                    assembly.address_used_by_store_operand(operand)
+                    assembly.address_used_by_store_operand(operand).try_into()?
                 };
 
                 let instruction = Builder::new(pword.mnemonic())
@@ -49,15 +47,16 @@ impl State {
         Ok(self)
     }
 
-    fn next_storage_address(&self) -> Result<Offset> {
+    fn next_storage_address(&self) -> Result<Address> {
         self.0
             .iter()
             .rposition(Word::is_undefined)
+            .and_then(|i| i.try_into().ok())
             .ok_or(Error::OutOfMemory)
     }
 }
 
-pub const MEMORY_SIZE: Offset = 128; // TODO Change to 1024
+pub const MEMORY_SIZE: usize = 128; // TODO Change to 1024
 
 impl Default for State {
     fn default() -> Self {
@@ -98,13 +97,21 @@ impl std::ops::Index<Accumulator> for State {
     type Output = Word;
 
     fn index(&self, acc: Accumulator) -> &Self::Output {
-        &self.0[acc.index()]
+        &self.0[acc.memory_index()]
+    }
+}
+
+impl std::ops::Index<Accumulator> for Vec<Word> {
+    type Output = Word;
+
+    fn index(&self, acc: Accumulator) -> &Self::Output {
+        &self[acc.memory_index()]
     }
 }
 
 impl std::ops::IndexMut<Accumulator> for State {
     fn index_mut(&mut self, acc: Accumulator) -> &mut Self::Output {
-        &mut self.0[acc.index()]
+        &mut self.0[acc.memory_index()]
     }
 }
 
@@ -112,13 +119,13 @@ impl std::ops::Index<IndexRegister> for State {
     type Output = Word;
 
     fn index(&self, index_register: IndexRegister) -> &Self::Output {
-        &self.0[index_register.index()]
+        &self.0[index_register.memory_index()]
     }
 }
 
 impl std::ops::IndexMut<IndexRegister> for State {
     fn index_mut(&mut self, index_register: IndexRegister) -> &mut Self::Output {
-        &mut self.0[index_register.index()]
+        &mut self.0[index_register.memory_index()]
     }
 }
 
@@ -126,12 +133,12 @@ impl std::ops::Index<Address> for State {
     type Output = Word;
 
     fn index(&self, address: Address) -> &Self::Output {
-        &self.0[address.index()]
+        &self.0[address.memory_index()]
     }
 }
 
 impl std::ops::IndexMut<Address> for State {
     fn index_mut(&mut self, address: Address) -> &mut Self::Output {
-        &mut self.0[address.index()]
+        &mut self.0[address.memory_index()]
     }
 }

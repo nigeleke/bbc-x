@@ -67,7 +67,10 @@ fn validate_ast(ast: &[SourceLine]) -> Result<()> {
 
 fn generate_code(ast: &[SourceLine]) -> Code {
     ast.iter()
-        .map(|line| (*line.location(), line.source_program_word().clone()))
+        .filter_map(|line| {
+            line.source_program_word()
+                .map(|spw| (*line.location(), spw.clone()))
+        })
         .collect::<Code>()
 }
 

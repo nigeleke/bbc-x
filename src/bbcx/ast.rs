@@ -4,7 +4,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 pub struct SourceLine {
     location: Location,
     label: Label,
-    source_program_word: SourceWord,
+    source_program_word: Option<SourceWord>,
     comment: Comment,
 }
 
@@ -12,7 +12,7 @@ impl SourceLine {
     pub fn new(
         location: Location,
         label: Label,
-        source_program_word: SourceWord,
+        source_program_word: Option<SourceWord>,
         comment: Comment,
     ) -> Self {
         Self {
@@ -31,8 +31,8 @@ impl SourceLine {
         &self.label
     }
 
-    pub fn source_program_word(&self) -> &SourceWord {
-        &self.source_program_word
+    pub fn source_program_word(&self) -> Option<&SourceWord> {
+        self.source_program_word.as_ref()
     }
 }
 
@@ -40,7 +40,10 @@ impl std::fmt::Display for SourceLine {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         let location = format!("{:04}", self.location);
         let label = format!("{:08}", self.label);
-        let source_program_word = self.source_program_word.to_string();
+        let source_program_word = self
+            .source_program_word
+            .clone()
+            .map_or("".to_string(), |w| w.to_string());
         let comment = self.comment.to_string();
 
         write!(

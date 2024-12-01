@@ -56,7 +56,7 @@ impl State {
     }
 }
 
-pub const MEMORY_SIZE: usize = 128; // TODO Change to 1024
+pub const MEMORY_SIZE: usize = 1024;
 
 impl Default for State {
     fn default() -> Self {

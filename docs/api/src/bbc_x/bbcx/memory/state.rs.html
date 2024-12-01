@@ -135,6 +135,13 @@
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::convert::{instruction_to_word, store_operand_to_word};
 <span class="kw">use </span><span class="kw">super</span>::instruction::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">super</span>::result::{Error, <span class="prelude-ty">Result</span>};
@@ -142,8 +149,6 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::bbcx::ast::{Location <span class="kw">as </span>AstLocation, SourceWord <span class="kw">as </span>AstSourceWord};
 <span class="kw">use </span><span class="kw">crate</span>::bbcx::Assembly;
-
-<span class="kw">pub type </span>Offset = usize;
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub struct </span>State(Vec&lt;Word&gt;);
@@ -169,8 +174,8 @@
                     <span class="self">self</span>[address] = store_operand_to_word(<span class="kw-2">&amp;</span>operand)<span class="question-mark">?</span>;
                     address
                 } <span class="kw">else </span>{
-                    assembly.address_used_by_store_operand(operand)
-                };
+                    assembly.address_used_by_store_operand(operand).try_into()<span class="question-mark">?
+                </span>};
 
                 <span class="kw">let </span>instruction = Builder::new(pword.mnemonic())
                     .with_accumulator(pword.accumulator().as_usize())
@@ -186,15 +191,16 @@
         <span class="prelude-val">Ok</span>(<span class="self">self</span>)
     }
 
-    <span class="kw">fn </span>next_storage_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Offset&gt; {
+    <span class="kw">fn </span>next_storage_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;Address&gt; {
         <span class="self">self</span>.<span class="number">0
             </span>.iter()
             .rposition(Word::is_undefined)
+            .and_then(|i| i.try_into().ok())
             .ok_or(Error::OutOfMemory)
     }
 }
 
-<span class="kw">pub const </span>MEMORY_SIZE: Offset = <span class="number">128</span>; <span class="comment">// TODO Change to 1024
+<span class="kw">pub const </span>MEMORY_SIZE: usize = <span class="number">128</span>; <span class="comment">// TODO Change to 1024
 
 </span><span class="kw">impl </span>Default <span class="kw">for </span>State {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
@@ -235,13 +241,21 @@
     <span class="kw">type </span>Output = Word;
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, acc: Accumulator) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>[acc.index()]
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>[acc.memory_index()]
+    }
+}
+
+<span class="kw">impl </span>std::ops::Index&lt;Accumulator&gt; <span class="kw">for </span>Vec&lt;Word&gt; {
+    <span class="kw">type </span>Output = Word;
+
+    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, acc: Accumulator) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+        <span class="kw-2">&amp;</span><span class="self">self</span>[acc.memory_index()]
     }
 }
 
 <span class="kw">impl </span>std::ops::IndexMut&lt;Accumulator&gt; <span class="kw">for </span>State {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, acc: Accumulator) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>[acc.index()]
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>[acc.memory_index()]
     }
 }
 
@@ -249,13 +263,13 @@
     <span class="kw">type </span>Output = Word;
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index_register: IndexRegister) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>[index_register.index()]
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>[index_register.memory_index()]
     }
 }
 
 <span class="kw">impl </span>std::ops::IndexMut&lt;IndexRegister&gt; <span class="kw">for </span>State {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index_register: IndexRegister) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>[index_register.index()]
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>[index_register.memory_index()]
     }
 }
 
@@ -263,13 +277,13 @@
     <span class="kw">type </span>Output = Word;
 
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, address: Address) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>[address.index()]
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>[address.memory_index()]
     }
 }
 
 <span class="kw">impl </span>std::ops::IndexMut&lt;Address&gt; <span class="kw">for </span>State {
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, address: Address) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>[address.index()]
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>.<span class="number">0</span>[address.memory_index()]
     }
 }
 </code></pre></div></section></main></body></html>

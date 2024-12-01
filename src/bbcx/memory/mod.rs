@@ -4,7 +4,7 @@ mod result;
 mod state;
 mod word;
 
-pub use self::convert::word_to_instruction;
+pub use self::convert::{decrement, increment, word_to_instruction};
 pub use self::instruction::{
     Accumulator, Address, Function, IndexRegister, Instruction, MemoryIndex,
 };

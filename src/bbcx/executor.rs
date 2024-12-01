@@ -53,7 +53,6 @@ impl Executor {
         let content = self.ec[pc];
         let instruction = word_to_instruction(&content)
             .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))?;
-        println!("Exec: {:?} -> {:?}", self.ec.pc - 1, instruction);
         self.step_word(&instruction);
         Ok(())
     }
@@ -113,6 +112,8 @@ impl Executor {
             (Function::JGZ, Executor::exec_jgz as ExecFn),
             (Function::JZD, Executor::exec_jzd as ExecFn),
             (Function::JZI, Executor::exec_jzi as ExecFn),
+            (Function::DECR, Executor::exec_decr as ExecFn),
+            (Function::INCR, Executor::exec_incr as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -503,6 +504,20 @@ impl Executor {
         } else {
             self.ec[acc] += 1.try_into().unwrap();
         }
+    }
+
+    fn exec_decr(&mut self, instruction: &Instruction) {
+        let (_, address) = Self::acc_and_address(instruction);
+        println!("Before: {:?} {:?}", address, self.ec[address]);
+        decrement(&mut self.ec[address]);
+        println!("After: {:?} {:?}", address, self.ec[address]);
+    }
+
+    fn exec_incr(&mut self, instruction: &Instruction) {
+        let (_, address) = Self::acc_and_address(instruction);
+        println!("Before: {:?} {:?}", address, self.ec[address]);
+        increment(&mut self.ec[address]);
+        println!("After: {:?} {:?}", address, self.ec[address]);
     }
 }
 
@@ -2956,6 +2971,76 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_decr() {
+        let program = r#"
+0100    DECR    110
+0101    DECR    111
+0102    DECR    102
+0110    +3
+0111    +3.14
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(111)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(101)
+                    .build(),
+            )
+            .with_memory_word(110, 2)
+            .with_memory_word(111, 2.14)
+            .with_program_counter(103);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_incr() {
+        let program = r#"
+0100    INCR    110
+0101    INCR    111
+0102    INCR    102
+0110    +3
+0111    +3.14
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(111)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(103)
+                    .build(),
+            )
+            .with_memory_word(110, 4)
+            .with_memory_word(111, 4.14)
+            .with_program_counter(103);
         assert_eq!(actual, expected)
     }
 }

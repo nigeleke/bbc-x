@@ -213,6 +213,10 @@ impl Instruction {
     pub fn address(&self) -> Address {
         self.address
     }
+
+    pub fn set_address(&mut self, address: Address) {
+        self.address = address;
+    }
 }
 
 #[derive(Default)]

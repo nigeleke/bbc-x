@@ -1,5 +1,6 @@
 use super::instruction::*;
 use super::result::{Error, Result};
+use super::state::MEMORY_SIZE;
 use super::word::{bits, Word, WordType};
 
 use crate::bbcx::ast::{ConstOperand, StoreOperand};
@@ -45,5 +46,33 @@ pub fn store_operand_to_word(operand: &StoreOperand) -> Result<Word> {
             ConstOperand::SWord(s) => s.as_str().try_into(),
         },
         _ => Err(Error::CannotCreateWordFromStoreOperand(operand.to_string())),
+    }
+}
+
+pub fn decrement(word: &mut Word) {
+    match word.word_type().as_i64().unwrap() {
+        0 => *word -= 1.try_into().unwrap(),
+        1 => *word -= 1.0.try_into().unwrap(),
+        3 => {
+            let mut instruction = word_to_instruction(word).unwrap();
+            let address = (instruction.address().memory_index() - 1) % MEMORY_SIZE;
+            instruction.set_address(address.try_into().unwrap());
+            *word = instruction_to_word(&instruction).unwrap();
+        }
+        _ => panic!("DECR not supported for {:?}", word),
+    }
+}
+
+pub fn increment(word: &mut Word) {
+    match word.word_type().as_i64().unwrap() {
+        0 => *word += 1.try_into().unwrap(),
+        1 => *word += 1.0.try_into().unwrap(),
+        3 => {
+            let mut instruction = word_to_instruction(word).unwrap();
+            let address = (instruction.address().memory_index() + 1) % MEMORY_SIZE;
+            instruction.set_address(address.try_into().unwrap());
+            *word = instruction_to_word(&instruction).unwrap();
+        }
+        _ => panic!("INCR not supported for {:?}", word),
     }
 }

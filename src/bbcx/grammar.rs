@@ -325,7 +325,7 @@ fn mnemonic<'a>() -> Parser<'a, Mnemonic> {
         | exact("PSQU").map(|_| Mnemonic::PSQU)
         | exact("PTYP").map(|_| Mnemonic::PTYP)
         | exact("PTYZ").map(|_| Mnemonic::PTYZ)
-        | exact("PFFP").map(|_| Mnemonic::PFFP)
+        | exact("PPPP").map(|_| Mnemonic::PPPP)
         | exact("SKAE").map(|_| Mnemonic::SKAE)
         | exact("SKAL").map(|_| Mnemonic::SKAL)
         | exact("SKAG").map(|_| Mnemonic::SKAG)

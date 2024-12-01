@@ -21,11 +21,11 @@ pub fn word_to_instruction(word: &Word) -> Result<Instruction> {
 
 pub fn instruction_to_word(instruction: &Instruction) -> Result<Word> {
     let function: u32 = instruction.function().into();
-    let acc = instruction.accumulator().as_bits();
-    let index_register = instruction.index_register().as_bits();
-    let indirect = instruction.indirect().as_bits();
-    let page = instruction.page().as_bits();
-    let address = instruction.address().as_bits();
+    let acc = instruction.accumulator().bits();
+    let index_register = instruction.index_register().bits();
+    let indirect = instruction.indirect().bits();
+    let page = instruction.page().bits();
+    let address = instruction.address().bits();
 
     let raw = bits::set(function, Word::PWORD_FUNCTION_MASK)
         | bits::set(acc, Word::PWORD_ACCUMULATOR_MASK)
@@ -41,10 +41,7 @@ pub fn store_operand_to_word(operand: &StoreOperand) -> Result<Word> {
     match operand {
         StoreOperand::ConstOperand(operand) => match operand {
             ConstOperand::SignedIWord(i) => (*i).try_into(),
-            ConstOperand::SignedFWord(f) => {
-                println!("store_operand_to_word");
-                (*f).try_into()
-            }
+            ConstOperand::SignedFWord(f) => (*f).try_into(),
             ConstOperand::SWord(s) => s.as_str().try_into(),
         },
         _ => Err(Error::CannotCreateWordFromStoreOperand(operand.to_string())),

@@ -388,7 +388,7 @@ mod test {
 0048    PNOT        ADDR1
 0049    PTYP        ADDR1
 0050    PTYZ        ADDR1
-0051    PFFP        ADDR1
+0051    PPPP        ADDR1
 0052    PIN         ADDR1
 0053    JUMP        ADDR1
 0054    JEZ         ADDR1
@@ -476,7 +476,7 @@ mod test {
             Mnemonic::PNOT,
             Mnemonic::PTYP,
             Mnemonic::PTYZ,
-            Mnemonic::PFFP,
+            Mnemonic::PPPP,
             Mnemonic::PIN,
             Mnemonic::JUMP,
             Mnemonic::JEZ,

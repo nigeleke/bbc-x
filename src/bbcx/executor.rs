@@ -1,29 +1,29 @@
 use super::assembly::Assembly;
-use super::memory::{word_to_instruction, Instruction, *};
+use super::memory::{word_to_instruction, Address, Instruction, MemoryIndex, *};
 use super::result::{Error, Result};
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::io::{self, Read, Write};
 use std::rc::Rc;
 
 pub struct Executor {
     ec: ExecutionContext,
-    #[allow(dead_code)] // TODO: Remove
-    stdin: Rc<RefCell<dyn std::io::Read>>,
-    stdout: Rc<RefCell<dyn std::io::Write>>,
+    stdin: Rc<RefCell<dyn Read>>,
+    stdout: Rc<RefCell<dyn Write>>,
 }
 
 impl Executor {
     pub fn new() -> Self {
-        let stdin = Rc::new(RefCell::new(std::io::stdin()));
-        let stdout = Rc::new(RefCell::new(std::io::stdout()));
+        let stdin = Rc::new(RefCell::new(io::stdin()));
+        let stdout = Rc::new(RefCell::new(io::stdout()));
         Self::with_io(stdin, stdout)
     }
 
     pub fn with_io<R, W>(stdin: Rc<RefCell<R>>, stdout: Rc<RefCell<W>>) -> Self
     where
-        R: std::io::Read + 'static,
-        W: std::io::Write + 'static,
+        R: Read + 'static,
+        W: Write + 'static,
     {
         Self {
             ec: ExecutionContext::default(),
@@ -51,9 +51,9 @@ impl Executor {
         let pc = self.ec.pc;
         self.ec.pc += 1;
         let content = self.ec[pc];
-        println!("exec {:?} @ {:?}", content, pc);
         let instruction = word_to_instruction(&content)
             .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))?;
+        println!("Exec: {:?} -> {:?}", self.ec.pc - 1, instruction);
         self.step_word(&instruction);
         Ok(())
     }
@@ -103,6 +103,16 @@ impl Executor {
             (Function::PSQU, Executor::exec_psqu as ExecFn),
             (Function::PNEG, Executor::exec_pneg as ExecFn),
             (Function::PTYP, Executor::exec_ptyp as ExecFn),
+            (Function::PTYZ, Executor::exec_ptyz as ExecFn),
+            (Function::PIN, Executor::exec_pin as ExecFn),
+            (Function::JUMP, Executor::exec_jump as ExecFn),
+            (Function::JEZ, Executor::exec_jez as ExecFn),
+            (Function::JNZ, Executor::exec_jnz as ExecFn),
+            (Function::JAT, Executor::exec_jat as ExecFn),
+            (Function::JLZ, Executor::exec_jlz as ExecFn),
+            (Function::JGZ, Executor::exec_jgz as ExecFn),
+            (Function::JZD, Executor::exec_jzd as ExecFn),
+            (Function::JZI, Executor::exec_jzi as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -198,7 +208,6 @@ impl Executor {
 
     fn exec_tneg(&mut self, instruction: &Instruction) {
         let (acc, operand) = self.acc_and_operand(instruction);
-        println!("operand {:?} neg_operand {:?}", operand, -operand);
         self.ec[acc] = -operand;
     }
 
@@ -394,6 +403,107 @@ impl Executor {
         let acc_value = self.ec[acc];
         self.ec[address].set_word_type(&acc_value);
     }
+
+    fn exec_ptyz(&mut self, instruction: &Instruction) {
+        let (acc, address) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        let mut result: Word = 0.try_into().unwrap();
+        result.set_word_bits(&acc_value);
+        self.ec[address] = result;
+    }
+
+    fn exec_pin(&mut self, instruction: &Instruction) {
+        let (_acc, address) = Self::acc_and_address(instruction);
+
+        let mut stdin = (*self.stdin).borrow_mut();
+        let mut stdout = (*self.stdout).borrow_mut();
+
+        let mut buffer = vec![0u8; 1];
+
+        match stdin.read(&mut buffer) {
+            Ok(0) => {
+                stdout.write_all("DATA*".as_bytes()).unwrap();
+            }
+            Ok(_) => {
+                // TODO: May not want to echo here, but just set `self.ec[address]`
+                stdout.write_all(&buffer).unwrap();
+                self.ec[address] = String::from_utf8(buffer)
+                    .map(|s| s.as_str().try_into().unwrap())
+                    .unwrap();
+            }
+            Err(e) => {
+                panic!("Error reading from stdin: {}", e);
+            }
+        }
+    }
+
+    fn exec_jump(&mut self, instruction: &Instruction) {
+        let pc = self.ec.pc - 1;
+        let (acc, address) = Self::acc_and_address(instruction);
+        self.ec[acc - 1] = (pc.memory_index() as i64).try_into().unwrap();
+        self.ec.pc = address;
+    }
+
+    fn exec_jez(&mut self, instruction: &Instruction) {
+        let (acc, _) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
+            self.exec_jump(instruction)
+        }
+    }
+
+    fn exec_jnz(&mut self, instruction: &Instruction) {
+        let (acc, _) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        if acc_value.word_bits() != Word::new(WordType::IWord, 0) {
+            self.exec_jump(instruction)
+        }
+    }
+
+    fn exec_jat(&mut self, instruction: &Instruction) {
+        let (acc, _) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc].word_type();
+        if acc_value == Word::new(WordType::IWord, 0) || acc_value == Word::new(WordType::IWord, 1)
+        {
+            self.exec_jump(instruction)
+        }
+    }
+
+    fn exec_jlz(&mut self, instruction: &Instruction) {
+        let (acc, _) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        if acc_value.word_bits() < Word::new(WordType::IWord, 0) {
+            self.exec_jump(instruction)
+        }
+    }
+
+    fn exec_jgz(&mut self, instruction: &Instruction) {
+        let (acc, _) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        if acc_value.word_bits() > Word::new(WordType::IWord, 0) {
+            self.exec_jump(instruction)
+        }
+    }
+
+    fn exec_jzd(&mut self, instruction: &Instruction) {
+        let (acc, _) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
+            self.exec_jump(instruction)
+        } else {
+            self.ec[acc] -= 1.try_into().unwrap();
+        }
+    }
+
+    fn exec_jzi(&mut self, instruction: &Instruction) {
+        let (acc, _) = Self::acc_and_address(instruction);
+        let acc_value = self.ec[acc];
+        if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
+            self.exec_jump(instruction)
+        } else {
+            self.ec[acc] += 1.try_into().unwrap();
+        }
+    }
 }
 
 impl std::fmt::Debug for Executor {
@@ -414,34 +524,44 @@ impl PartialEq for Executor {
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExecutionContext {
-    pc: Offset,
+    pc: Address,
     memory: Memory,
 }
 
 #[cfg(test)]
 impl ExecutionContext {
-    fn with_program_counter(self, program_counter: Offset) -> Self {
+    fn with_program_counter<A>(self, program_counter: A) -> Self
+    where
+        A: TryInto<Address>,
+        A::Error: std::fmt::Debug,
+    {
         Self {
-            pc: program_counter,
+            pc: program_counter.try_into().unwrap(),
             ..self
         }
     }
 
-    fn with_memory_word<T>(mut self, offset: Offset, value: T) -> Self
+    fn with_memory_word<A, T>(mut self, address: A, value: T) -> Self
     where
+        A: TryInto<Address>,
+        A::Error: std::fmt::Debug,
         T: TryInto<Word>,
         T::Error: std::fmt::Debug,
     {
-        self.memory[offset] = value
+        let address = address.try_into().unwrap();
+        self.memory[address.memory_index()] = value
             .try_into()
             .expect("required valid value to create word");
         self
     }
 
-    fn with_instruction(self, location: Offset, instruction: Instruction) -> Self {
+    fn with_instruction<A>(self, address: A, instruction: Instruction) -> Self
+    where
+        A: TryInto<Address>,
+        A::Error: std::fmt::Debug,
+    {
         use crate::bbcx::memory::*;
-
-        self.with_memory_word(location, instruction_to_word(&instruction).unwrap())
+        self.with_memory_word(address, instruction_to_word(&instruction).unwrap())
     }
 }
 
@@ -455,7 +575,7 @@ impl TryFrom<Assembly> for ExecutionContext {
             .map_err(|err| Error::FailedToCreateExecutionContext(err.to_string()))?;
 
         Ok(Self {
-            pc: program_counter,
+            pc: program_counter.try_into().unwrap(),
             memory,
         })
     }
@@ -2071,16 +2191,17 @@ mod test {
     }
 
     #[test]
-    fn test_ptyp() {
+    fn test_ptyz() {
         let program = r#"
-0001    +0
-0002    +1
-0003    +2
-0004    +3
-0100            PTYP 1, LOC1
-0101            PTYP 2, LOC2
-0102            PTYP 3, LOC3
-0103            PTYP 4, LOC4
+0001    +1
+0002    +1.0
+0003    "ABCD"
+0004    +0
+0100            PTYZ 1, LOC1
+0101            PTYZ 2, LOC2
+0102            PTYZ 3, LOC3
+0103            TAKE 4, 103
+0104            PTYZ 4, LOC4
 0110    LOC1:   +0.0
 0111    LOC2:   +0.0
 0112    LOC3:   +0.0
@@ -2090,41 +2211,751 @@ mod test {
         let expected = ExecutionContext::default()
             .with_instruction(
                 100,
-                InstructionBuilder::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYZ)
                     .with_accumulator(1)
                     .with_address(110)
                     .build(),
             )
             .with_instruction(
                 101,
-                InstructionBuilder::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYZ)
                     .with_accumulator(2)
                     .with_address(111)
                     .build(),
             )
             .with_instruction(
                 102,
-                InstructionBuilder::new(Function::PTYP)
+                InstructionBuilder::new(Function::PTYZ)
                     .with_accumulator(3)
                     .with_address(112)
                     .build(),
             )
             .with_instruction(
                 103,
-                InstructionBuilder::new(Function::PTYP)
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(103)
+                    .build(),
+            )
+            .with_instruction(
+                104,
+                InstructionBuilder::new(Function::PTYZ)
                     .with_accumulator(4)
                     .with_address(113)
                     .build(),
             )
+            .with_memory_word(1, 1)
+            .with_memory_word(2, 1.0)
+            .with_memory_word(3, "ABCD")
+            .with_instruction(
+                4,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(103)
+                    .build(),
+            )
+            .with_memory_word(110, 0o00000001)
+            .with_memory_word(111, 0o17600000)
+            .with_memory_word(112, 0o01020304)
+            .with_memory_word(113, 0o10400147)
+            .with_program_counter(105);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_pppp() {
+        // Spec: "not used at present"
+        assert!(true)
+    }
+
+    #[test]
+    fn test_pin() {
+        let program = r#"
+0100            PIN  IO
+0101            PIN  IO
+0102            PIN  IO
+0110    IO:     +0
+"#;
+        let actual = execute_io(program, "12", "12DATA*").ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::PIN)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::PIN)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::PIN)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_memory_word(110, "2")
+            .with_program_counter(103);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jump() {
+        let program = r#"
+0100    JUMP    1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
+            .with_memory_word(2, 2)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_program_counter(121);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jez() {
+        let program = r#"
+0001    +0
+0003    +1
+0100    JEZ     1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+0121    JEZ     3, 123
+0122    TAKE    4, +4
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JEZ)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_instruction(
+                121,
+                InstructionBuilder::new(Function::JEZ)
+                    .with_accumulator(3)
+                    .with_address(123)
+                    .build(),
+            )
+            .with_instruction(
+                122,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
             .with_memory_word(1, 0)
-            .with_memory_word(2, 1)
+            .with_memory_word(2, 2)
+            .with_memory_word(3, 1)
+            .with_memory_word(4, 4)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_memory_word(MEMORY_SIZE - 4, 4)
+            .with_program_counter(123);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jnz() {
+        let program = r#"
+0001    +1
+0003    +0
+0100    JNZ     1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+0121    JNZ     3, 123
+0122    TAKE    4, +4
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JNZ)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_instruction(
+                121,
+                InstructionBuilder::new(Function::JNZ)
+                    .with_accumulator(3)
+                    .with_address(123)
+                    .build(),
+            )
+            .with_instruction(
+                122,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
+            .with_memory_word(1, 1)
+            .with_memory_word(2, 2)
+            .with_memory_word(3, 0)
+            .with_memory_word(4, 4)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_memory_word(MEMORY_SIZE - 4, 4)
+            .with_program_counter(123);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jat() {
+        let program = r#"
+0001    +1
+0003    "ABCD"
+0100    JAT     1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+0121    JAT     3, 123
+0122    TAKE    4, +4
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JAT)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_instruction(
+                121,
+                InstructionBuilder::new(Function::JAT)
+                    .with_accumulator(3)
+                    .with_address(123)
+                    .build(),
+            )
+            .with_instruction(
+                122,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
+            .with_memory_word(1, 1)
+            .with_memory_word(2, 2)
+            .with_memory_word(3, "ABCD")
+            .with_memory_word(4, 4)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_memory_word(MEMORY_SIZE - 4, 4)
+            .with_program_counter(123);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jlz() {
+        let program = r#"
+0001    -1
+0003    +0
+0100    JLZ     1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+0121    JLZ     3, 123
+0122    TAKE    4, +4
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JLZ)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_instruction(
+                121,
+                InstructionBuilder::new(Function::JLZ)
+                    .with_accumulator(3)
+                    .with_address(123)
+                    .build(),
+            )
+            .with_instruction(
+                122,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
+            .with_memory_word(1, -1)
+            .with_memory_word(2, 2)
+            .with_memory_word(3, 0)
+            .with_memory_word(4, 4)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_memory_word(MEMORY_SIZE - 4, 4)
+            .with_program_counter(123);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jgz() {
+        let program = r#"
+0001    +1
+0003    +0
+0100    JGZ     1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+0121    JGZ     3, 123
+0122    TAKE    4, +4
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JGZ)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_instruction(
+                121,
+                InstructionBuilder::new(Function::JGZ)
+                    .with_accumulator(3)
+                    .with_address(123)
+                    .build(),
+            )
+            .with_instruction(
+                122,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
+            .with_memory_word(1, 1)
+            .with_memory_word(2, 2)
+            .with_memory_word(3, 0)
+            .with_memory_word(4, 4)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_memory_word(MEMORY_SIZE - 4, 4)
+            .with_program_counter(123);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jzd() {
+        let program = r#"
+0001    +0
+0003    +1
+0100    JZD     1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+0121    JZD     3, 123
+0122    TAKE    4, +4
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JZD)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_instruction(
+                121,
+                InstructionBuilder::new(Function::JZD)
+                    .with_accumulator(3)
+                    .with_address(123)
+                    .build(),
+            )
+            .with_instruction(
+                122,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
+            .with_memory_word(1, 0)
+            .with_memory_word(2, 2)
+            .with_memory_word(3, 0)
+            .with_memory_word(4, 4)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_memory_word(MEMORY_SIZE - 4, 4)
+            .with_program_counter(123);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_jzi() {
+        let program = r#"
+0001    +0
+0003    +1
+0100    JZI     1, 110
+0101    TAKE    2, +1
+0102    JUMP    1, 120
+0110    TAKE    2, +2
+0111    JUMP    1, 121
+0120    TAKE    2, +3
+0121    JZI     3, 123
+0122    TAKE    4, +4
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::JZI)
+                    .with_accumulator(1)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 1)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(120)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 2)
+                    .build(),
+            )
+            .with_instruction(
+                111,
+                InstructionBuilder::new(Function::JUMP)
+                    .with_accumulator(1)
+                    .with_address(121)
+                    .build(),
+            )
+            .with_instruction(
+                120,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(2)
+                    .with_address(MEMORY_SIZE - 3)
+                    .build(),
+            )
+            .with_instruction(
+                121,
+                InstructionBuilder::new(Function::JZI)
+                    .with_accumulator(3)
+                    .with_address(123)
+                    .build(),
+            )
+            .with_instruction(
+                122,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(MEMORY_SIZE - 4)
+                    .build(),
+            )
+            .with_memory_word(0, 111)
+            .with_memory_word(1, 0)
+            .with_memory_word(2, 2)
             .with_memory_word(3, 2)
-            .with_memory_word(4, 3)
-            .with_memory_word(110, 0)
-            .with_memory_word(111, 0.0)
-            .with_memory_word(112, "\0\0\0\0")
-            .with_instruction(113, InstructionBuilder::new(Function::NIL).build())
-            .with_program_counter(104);
+            .with_memory_word(4, 4)
+            .with_memory_word(MEMORY_SIZE - 1, 1)
+            .with_memory_word(MEMORY_SIZE - 2, 2)
+            .with_memory_word(MEMORY_SIZE - 3, 3)
+            .with_memory_word(MEMORY_SIZE - 4, 4)
+            .with_program_counter(123);
         assert_eq!(actual, expected)
     }
 }

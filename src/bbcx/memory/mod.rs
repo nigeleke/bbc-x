@@ -5,8 +5,10 @@ mod state;
 mod word;
 
 pub use self::convert::word_to_instruction;
-pub use self::instruction::{Accumulator, Address, Function, IndexRegister, Instruction};
-pub use self::state::{Offset, State as Memory};
+pub use self::instruction::{
+    Accumulator, Address, Function, IndexRegister, Instruction, MemoryIndex,
+};
+pub use self::state::State as Memory;
 pub use self::word::{ops::*, *};
 
 #[cfg(test)]

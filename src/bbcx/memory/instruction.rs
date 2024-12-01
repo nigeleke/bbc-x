@@ -1,32 +1,27 @@
-use std::ops::AddAssign;
-
 use super::result::{Error, Result};
 
 pub type Function = crate::bbcx::ast::Mnemonic;
 
-pub trait AsBits {
-    fn as_bits(&self) -> u32;
+pub trait MemoryIndex {
+    fn memory_index(&self) -> usize;
 }
 
-pub trait MemoryRef {
-    type Target: TryFrom<usize>;
-
-    fn index(&self) -> usize;
+pub trait Bits {
+    fn bits(&self) -> u32;
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct Accumulator(usize);
+pub struct Accumulator(Address);
 
-impl AsBits for Accumulator {
-    fn as_bits(&self) -> u32 {
-        self.0 as u32
+impl MemoryIndex for Accumulator {
+    fn memory_index(&self) -> usize {
+        self.0.memory_index()
     }
 }
 
-impl MemoryRef for Accumulator {
-    type Target = Accumulator;
-    fn index(&self) -> usize {
-        self.0
+impl Bits for Accumulator {
+    fn bits(&self) -> u32 {
+        self.0.bits()
     }
 }
 
@@ -35,28 +30,25 @@ impl TryFrom<usize> for Accumulator {
 
     fn try_from(value: usize) -> Result<Self> {
         (value <= Instruction::ACCUMULATOR_LIMIT)
-            .then_some(Accumulator(value))
+            .then_some(Address::try_from(value)?)
+            .map(Accumulator)
             .ok_or(Error::InvalidAccumulator(value))
     }
 }
 
-impl std::ops::Add<usize> for Accumulator {
+impl std::ops::Add<isize> for Accumulator {
     type Output = Self;
 
-    fn add(self, rhs: usize) -> Self::Output {
-        (self.0 + rhs)
-            .try_into()
-            .unwrap_or_else(|err| panic!("{} using: {} + {}", err, self.0, rhs))
+    fn add(self, rhs: isize) -> Self::Output {
+        Self(self.0 + rhs)
     }
 }
 
-impl std::ops::Sub<usize> for Accumulator {
+impl std::ops::Sub<isize> for Accumulator {
     type Output = Self;
 
-    fn sub(self, rhs: usize) -> Self::Output {
-        (self.0 - rhs)
-            .try_into()
-            .unwrap_or_else(|err| panic!("{} using: {} - {}", err, self.0, rhs))
+    fn sub(self, rhs: isize) -> Self::Output {
+        Self(self.0 - rhs)
     }
 }
 
@@ -65,21 +57,20 @@ pub struct IndexRegister(Accumulator);
 
 impl IndexRegister {
     pub fn is_indexable(&self) -> bool {
-        self.0 .0 != 0
+        let zero = 0.try_into().unwrap();
+        self.0 != zero
     }
 }
 
-impl AsBits for IndexRegister {
-    fn as_bits(&self) -> u32 {
-        self.0.as_bits()
+impl MemoryIndex for IndexRegister {
+    fn memory_index(&self) -> usize {
+        self.0.memory_index()
     }
 }
 
-impl MemoryRef for IndexRegister {
-    type Target = IndexRegister;
-
-    fn index(&self) -> usize {
-        self.0.index()
+impl Bits for IndexRegister {
+    fn bits(&self) -> u32 {
+        self.0.bits()
     }
 }
 
@@ -94,8 +85,8 @@ impl TryFrom<usize> for IndexRegister {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Indirect(bool);
 
-impl AsBits for Indirect {
-    fn as_bits(&self) -> u32 {
+impl Bits for Indirect {
+    fn bits(&self) -> u32 {
         self.0 as u32
     }
 }
@@ -109,8 +100,8 @@ impl From<bool> for Indirect {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Page(usize);
 
-impl AsBits for Page {
-    fn as_bits(&self) -> u32 {
+impl Bits for Page {
+    fn bits(&self) -> u32 {
         self.0 as u32
     }
 }
@@ -129,17 +120,15 @@ impl TryFrom<usize> for Page {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Address(usize);
 
-impl AsBits for Address {
-    fn as_bits(&self) -> u32 {
-        self.0 as u32
+impl MemoryIndex for Address {
+    fn memory_index(&self) -> usize {
+        self.0
     }
 }
 
-impl MemoryRef for Address {
-    type Target = Address;
-
-    fn index(&self) -> usize {
-        self.0
+impl Bits for Address {
+    fn bits(&self) -> u32 {
+        self.0 as u32
     }
 }
 
@@ -153,9 +142,25 @@ impl TryFrom<usize> for Address {
     }
 }
 
-impl AddAssign<isize> for Address {
+impl std::ops::Add<isize> for Address {
+    type Output = Address;
+
+    fn add(self, rhs: isize) -> Self::Output {
+        Self((self.0 as isize + rhs) as usize)
+    }
+}
+
+impl std::ops::Sub<isize> for Address {
+    type Output = Address;
+
+    fn sub(self, rhs: isize) -> Self::Output {
+        Self((self.0 as isize - rhs) as usize)
+    }
+}
+
+impl std::ops::AddAssign<isize> for Address {
     fn add_assign(&mut self, rhs: isize) {
-        self.0 = (self.index() as isize + rhs) as usize
+        self.0 = (self.0 as isize + rhs) as usize
     }
 }
 

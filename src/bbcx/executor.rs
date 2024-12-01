@@ -551,7 +551,11 @@ impl Executor {
     }
 
     fn exec_extra_read(&mut self, instruction: &Instruction) {
+        let mut stdout = (*self.stdout).borrow_mut();
+        stdout.flush().expect("stdout not flushed");
+
         let mut stdin = (*self.stdin).borrow_mut();
+
         let acc = instruction.accumulator();
 
         let mut buffer = [0u8; 1];

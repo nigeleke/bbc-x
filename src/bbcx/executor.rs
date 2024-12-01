@@ -114,6 +114,7 @@ impl Executor {
             (Function::JZI, Executor::exec_jzi as ExecFn),
             (Function::DECR, Executor::exec_decr as ExecFn),
             (Function::INCR, Executor::exec_incr as ExecFn),
+            (Function::EXEC, Executor::exec_exec as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -508,16 +509,19 @@ impl Executor {
 
     fn exec_decr(&mut self, instruction: &Instruction) {
         let (_, address) = Self::acc_and_address(instruction);
-        println!("Before: {:?} {:?}", address, self.ec[address]);
         decrement(&mut self.ec[address]);
-        println!("After: {:?} {:?}", address, self.ec[address]);
     }
 
     fn exec_incr(&mut self, instruction: &Instruction) {
         let (_, address) = Self::acc_and_address(instruction);
-        println!("Before: {:?} {:?}", address, self.ec[address]);
         increment(&mut self.ec[address]);
-        println!("After: {:?} {:?}", address, self.ec[address]);
+    }
+
+    fn exec_exec(&mut self, instruction: &Instruction) {
+        let (_, address) = Self::acc_and_address(instruction);
+        let word = self.ec[address];
+        let instruction = word_to_instruction(&word).unwrap();
+        self.step_word(&instruction);
     }
 }
 
@@ -3041,6 +3045,72 @@ mod test {
             .with_memory_word(110, 4)
             .with_memory_word(111, 4.14)
             .with_program_counter(103);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    #[ignore]
+    fn test_mockp() {
+        // MOCKP is not an executable instruction. It is used with indirection,
+        // however the complexities behind its usage are not dealt with in this
+        // implementation.
+        // "When MOCKP is used the bits within the accumulator field are used
+        // to define the byte code and the bits within the index field the
+        // byte number. The byte code specifies th byte size according to the
+        // following table:
+        // | Byte code | No. bytes per word | No. bits per byte |
+        // |     0     |          1         |         24        |
+        // |     1     |          2         |         12        |
+        // |     2     |          3         |          8        |
+        // |     3     |          4         |          6        |
+        // |     4     |          6         |          4        |
+        // |     5     |          8         |          3        |
+        // |     6     |         12*        |          2        |
+        // |     7     |         24*        |          1        |
+        // (*) Only the first eight are accessible since the byte number
+        // cannot exceed 7."
+    }
+
+    #[test]
+    #[ignore]
+    fn test_mocks() {
+        // MOCKS is not an executable instruction. It is used with indirection,
+        // however the complexities behind its usage are not dealt with in this
+        // implementation.
+        // "When MOCKS is used as a pointer the result is the same as it is when
+        // MOCKP is used. However, as a separate operation, the MOCKS P-Word
+        // iself is modified so that it points to the next byte or whole word."
+    }
+
+    #[test]
+    #[ignore]
+    fn test_dbyte() {
+        // DBYTE uses MOCKP and MOCKS, which are not implemented, so neither is DBYTE.
+    }
+
+    #[test]
+    fn test_exec() {
+        let program = r#"
+0100    EXEC    110
+0110    INCR    111
+0111    +3.14
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXEC)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(111)
+                    .build(),
+            )
+            .with_memory_word(111, 4.14)
+            .with_program_counter(101);
         assert_eq!(actual, expected)
     }
 }

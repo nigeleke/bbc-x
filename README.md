@@ -71,13 +71,12 @@ Some "amendments" were made to the BBC-3 "syntax" to progress toward a BBC-X ver
 
 The BBC-3 dialect is assembled, but not executed; there are no plans to emulate BBC-3 further.
 
-The BBC-X specification has been scanned and uploaded.
+The BBC-X dialect is assembled and executed. The degree of emulation varies; it is accurate enough to get my original programs up and running, however it
+does not emulated in the manner determined by the specification, especially with respect to "pages", monitoring and special usage registers.
 
-### TODO
-
-  1. The hardware is not emulated exactly but only enough to get this author's historic programs up and running.
-     As a result only a single page memory is defined. Programmatic access to i/o registers etc will not be
-     emulated either.
+For the coders out there - don't look too carefully at the implementation; I wouldn't hold this up as one of my better crafted programs. It
+is over-engineered in some respects (strong typing), under-engineered in other respects (error handling / panics!) and ugly in other respects
+(type conversions).
 
 ## Running the program
 
@@ -114,3 +113,4 @@ Options:
 | 20-Mar-2024 | Added Initial BBC-"X"  program                                                                                                    | Unfortunately this proved there are too many differences between BBC-3 and BBC-X.                           |
 | 28-Mar-2024 | Amended parser to reflect original BBC-3 specification. Refactored program in preparation for BBC-X.                              |                                                                                                             |
 | 26-May-2024 | Added BBC-X Specification and S-Level submission. | Received from Clare Tagg. |
+| 01-Dec-2024 | Completed emulation of most of the instruction set |

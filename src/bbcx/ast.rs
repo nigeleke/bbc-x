@@ -406,7 +406,7 @@ pub enum Mnemonic {
     INT,
     FRAC,
     FLOAT,
-    CAPTN,
+    CAPN,
     PAGE,
     RND,
     ABS,

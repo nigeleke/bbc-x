@@ -201,7 +201,7 @@ mod test {
 0012    INT
 0013    FRAC
 0014    FLOAT
-0015    CAPTN
+0015    CAPN
 0016    PAGE
 0017    RND
 0018    ABS
@@ -222,7 +222,7 @@ mod test {
             PWord::new(Mnemonic::INT, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::FRAC, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::FLOAT, None.into(), StoreOperand::None),
-            PWord::new(Mnemonic::CAPTN, None.into(), StoreOperand::None),
+            PWord::new(Mnemonic::CAPN, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::PAGE, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::RND, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::ABS, None.into(), StoreOperand::None),
@@ -419,7 +419,7 @@ mod test {
 0079    INT
 0080    FRAC
 0081    FLOAT
-0082    CAPTN
+0082    CAPN
 0083    PAGE
 0084    RND
 0085    ABS
@@ -523,7 +523,7 @@ mod test {
             Mnemonic::INT,
             Mnemonic::FRAC,
             Mnemonic::FLOAT,
-            Mnemonic::CAPTN,
+            Mnemonic::CAPN,
             Mnemonic::PAGE,
             Mnemonic::RND,
             Mnemonic::ABS,

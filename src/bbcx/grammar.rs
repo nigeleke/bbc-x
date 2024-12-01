@@ -377,7 +377,7 @@ fn mnemonic<'a>() -> Parser<'a, Mnemonic> {
         | exact("INT").map(|_| Mnemonic::INT)
         | exact("FRAC").map(|_| Mnemonic::FRAC)
         | exact("FLOAT").map(|_| Mnemonic::FLOAT)
-        | exact("CAPTN").map(|_| Mnemonic::CAPTN)
+        | exact("CAPN").map(|_| Mnemonic::CAPN)
         | exact("PAGE").map(|_| Mnemonic::PAGE)
         | exact("RND").map(|_| Mnemonic::RND)
         | exact("ABS").map(|_| Mnemonic::ABS))

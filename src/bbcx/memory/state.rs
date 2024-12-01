@@ -3,7 +3,7 @@ use super::instruction::*;
 use super::result::{Error, Result};
 use super::word::*;
 
-use crate::bbcx::ast::{Location as AstLocation, SourceWord as AstSourceWord};
+use crate::bbcx::ast::{Location as AstLocation, Mnemonic, SourceWord as AstSourceWord};
 use crate::bbcx::Assembly;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -33,13 +33,21 @@ impl State {
                     assembly.address_used_by_store_operand(operand).try_into()?
                 };
 
-                let instruction = Builder::new(pword.mnemonic())
-                    .with_accumulator(pword.accumulator().as_usize())
-                    .with_index_register(pword.index_register())
-                    .with_indirect(pword.indirect())
-                    .with_page(pword.page())
-                    .with_address(address)
-                    .build();
+                let instruction = if pword.mnemonic() as usize <= Mnemonic::EXTRA as usize {
+                    Builder::new(pword.mnemonic())
+                        .with_accumulator(pword.accumulator().as_usize())
+                        .with_index_register(pword.index_register())
+                        .with_indirect(pword.indirect())
+                        .with_page(pword.page())
+                        .with_address(address)
+                        .build()
+                } else {
+                    let pseudo_address = pword.mnemonic() as usize - Mnemonic::EXTRA as usize;
+                    Builder::new(Mnemonic::EXTRA)
+                        .with_accumulator(pword.accumulator().as_usize())
+                        .with_address(pseudo_address)
+                        .build()
+                };
                 self[location] = instruction_to_word(&instruction)?;
             }
             AstSourceWord::SWord(s) => self[location] = s.as_str().try_into()?,

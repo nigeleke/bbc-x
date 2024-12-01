@@ -2,6 +2,8 @@ use super::assembly::Assembly;
 use super::memory::{word_to_instruction, Address, Instruction, MemoryIndex, *};
 use super::result::{Error, Result};
 
+use num_enum::TryFromPrimitive;
+
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
@@ -34,7 +36,6 @@ impl Executor {
 
     pub fn execute(mut self, assembly: &Assembly) -> Result<ExecutionContext> {
         self.ec = assembly.clone().try_into()?;
-
         while self.can_step() {
             self.step()?;
         }
@@ -115,6 +116,7 @@ impl Executor {
             (Function::DECR, Executor::exec_decr as ExecFn),
             (Function::INCR, Executor::exec_incr as ExecFn),
             (Function::EXEC, Executor::exec_exec as ExecFn),
+            (Function::EXTRA, Executor::exec_extra as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -522,6 +524,43 @@ impl Executor {
         let word = self.ec[address];
         let instruction = word_to_instruction(&word).unwrap();
         self.step_word(&instruction);
+    }
+
+    fn exec_extra(&mut self, instruction: &Instruction) {
+        let (_, address) = Self::acc_and_address(instruction);
+        let code = address.memory_index() as u32 + Function::EXTRA as u32;
+        let function = Function::try_from_primitive(code).unwrap();
+
+        match function {
+            Function::SQRT
+            | Function::LN
+            | Function::EXP
+            | Function::READ
+            | Function::PRINT
+            | Function::SIN
+            | Function::COS
+            | Function::TAN
+            | Function::ATN
+            | Function::STOP
+            | Function::LINE
+            | Function::INT
+            | Function::FRAC
+            | Function::FLOAT => unimplemented!(),
+            Function::CAPN => self.exec_extra_capn(instruction),
+            Function::PAGE | Function::RND | Function::ABS => unimplemented!(),
+            other => panic!("Invalid EXTRA code {:?}", other),
+        }
+    }
+
+    fn exec_extra_capn(&mut self, _instruction: &Instruction) {
+        while self.ec[self.ec.pc].is_sword() {
+            let chars = self.ec[self.ec.pc]
+                .as_string()
+                .expect("CAPN invalid operand");
+            let mut stdout = (*self.stdout).borrow_mut();
+            stdout.write_all(chars.as_bytes()).unwrap();
+            self.ec.pc += 1;
+        }
     }
 }
 
@@ -3116,7 +3155,137 @@ mod test {
 
     #[test]
     #[ignore]
-    fn test_extra() {
+    fn test_extra_sqrt() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_ln() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_exp() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_read() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_print() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_sin() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_cos() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_tan() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_atn() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_stop() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_line() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_int() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_frac() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_float() {
+        // Will implement if required.
+    }
+
+    #[test]
+    fn test_extra_capn() {
+        let program = r#"
+0100    EXTRA   15
+0101    "ABCD"
+0102    "EFGH"
+0103    CAPN
+0104    "QRST"
+0105    "UVWX"
+0106    "YZ"
+"#;
+        let actual = execute_io(program, "", "ABCDEFGHQRSTUVWXYZ").ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_address(15)
+                    .build(),
+            )
+            .with_memory_word(101, "ABCD")
+            .with_memory_word(102, "EFGH")
+            .with_instruction(
+                103,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_address(15)
+                    .build(),
+            )
+            .with_memory_word(104, "QRST")
+            .with_memory_word(105, "UVWX")
+            .with_memory_word(106, "YZ")
+            .with_program_counter(107);
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_page() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_rnd() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_abs() {
         // Will implement if required.
     }
 }

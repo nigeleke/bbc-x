@@ -219,7 +219,7 @@ impl Instruction {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Builder {
     instruction: Instruction,
 }

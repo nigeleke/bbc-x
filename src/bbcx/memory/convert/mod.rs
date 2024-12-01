@@ -15,9 +15,8 @@ pub fn word_to_instruction(word: &Word) -> Result<Instruction> {
         .with_index_register(word.pword_index_register_bits() as usize)
         .with_indirect(word.pword_indirect_bits() != 0)
         .with_page(word.pword_page_bits() as usize)
-        .with_address(word.pword_address_bits() as usize)
-        .build();
-    Ok(instruction)
+        .with_address(word.pword_address_bits() as usize);
+    Ok(instruction.build())
 }
 
 pub fn instruction_to_word(instruction: &Instruction) -> Result<Word> {

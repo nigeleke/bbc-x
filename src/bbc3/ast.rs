@@ -2,15 +2,20 @@
 pub struct SourceProgramLine {
     location: Location,
     source_program_word: SourceProgramWord,
-    comment: Comment
+    comment: Comment,
 }
 
 impl SourceProgramLine {
     pub fn new(
         location: Location,
         source_program_word: SourceProgramWord,
-        comment: Comment) -> Self {
-        Self { location, source_program_word, comment }
+        comment: Comment,
+    ) -> Self {
+        Self {
+            location,
+            source_program_word,
+            comment,
+        }
     }
 
     pub fn location(&self) -> &Location {
@@ -72,11 +77,44 @@ pub enum PWord {
 impl std::fmt::Display for PWord {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            PWord::TakeType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand),
-            PWord::PutType(inst, acc, operand) => write!(f, "{:<8}{:>2} {}", inst.to_string(), acc.to_string(), operand),
-            PWord::LoadN(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDN.to_string(), acc.to_string(), operand, index),
-            PWord::LoadRConst(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
-            PWord::LoadR(acc, operand, index) => write!(f, "{:<8}{:>2} {}:{}", Mnemonic::LDR.to_string(), acc.to_string(), operand, index),
+            PWord::TakeType(inst, acc, operand) => write!(
+                f,
+                "{:<8}{:>2} {}",
+                inst.to_string(),
+                acc.to_string(),
+                operand
+            ),
+            PWord::PutType(inst, acc, operand) => write!(
+                f,
+                "{:<8}{:>2} {}",
+                inst.to_string(),
+                acc.to_string(),
+                operand
+            ),
+            PWord::LoadN(acc, operand, index) => write!(
+                f,
+                "{:<8}{:>2} {}:{}",
+                Mnemonic::LDN.to_string(),
+                acc.to_string(),
+                operand,
+                index
+            ),
+            PWord::LoadRConst(acc, operand, index) => write!(
+                f,
+                "{:<8}{:>2} {}:{}",
+                Mnemonic::LDR.to_string(),
+                acc.to_string(),
+                operand,
+                index
+            ),
+            PWord::LoadR(acc, operand, index) => write!(
+                f,
+                "{:<8}{:>2} {}:{}",
+                Mnemonic::LDR.to_string(),
+                acc.to_string(),
+                operand,
+                index
+            ),
             PWord::LibraryMnemonic(inst) => write!(f, "{:<8}", inst.to_string()),
         }
     }
@@ -88,13 +126,13 @@ pub struct Acc(Option<char>);
 impl From<char> for Acc {
     fn from(a: char) -> Self {
         Self(Some(a))
-     }
+    }
 }
 
 impl From<Option<char>> for Acc {
     fn from(a: Option<char>) -> Self {
         Self(a)
-     }
+    }
 }
 
 impl std::fmt::Display for Acc {
@@ -150,9 +188,7 @@ pub struct AddressOperand {
 }
 
 impl AddressOperand {
-    pub fn new(
-        address: SimpleAddressOperand,
-        index:  Option<Index>) -> Self {
+    pub fn new(address: SimpleAddressOperand, index: Option<Index>) -> Self {
         Self { address, index }
     }
 }
@@ -169,14 +205,14 @@ pub enum ConstOperand {
     SignedInteger(IntType),
     SignedFWord(FloatType),
     Octal(Octal),
-    SWord(SWord)
+    SWord(SWord),
 }
 
 impl std::fmt::Display for ConstOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
             ConstOperand::SignedInteger(c) => write!(f, "{:+}", c),
-            ConstOperand::SignedFWord(c) => write!(f, "{:+}", c), 
+            ConstOperand::SignedFWord(c) => write!(f, "{:+}", c),
             ConstOperand::Octal(c) => write!(f, "{}", c),
             ConstOperand::SWord(c) => write!(f, "<{}>", c),
         }
@@ -186,14 +222,14 @@ impl std::fmt::Display for ConstOperand {
 #[derive(Clone, Debug, PartialEq)]
 pub enum SimpleAddressOperand {
     DirectAddress(Address),
-    IndirectAddress(Address)
+    IndirectAddress(Address),
 }
 
 impl std::fmt::Display for SimpleAddressOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         match self {
             SimpleAddressOperand::DirectAddress(a) => write!(f, "{}", a),
-            SimpleAddressOperand::IndirectAddress(a) => write!(f, "*{}", a), 
+            SimpleAddressOperand::IndirectAddress(a) => write!(f, "*{}", a),
         }
     }
 }

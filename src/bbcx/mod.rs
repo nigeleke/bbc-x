@@ -61,8 +61,7 @@ impl BbcX {
                     (Err(Error::FailedToParse(e)), l) => format!(" *****  {}\n         {}", l, e),
                     _ => unreachable!(),
                 })
-                .collect::<Vec<_>>()
-                .join("\n");
+                .collect::<Vec<_>>();
             Err(Error::FailedToAssemble(all_results))
         }
     }

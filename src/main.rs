@@ -16,7 +16,7 @@ fn main() {
     let args = std::env::args().collect::<Vec<String>>();
     match bbc_x(args) {
         Ok(_) => {}
-        Err(e) => println!("Error: {:?}", e),
+        Err(e) => println!("Error: {}", e),
     }
 }
 

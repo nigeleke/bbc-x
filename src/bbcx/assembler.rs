@@ -61,7 +61,7 @@ fn validate_ast(ast: &[SourceLine]) -> Result<()> {
             "Multiple definitions: locations: \"{}\", labels: \"{}\"",
             invalid_locations, invalid_labels
         );
-        Err(Error::FailedToAssemble(error))
+        Err(Error::FailedToAssemble(vec![error]))
     }
 }
 
@@ -139,9 +139,9 @@ mod test {
         let result = Assembler::assemble(&program).err().unwrap();
         assert_eq!(
             result,
-            Error::FailedToAssemble(
+            Error::FailedToAssemble(vec![
                 "Multiple definitions: locations: \"1, 2\", labels: \"\"".into()
-            )
+            ])
         );
     }
 
@@ -170,9 +170,9 @@ mod test {
         let result = result.err().unwrap();
         assert_eq!(
             result,
-            Error::FailedToAssemble(
+            Error::FailedToAssemble(vec![
                 "Multiple definitions: locations: \"\", labels: \"LABEL1:, LABEL2:\"".into()
-            )
+            ])
         );
     }
 

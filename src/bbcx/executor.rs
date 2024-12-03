@@ -70,7 +70,12 @@ impl<'a> Executor<'a> {
         self.trace(&format!("  address:  {}   {}", address, self.ec[address]));
         let (address, operand) = self.operand(instruction).unwrap();
         if instruction.is_indirect() {
-            self.trace(&format!("  indirect: {}   {}", address, operand));
+            self.trace(&format!(
+                "  indirect: {}   {} => {}",
+                address,
+                operand,
+                word_to_instruction(&operand).map_or("Not a PWORD".to_string(), |i| i.to_string())
+            ));
         }
         let index_register = instruction.index_register();
         if index_register.is_indexable() {
@@ -496,61 +501,61 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_jez(&mut self, instruction: &Instruction) {
-        let (acc, _, _) = self.extract_operands(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jnz(&mut self, instruction: &Instruction) {
-        let (acc, _, _) = self.extract_operands(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() != Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jat(&mut self, instruction: &Instruction) {
-        let (acc, _, _) = self.extract_operands(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc].word_type();
         if acc_value == Word::new(WordType::IWord, 0) || acc_value == Word::new(WordType::IWord, 1)
         {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jlz(&mut self, instruction: &Instruction) {
-        let (acc, _, _) = self.extract_operands(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() < Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jgz(&mut self, instruction: &Instruction) {
-        let (acc, _, _) = self.extract_operands(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() > Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jzd(&mut self, instruction: &Instruction) {
-        let (acc, _, _) = self.extract_operands(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         } else {
             self.ec[acc] -= 1.try_into().unwrap();
         }
     }
 
     fn exec_jzi(&mut self, instruction: &Instruction) {
-        let (acc, _, _) = self.extract_operands(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         } else {
             self.ec[acc] += 1.try_into().unwrap();
         }

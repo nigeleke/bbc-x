@@ -52,6 +52,12 @@ impl std::ops::Sub<isize> for Accumulator {
     }
 }
 
+impl std::fmt::Display for Accumulator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:<2}", self.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct IndexRegister(Accumulator);
 
@@ -82,6 +88,20 @@ impl TryFrom<usize> for IndexRegister {
     }
 }
 
+impl std::fmt::Display for IndexRegister {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let index = self.0.memory_index();
+
+        let formatted_index = if index != 0 {
+            &format!("({})", index)
+        } else {
+            ""
+        };
+
+        write!(f, "{}", formatted_index)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Indirect(bool);
 
@@ -94,6 +114,12 @@ impl Bits for Indirect {
 impl From<bool> for Indirect {
     fn from(value: bool) -> Self {
         Indirect(value)
+    }
+}
+
+impl std::fmt::Display for Indirect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", if self.0 { "*" } else { "" })
     }
 }
 
@@ -164,6 +190,12 @@ impl std::ops::AddAssign<isize> for Address {
     }
 }
 
+impl std::fmt::Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:<04}", self.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Instruction {
     function: Function,
@@ -216,6 +248,20 @@ impl Instruction {
 
     pub fn set_address(&mut self, address: Address) {
         self.address = address;
+    }
+}
+
+impl std::fmt::Display for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {}, {}{}{}",
+            self.function(),
+            self.accumulator(),
+            self.indirect(),
+            self.address(),
+            self.index_register()
+        )
     }
 }
 

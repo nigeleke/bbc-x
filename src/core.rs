@@ -16,16 +16,22 @@ impl Core {
         let mut results = vec![];
 
         for file in args.files() {
+            let _ = language.list(&file);
+
             let result = language.assemble(&file).and_then(|_| {
                 if args.run() {
-                    language.run(&file)
+                    let trace_path = (args.trace()).then_some({
+                        let parent = file.parent().unwrap().to_path_buf();
+                        let parent = args.trace_path().unwrap_or(parent);
+                        let stem = file.file_stem().unwrap();
+                        parent.join(stem).with_extension("out")
+                    });
+                    language.run(&file, trace_path.as_deref())
                 } else {
                     Ok(())
                 }
             });
             results.push(result);
-
-            let _ = language.list(&file);
         }
 
         let results = results
@@ -244,14 +250,67 @@ mod test {
     fn program_bbcx_executed() {}
 
     #[test]
-    #[ignore]
-    fn trace_file_not_created() {}
+    fn trace_file_not_created() {
+        let temp_folder = TempDir::new("bbcx-tests").unwrap();
+
+        let temp_target = temp_folder.path().join("nil.bbc");
+        let temp_target_str = temp_target.display().to_string();
+
+        std::fs::copy("./examples/test/bbcx/nil.bbc", temp_target).unwrap();
+
+        let args = vec!["bbc-x", "--lang=bbc-x", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        let args = Args::from(args);
+        let _ = Core::build_all(&args);
+
+        let trace_target = temp_folder.path().join("nil.out");
+        assert!(!trace_target.exists());
+    }
 
     #[test]
-    #[ignore]
-    fn trace_file_created() {}
+    fn trace_file_created() {
+        let temp_folder = TempDir::new("bbcx-tests").unwrap();
+
+        let temp_target = temp_folder.path().join("nil.bbc");
+        let temp_target_str = temp_target.display().to_string();
+
+        std::fs::copy("./examples/test/bbcx/nil.bbc", temp_target).unwrap();
+
+        let args = vec!["bbc-x", "--lang=bbc-x", "--trace", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        let args = Args::from(args);
+        let _ = Core::build_all(&args);
+
+        let trace_target = temp_folder.path().join("nil.out");
+        assert!(trace_target.exists());
+    }
 
     #[test]
-    #[ignore]
-    fn trace_file_created_at_specified_path() {}
+    fn trace_file_created_at_specified_path() {
+        let temp_folder = TempDir::new("bbcx-tests").unwrap();
+
+        let temp_target = temp_folder.path();
+        let temp_target_str = temp_target.display().to_string();
+
+        let args = vec![
+            "bbc-x",
+            "--lang=bbc-x",
+            "--trace",
+            "--trace-path",
+            &temp_target_str,
+            "./examples/test/bbcx/nil.bbc",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
+        let args = Args::from(args);
+        let _ = Core::build_all(&args);
+
+        let trace_target = temp_folder.path().join("nil.out");
+        assert!(trace_target.exists());
+    }
 }

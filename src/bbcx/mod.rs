@@ -66,9 +66,9 @@ impl BbcX {
         }
     }
 
-    fn impl_run(&self, path: &Path) -> Result<()> {
+    fn impl_run(&self, path: &Path, trace: Option<&Path>) -> Result<()> {
         let assembly = self.impl_assemble(path)?;
-        let executor = Executor::new();
+        let executor = Executor::new(trace);
         _ = executor
             .execute(&assembly)
             .map_err(|err| Error::FailedToRun(err.to_string()))?;
@@ -111,8 +111,8 @@ impl LanguageModel for BbcX {
         Ok(())
     }
 
-    fn run(&self, path: &Path) -> Result<()> {
-        self.impl_run(path)
+    fn run(&self, path: &Path, trace: Option<&Path>) -> Result<()> {
+        self.impl_run(path, trace)
     }
 
     fn list(&self, path: &Path) -> Result<()> {
@@ -151,7 +151,7 @@ mod test {
         .collect();
         let args = Args::from(args);
         let model = BbcX::new(&args);
-        let result = model.run(&args.files().next().unwrap());
+        let result = model.run(&args.files().next().unwrap(), args.trace_path().as_deref());
         assert!(result.is_ok())
     }
 
@@ -174,5 +174,30 @@ mod test {
 
         let list_target = temp_folder.path().join("nthg.lst");
         assert!(list_target.exists());
+    }
+
+    #[test]
+    fn will_trace() {
+        let temp_folder = TempDir::new("bbcx-tests-bbcx").unwrap();
+
+        let temp_target = temp_folder.path().join("nil.bbc");
+        let temp_target_str = temp_target.display().to_string();
+
+        std::fs::copy("./examples/test/bbcx/nil.bbc", temp_target).unwrap();
+
+        let args = vec!["bbc-x", "--lang=bbc-x", "--trace", &temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        let args = Args::from(args);
+        let model = BbcX::new(&args);
+        let trace_target = temp_folder.path().join("nil.out");
+
+        let _ = model.run(
+            &args.files().next().unwrap(),
+            Some(trace_target.clone()).as_deref(),
+        );
+
+        assert!(trace_target.exists());
     }
 }

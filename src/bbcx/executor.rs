@@ -6,23 +6,30 @@ use num_enum::TryFromPrimitive;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fs::OpenOptions;
 use std::io::{self, Read, Write};
+use std::path::Path;
 use std::rc::Rc;
 
-pub struct Executor {
+pub struct Executor<'a> {
     ec: ExecutionContext,
     stdin: Rc<RefCell<dyn Read>>,
     stdout: Rc<RefCell<dyn Write>>,
+    trace: Option<&'a Path>,
 }
 
-impl Executor {
-    pub fn new() -> Self {
+impl<'a> Executor<'a> {
+    pub fn new(trace: Option<&'a Path>) -> Self {
         let stdin = Rc::new(RefCell::new(io::stdin()));
         let stdout = Rc::new(RefCell::new(io::stdout()));
-        Self::with_io(stdin, stdout)
+        Self::with_io(stdin, stdout, trace)
     }
 
-    pub fn with_io<R, W>(stdin: Rc<RefCell<R>>, stdout: Rc<RefCell<W>>) -> Self
+    pub fn with_io<R, W>(
+        stdin: Rc<RefCell<R>>,
+        stdout: Rc<RefCell<W>>,
+        trace: Option<&'a Path>,
+    ) -> Self
     where
         R: Read + 'static,
         W: Write + 'static,
@@ -31,7 +38,29 @@ impl Executor {
             ec: ExecutionContext::default(),
             stdin,
             stdout,
+            trace,
         }
+    }
+
+    fn trace(&self, text: &str) {
+        if let Some(path) = self.trace {
+            let format = time::format_description::parse(
+                "[year]-[month]-[day] [hour]:[minute]:[second]:[subsecond]+[offset_hour]:[offset_minute]",
+            )
+            .unwrap();
+            let now = time::OffsetDateTime::now_utc()
+                .format(&format)
+                .unwrap()
+                .to_string();
+            let mut file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)
+                .unwrap();
+            let text = format!("{:<14?} - {}\n", now, text);
+            file.write_all(text.as_bytes()).unwrap();
+            file.flush().unwrap();
+        };
     }
 
     pub fn execute(mut self, assembly: &Assembly) -> Result<ExecutionContext> {
@@ -54,12 +83,13 @@ impl Executor {
         let content = self.ec[pc];
         let instruction = word_to_instruction(&content)
             .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))?;
+        self.trace(&format!("{:<06}     {}", pc.memory_index(), instruction));
         self.step_word(&instruction);
         Ok(())
     }
 
     fn step_word(&mut self, instruction: &Instruction) {
-        type ExecFn = fn(&mut Executor, &Instruction);
+        type ExecFn<'a> = fn(&mut Executor<'a>, &Instruction);
         let execution: HashMap<Function, ExecFn> = vec![
             (Function::NIL, Executor::exec_nil as ExecFn),
             (Function::OR, Executor::exec_or as ExecFn),
@@ -639,18 +669,18 @@ impl Executor {
     }
 
     fn exec_extra_capn(&mut self, _instruction: &Instruction) {
+        let mut stdout = (*self.stdout).borrow_mut();
         while self.ec[self.ec.pc].is_sword() {
             let chars = self.ec[self.ec.pc]
                 .as_string()
                 .expect("CAPN invalid operand");
-            let mut stdout = (*self.stdout).borrow_mut();
             stdout.write_all(chars.as_bytes()).unwrap();
             self.ec.pc += 1;
         }
     }
 }
 
-impl std::fmt::Debug for Executor {
+impl std::fmt::Debug for Executor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Executor")
             .field("execution_context", &self.ec)
@@ -660,7 +690,7 @@ impl std::fmt::Debug for Executor {
     }
 }
 
-impl PartialEq for Executor {
+impl PartialEq for Executor<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.ec.eq(&other.ec)
     }
@@ -794,7 +824,7 @@ mod test {
     use crate::bbcx::parser::*;
 
     fn execute(input: &str) -> Result<ExecutionContext> {
-        let executor = Executor::new();
+        let executor = Executor::new(None);
         do_execute(input, executor)
     }
 
@@ -806,7 +836,7 @@ mod test {
         let stdout_buffer = Vec::new();
         let stdout = Rc::new(RefCell::new(std::io::BufWriter::new(stdout_buffer)));
 
-        let executor = Executor::with_io(stdin, stdout.clone());
+        let executor = Executor::with_io(stdin, stdout.clone(), None);
         let ec = do_execute(input, executor).unwrap().clone();
 
         let stdout = stdout.borrow();

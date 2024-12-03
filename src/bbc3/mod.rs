@@ -61,7 +61,7 @@ impl Bbc3 {
         }
     }
 
-    fn impl_run(&self, _path: &Path) -> Result<()> {
+    fn impl_run(&self, _path: &Path, _trace: Option<&Path>) -> Result<()> {
         Err(Error::FailedToRun(
             "BBC-3 run command is not implemented".into(),
         ))
@@ -103,8 +103,8 @@ impl LanguageModel for Bbc3 {
         Ok(())
     }
 
-    fn run(&self, path: &Path) -> Result<()> {
-        self.impl_run(path)?;
+    fn run(&self, path: &Path, trace: Option<&Path>) -> Result<()> {
+        self.impl_run(path, trace)?;
         unreachable!()
     }
 
@@ -144,7 +144,7 @@ mod test {
         .collect();
         let args = Args::from(args);
         let model = Bbc3::new(&args);
-        let result = model.run(&args.files().next().unwrap());
+        let result = model.run(&args.files().next().unwrap(), args.trace_path().as_deref());
         assert!(result.is_err())
     }
 

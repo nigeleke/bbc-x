@@ -414,6 +414,7 @@ pub enum Mnemonic {
 
 impl std::fmt::Display for Mnemonic {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "{:?}", self)
+        let formatted = format!("{:?}", self);
+        write!(f, "{:<6}", formatted)
     }
 }

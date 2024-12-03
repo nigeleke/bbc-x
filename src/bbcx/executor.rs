@@ -45,7 +45,7 @@ impl<'a> Executor<'a> {
     fn trace(&self, text: &str) {
         if let Some(path) = self.trace {
             let format = time::format_description::parse(
-                "[year]-[month]-[day] [hour]:[minute]:[second]:[subsecond digits:9]+[offset_hour]:[offset_minute]",
+                "[year]-[month]-[day] [hour repr:24]:[minute]:[second]:[subsecond digits:9]+[offset_hour]:[offset_minute]",
             )
             .unwrap();
             let now = time::OffsetDateTime::now_utc();
@@ -60,6 +60,26 @@ impl<'a> Executor<'a> {
             file.write_all(text.as_bytes()).unwrap();
             file.flush().unwrap();
         };
+    }
+
+    fn trace_detail(&self, pre_post_indicator: &str, instruction: &Instruction) {
+        self.trace(pre_post_indicator);
+        let acc = instruction.accumulator();
+        self.trace(&format!("  acc:      {}   {}", acc, self.ec[acc]));
+        let address = instruction.address();
+        self.trace(&format!("  address:  {}   {}", address, self.ec[address]));
+        let (address, operand) = self.operand(&instruction).unwrap();
+        if instruction.is_indirect() {
+            self.trace(&format!("  indirect: {}   {}", address, operand));
+        }
+        let index_register = instruction.index_register();
+        if index_register.is_indexable() {
+            self.trace(&format!(
+                "  ireg:     {}    {}",
+                index_register, self.ec[index_register]
+            ));
+            self.trace(&format!("  indexed:  {}   {}", address, self.ec[address]));
+        }
     }
 
     pub fn execute(mut self, assembly: &Assembly) -> Result<ExecutionContext> {
@@ -82,8 +102,12 @@ impl<'a> Executor<'a> {
         let content = self.ec[pc];
         let instruction = word_to_instruction(&content)
             .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))?;
-        self.trace(&format!("{:<06}     {}", pc.memory_index(), instruction));
-        self.step_word(&instruction);
+
+        self.trace(&format!("{:<06}      {}", pc.memory_index(), instruction));
+        self.trace_detail(">>", &instruction);
+        self.step_word(&instruction.clone());
+        self.trace_detail("<<", &instruction);
+
         Ok(())
     }
 
@@ -156,7 +180,7 @@ impl<'a> Executor<'a> {
         f(self, instruction)
     }
 
-    fn operand(&self, instruction: &Instruction) -> Result<Word> {
+    fn operand(&self, instruction: &Instruction) -> Result<(Address, Word)> {
         let ec = &self.ec;
 
         let index_register = instruction.index_register();
@@ -175,12 +199,12 @@ impl<'a> Executor<'a> {
             address += index as isize;
         }
 
-        Ok(ec[address])
+        Ok((address, ec[address]))
     }
 
     fn acc_and_operand(&self, instruction: &Instruction) -> (Accumulator, Word) {
         let acc = instruction.accumulator();
-        let operand = self.operand(instruction).expect("Invalid operand");
+        let (_, operand) = self.operand(instruction).expect("Invalid operand");
         (acc, operand)
     }
 
@@ -539,13 +563,15 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_decr(&mut self, instruction: &Instruction) {
-        let (_, address) = Self::acc_and_address(instruction);
+        let (acc, address) = Self::acc_and_address(instruction);
         decrement(&mut self.ec[address]);
+        self.ec[acc] = self.ec[address];
     }
 
     fn exec_incr(&mut self, instruction: &Instruction) {
-        let (_, address) = Self::acc_and_address(instruction);
+        let (acc, address) = Self::acc_and_address(instruction);
         increment(&mut self.ec[address]);
+        self.ec[acc] = self.ec[address];
     }
 
     fn exec_exec(&mut self, instruction: &Instruction) {
@@ -3176,6 +3202,12 @@ mod test {
                     .with_address(101)
                     .build(),
             )
+            .with_instruction(
+                0,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(101)
+                    .build(),
+            )
             .with_memory_word(110, 2)
             .with_memory_word(111, 2.14)
             .with_program_counter(103);
@@ -3207,6 +3239,12 @@ mod test {
             )
             .with_instruction(
                 102,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(103)
+                    .build(),
+            )
+            .with_instruction(
+                0,
                 InstructionBuilder::new(Function::INCR)
                     .with_address(103)
                     .build(),
@@ -3278,6 +3316,7 @@ mod test {
                     .with_address(111)
                     .build(),
             )
+            .with_memory_word(0, 4.14)
             .with_memory_word(111, 4.14)
             .with_program_counter(101);
         test_result(&actual, &expected)

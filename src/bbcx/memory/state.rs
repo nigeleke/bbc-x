@@ -78,7 +78,9 @@ pub const MEMORY_SIZE: usize = 1024;
 
 impl Default for State {
     fn default() -> Self {
-        Self(vec![Word::default(); MEMORY_SIZE])
+        let mut words = vec![Word::new(WordType::IWord, 0)];
+        words.extend(vec![Word::default(); MEMORY_SIZE - 1]);
+        Self(words)
     }
 }
 

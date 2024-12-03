@@ -246,8 +246,20 @@ mod test {
     }
 
     #[test]
-    #[ignore]
-    fn program_bbcx_executed() {}
+    fn program_bbcx_executed() {
+        let args = vec![
+            "bbc-x",
+            "--lang=bbc-x",
+            "--run",
+            "./examples/test/bbcx/nil.bbc",
+        ]
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
+        let args = Args::from(args);
+        let result = Core::build_all(&args);
+        assert!(result.is_ok())
+    }
 
     #[test]
     fn trace_file_not_created() {

@@ -68,7 +68,7 @@ impl<'a> Executor<'a> {
         self.trace(&format!("  acc:      {}   {}", acc, self.ec[acc]));
         let address = instruction.address();
         self.trace(&format!("  address:  {}   {}", address, self.ec[address]));
-        let (address, operand) = self.operand(&instruction).unwrap();
+        let (address, operand) = self.operand(instruction).unwrap();
         if instruction.is_indirect() {
             self.trace(&format!("  indirect: {}   {}", address, operand));
         }
@@ -202,89 +202,83 @@ impl<'a> Executor<'a> {
         Ok((address, ec[address]))
     }
 
-    fn acc_and_operand(&self, instruction: &Instruction) -> (Accumulator, Word) {
+    fn extract_operands(&self, instruction: &Instruction) -> (Accumulator, Address, Word) {
         let acc = instruction.accumulator();
-        let (_, operand) = self.operand(instruction).expect("Invalid operand");
-        (acc, operand)
-    }
-
-    fn acc_and_address(&instruction: &Instruction) -> (Accumulator, Address) {
-        let acc = instruction.accumulator();
-        let address = instruction.address();
-        (acc, address)
+        let (address, operand) = self.operand(instruction).expect("Invalid operand");
+        (acc, address, operand)
     }
 
     fn exec_nil(&mut self, _instruction: &Instruction) {}
 
     fn exec_or(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] |= operand;
     }
 
     fn exec_neqv(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] ^= operand;
     }
 
     fn exec_and(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] &= operand;
     }
 
     fn exec_add(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] += operand;
     }
 
     fn exec_subt(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] -= operand;
     }
 
     fn exec_mult(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] *= operand;
     }
 
     fn exec_dvd(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] /= operand;
     }
 
     fn exec_take(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = operand;
     }
 
     fn exec_tstr(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let value = operand.as_i64().expect("TSTR invalid operand");
         self.ec[acc] = operand;
         self.ec[acc - 1] = (if value < 1 { -1 } else { 0 }).try_into().unwrap();
     }
 
     fn exec_tneg(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = -operand;
     }
 
     fn exec_tnot(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = !operand;
     }
 
     fn exec_ttyp(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = operand.word_type();
     }
 
     fn exec_ttyz(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = operand.word_bits();
     }
 
     fn exec_tout(&mut self, instruction: &Instruction) {
-        let (_acc, operand) = self.acc_and_operand(instruction);
+        let (_acc, _, operand) = self.extract_operands(instruction);
         let chars = vec![operand.as_char().expect("TOUT invalid operand")];
         let mut stdout = (*self.stdout).borrow_mut();
         stdout.write_all(&chars).unwrap();
@@ -295,21 +289,21 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_skae(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] == operand {
             self.ec.pc += 1;
         }
     }
 
     fn exec_skan(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] != operand {
             self.ec.pc += 1;
         }
     }
 
     fn exec_sket(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let same_type = self.ec[acc].word_type() == operand.word_type();
         if same_type {
             self.ec.pc += 1;
@@ -317,21 +311,21 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_skal(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] < operand {
             self.ec.pc += 1
         }
     }
 
     fn exec_skag(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] > operand {
             self.ec.pc += 1
         }
     }
 
     fn exec_sked(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] == operand {
             self.ec.pc += 1
         } else {
@@ -340,7 +334,7 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_skei(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] == operand {
             self.ec.pc += 1
         } else {
@@ -349,55 +343,55 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_shl(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] <<= operand;
     }
 
     fn exec_rot(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc].rotate(operand.as_i64().unwrap());
     }
 
     fn exec_dshl(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let (msw, lsw) = double_shift_left(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
         self.ec[acc - 1].set_word_bits(&msw);
         self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_drot(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let (msw, lsw) = double_rotate_left(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
         self.ec[acc - 1].set_word_bits(&msw);
         self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_powr(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc].power(&operand);
     }
 
     fn exec_dmult(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let (msw, lsw) = double_mult(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
         self.ec[acc - 1].set_word_bits(&msw);
         self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_div(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] /= operand;
     }
 
     fn exec_ddiv(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let (msw, lsw) = double_div(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
         self.ec[acc - 1].set_word_bits(&msw);
         self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_nilx(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         let operand_address = instruction.address();
         self.ec[acc] = operand;
@@ -435,13 +429,13 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_put(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         self.ec[address] = acc_value;
     }
 
     fn exec_psqu(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let msw0 = self.ec[acc - 1];
         let lsw0 = self.ec[acc];
         let (_, mut lsw1) = squash(&msw0, &lsw0).unwrap();
@@ -450,19 +444,19 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_pneg(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         self.ec[address] = -acc_value;
     }
 
     fn exec_ptyp(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         self.ec[address].set_word_type(&acc_value);
     }
 
     fn exec_ptyz(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         let mut result: Word = 0.try_into().unwrap();
         result.set_word_bits(&acc_value);
@@ -470,7 +464,7 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_pin(&mut self, instruction: &Instruction) {
-        let (_acc, address) = Self::acc_and_address(instruction);
+        let (_acc, address, _) = self.extract_operands(instruction);
 
         let mut stdin = (*self.stdin).borrow_mut();
         let mut stdout = (*self.stdout).borrow_mut();
@@ -496,13 +490,13 @@ impl<'a> Executor<'a> {
 
     fn exec_jump(&mut self, instruction: &Instruction) {
         let pc = self.ec.pc - 1;
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         self.ec[acc - 1] = (pc.memory_index() as i64).try_into().unwrap();
         self.ec.pc = address;
     }
 
     fn exec_jez(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, _, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
             self.exec_jump(instruction)
@@ -510,7 +504,7 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_jnz(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, _, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() != Word::new(WordType::IWord, 0) {
             self.exec_jump(instruction)
@@ -518,7 +512,7 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_jat(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, _, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc].word_type();
         if acc_value == Word::new(WordType::IWord, 0) || acc_value == Word::new(WordType::IWord, 1)
         {
@@ -527,7 +521,7 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_jlz(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, _, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() < Word::new(WordType::IWord, 0) {
             self.exec_jump(instruction)
@@ -535,7 +529,7 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_jgz(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, _, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() > Word::new(WordType::IWord, 0) {
             self.exec_jump(instruction)
@@ -543,7 +537,7 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_jzd(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, _, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
             self.exec_jump(instruction)
@@ -553,7 +547,7 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_jzi(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, _, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
             self.exec_jump(instruction)
@@ -563,26 +557,26 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_decr(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         decrement(&mut self.ec[address]);
         self.ec[acc] = self.ec[address];
     }
 
     fn exec_incr(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         increment(&mut self.ec[address]);
         self.ec[acc] = self.ec[address];
     }
 
     fn exec_exec(&mut self, instruction: &Instruction) {
-        let (_, address) = Self::acc_and_address(instruction);
+        let (_, address, _) = self.extract_operands(instruction);
         let word = self.ec[address];
         let instruction = word_to_instruction(&word).unwrap();
         self.step_word(&instruction);
     }
 
     fn exec_extra(&mut self, instruction: &Instruction) {
-        let (_, address) = Self::acc_and_address(instruction);
+        let (_, address, _) = self.extract_operands(instruction);
         let code = address.memory_index() as u32 + Function::EXTRA as u32;
         let function = Function::try_from_primitive(code).unwrap();
 

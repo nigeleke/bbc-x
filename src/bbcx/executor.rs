@@ -45,19 +45,18 @@ impl<'a> Executor<'a> {
     fn trace(&self, text: &str) {
         if let Some(path) = self.trace {
             let format = time::format_description::parse(
-                "[year]-[month]-[day] [hour]:[minute]:[second]:[subsecond]+[offset_hour]:[offset_minute]",
+                "[year]-[month]-[day] [hour]:[minute]:[second]:[subsecond digits:9]+[offset_hour]:[offset_minute]",
             )
             .unwrap();
-            let now = time::OffsetDateTime::now_utc()
-                .format(&format)
-                .unwrap()
-                .to_string();
+            let now = time::OffsetDateTime::now_utc();
+            let offset = time::UtcOffset::local_offset_at(now).unwrap();
+            let now = now.to_offset(offset).format(&format).unwrap().to_string();
             let mut file = OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(path)
                 .unwrap();
-            let text = format!("{:<14?} - {}\n", now, text);
+            let text = format!("{}  -      {}\n", now, text);
             file.write_all(text.as_bytes()).unwrap();
             file.flush().unwrap();
         };

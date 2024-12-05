@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["instruction_to_word","store_operand_to_word","word_to_instruction"]};
+window.SIDEBAR_ITEMS = {"fn":["decrement","increment","instruction_to_word","store_operand_to_word","word_to_instruction"]};

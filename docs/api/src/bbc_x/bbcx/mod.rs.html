@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/bbcx/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-492a78a4a87dcc01.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="bbc_x" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0 (f6e511eec 2024-10-15)" data-channel="1.82.0" data-search-js="search-a99f1315e7cc5121.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-921df33f47b8780c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/bbcx/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="bbc_x" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0 (90b35a623 2024-11-26)" data-channel="1.83.0" data-search-js="search-f0d225181b97f9a4.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">bbc_x/bbcx/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -177,7 +178,33 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
-</pre></div><pre class="rust"><code><span class="kw">mod </span>assembler;
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a></pre></div><pre class="rust"><code><span class="kw">mod </span>assembler;
 <span class="kw">mod </span>assembly;
 <span class="kw">mod </span>ast;
 <span class="kw">mod </span>charset;
@@ -240,15 +267,14 @@
                     (<span class="prelude-val">Err</span>(Error::FailedToParse(e)), l) =&gt; <span class="macro">format!</span>(<span class="string">" *****  {}\n         {}"</span>, l, e),
                     <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
                 })
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                .join(<span class="string">"\n"</span>);
+                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
             <span class="prelude-val">Err</span>(Error::FailedToAssemble(all_results))
         }
     }
 
-    <span class="kw">fn </span>impl_run(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="kw">fn </span>impl_run(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path, trace: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="kw">let </span>assembly = <span class="self">self</span>.impl_assemble(path)<span class="question-mark">?</span>;
-        <span class="kw">let </span>executor = Executor::new();
+        <span class="kw">let </span>executor = Executor::new(trace);
         <span class="kw">_ </span>= executor
             .execute(<span class="kw-2">&amp;</span>assembly)
             .map_err(|err| Error::FailedToRun(err.to_string()))<span class="question-mark">?</span>;
@@ -291,8 +317,8 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-        <span class="self">self</span>.impl_run(path)
+    <span class="kw">fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path, trace: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Path&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="self">self</span>.impl_run(path, trace)
     }
 
     <span class="kw">fn </span>list(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -305,6 +331,7 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>tempdir::TempDir;
+    <span class="kw">use </span>time::util::local_offset::<span class="kw-2">*</span>;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>will_assemble() {
@@ -331,12 +358,13 @@
         .collect();
         <span class="kw">let </span>args = Args::from(args);
         <span class="kw">let </span>model = BbcX::new(<span class="kw-2">&amp;</span>args);
-        <span class="kw">let </span>result = model.run(<span class="kw-2">&amp;</span>args.files().next().unwrap());
+        <span class="kw">let </span>result = model.run(<span class="kw-2">&amp;</span>args.files().next().unwrap(), args.trace_path().as_deref());
         <span class="macro">assert!</span>(result.is_ok())
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>will_list() {
+        <span class="kw">unsafe </span>{ set_soundness(Soundness::Unsound) };
         <span class="kw">let </span>temp_folder = TempDir::new(<span class="string">"bbcx-tests-bbcx"</span>).unwrap();
 
         <span class="kw">let </span>temp_target = temp_folder.path().join(<span class="string">"nthg.bbc"</span>);
@@ -354,6 +382,32 @@
 
         <span class="kw">let </span>list_target = temp_folder.path().join(<span class="string">"nthg.lst"</span>);
         <span class="macro">assert!</span>(list_target.exists());
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>will_trace() {
+        <span class="kw">unsafe </span>{ set_soundness(Soundness::Unsound) };
+        <span class="kw">let </span>temp_folder = TempDir::new(<span class="string">"bbcx-tests-bbcx"</span>).unwrap();
+
+        <span class="kw">let </span>temp_target = temp_folder.path().join(<span class="string">"nil.bbc"</span>);
+        <span class="kw">let </span>temp_target_str = temp_target.display().to_string();
+
+        std::fs::copy(<span class="string">"./examples/test/bbcx/nil.bbc"</span>, temp_target).unwrap();
+
+        <span class="kw">let </span>args = <span class="macro">vec!</span>[<span class="string">"bbc-x"</span>, <span class="string">"--lang=bbc-x"</span>, <span class="string">"--trace"</span>, <span class="kw-2">&amp;</span>temp_target_str]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        <span class="kw">let </span>args = Args::from(args);
+        <span class="kw">let </span>model = BbcX::new(<span class="kw-2">&amp;</span>args);
+        <span class="kw">let </span>trace_target = temp_folder.path().join(<span class="string">"nil.out"</span>);
+
+        <span class="kw">let _ </span>= model.run(
+            <span class="kw-2">&amp;</span>args.files().next().unwrap(),
+            <span class="prelude-val">Some</span>(trace_target.clone()).as_deref(),
+        );
+
+        <span class="macro">assert!</span>(trace_target.exists());
     }
 }
 </code></pre></div></section></main></body></html>

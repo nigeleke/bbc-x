@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/bbcx/executor.rs`."><title>executor.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-492a78a4a87dcc01.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="bbc_x" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0 (f6e511eec 2024-10-15)" data-channel="1.82.0" data-search-js="search-a99f1315e7cc5121.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-921df33f47b8780c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/bbcx/executor.rs`."><title>executor.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="bbc_x" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0 (90b35a623 2024-11-26)" data-channel="1.83.0" data-search-js="search-f0d225181b97f9a4.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">bbc_x/bbcx/</div>executor.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2959,44 +2960,718 @@
 <a href="#2959" id="2959">2959</a>
 <a href="#2960" id="2960">2960</a>
 <a href="#2961" id="2961">2961</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::assembly::Assembly;
+<a href="#2962" id="2962">2962</a>
+<a href="#2963" id="2963">2963</a>
+<a href="#2964" id="2964">2964</a>
+<a href="#2965" id="2965">2965</a>
+<a href="#2966" id="2966">2966</a>
+<a href="#2967" id="2967">2967</a>
+<a href="#2968" id="2968">2968</a>
+<a href="#2969" id="2969">2969</a>
+<a href="#2970" id="2970">2970</a>
+<a href="#2971" id="2971">2971</a>
+<a href="#2972" id="2972">2972</a>
+<a href="#2973" id="2973">2973</a>
+<a href="#2974" id="2974">2974</a>
+<a href="#2975" id="2975">2975</a>
+<a href="#2976" id="2976">2976</a>
+<a href="#2977" id="2977">2977</a>
+<a href="#2978" id="2978">2978</a>
+<a href="#2979" id="2979">2979</a>
+<a href="#2980" id="2980">2980</a>
+<a href="#2981" id="2981">2981</a>
+<a href="#2982" id="2982">2982</a>
+<a href="#2983" id="2983">2983</a>
+<a href="#2984" id="2984">2984</a>
+<a href="#2985" id="2985">2985</a>
+<a href="#2986" id="2986">2986</a>
+<a href="#2987" id="2987">2987</a>
+<a href="#2988" id="2988">2988</a>
+<a href="#2989" id="2989">2989</a>
+<a href="#2990" id="2990">2990</a>
+<a href="#2991" id="2991">2991</a>
+<a href="#2992" id="2992">2992</a>
+<a href="#2993" id="2993">2993</a>
+<a href="#2994" id="2994">2994</a>
+<a href="#2995" id="2995">2995</a>
+<a href="#2996" id="2996">2996</a>
+<a href="#2997" id="2997">2997</a>
+<a href="#2998" id="2998">2998</a>
+<a href="#2999" id="2999">2999</a>
+<a href="#3000" id="3000">3000</a>
+<a href="#3001" id="3001">3001</a>
+<a href="#3002" id="3002">3002</a>
+<a href="#3003" id="3003">3003</a>
+<a href="#3004" id="3004">3004</a>
+<a href="#3005" id="3005">3005</a>
+<a href="#3006" id="3006">3006</a>
+<a href="#3007" id="3007">3007</a>
+<a href="#3008" id="3008">3008</a>
+<a href="#3009" id="3009">3009</a>
+<a href="#3010" id="3010">3010</a>
+<a href="#3011" id="3011">3011</a>
+<a href="#3012" id="3012">3012</a>
+<a href="#3013" id="3013">3013</a>
+<a href="#3014" id="3014">3014</a>
+<a href="#3015" id="3015">3015</a>
+<a href="#3016" id="3016">3016</a>
+<a href="#3017" id="3017">3017</a>
+<a href="#3018" id="3018">3018</a>
+<a href="#3019" id="3019">3019</a>
+<a href="#3020" id="3020">3020</a>
+<a href="#3021" id="3021">3021</a>
+<a href="#3022" id="3022">3022</a>
+<a href="#3023" id="3023">3023</a>
+<a href="#3024" id="3024">3024</a>
+<a href="#3025" id="3025">3025</a>
+<a href="#3026" id="3026">3026</a>
+<a href="#3027" id="3027">3027</a>
+<a href="#3028" id="3028">3028</a>
+<a href="#3029" id="3029">3029</a>
+<a href="#3030" id="3030">3030</a>
+<a href="#3031" id="3031">3031</a>
+<a href="#3032" id="3032">3032</a>
+<a href="#3033" id="3033">3033</a>
+<a href="#3034" id="3034">3034</a>
+<a href="#3035" id="3035">3035</a>
+<a href="#3036" id="3036">3036</a>
+<a href="#3037" id="3037">3037</a>
+<a href="#3038" id="3038">3038</a>
+<a href="#3039" id="3039">3039</a>
+<a href="#3040" id="3040">3040</a>
+<a href="#3041" id="3041">3041</a>
+<a href="#3042" id="3042">3042</a>
+<a href="#3043" id="3043">3043</a>
+<a href="#3044" id="3044">3044</a>
+<a href="#3045" id="3045">3045</a>
+<a href="#3046" id="3046">3046</a>
+<a href="#3047" id="3047">3047</a>
+<a href="#3048" id="3048">3048</a>
+<a href="#3049" id="3049">3049</a>
+<a href="#3050" id="3050">3050</a>
+<a href="#3051" id="3051">3051</a>
+<a href="#3052" id="3052">3052</a>
+<a href="#3053" id="3053">3053</a>
+<a href="#3054" id="3054">3054</a>
+<a href="#3055" id="3055">3055</a>
+<a href="#3056" id="3056">3056</a>
+<a href="#3057" id="3057">3057</a>
+<a href="#3058" id="3058">3058</a>
+<a href="#3059" id="3059">3059</a>
+<a href="#3060" id="3060">3060</a>
+<a href="#3061" id="3061">3061</a>
+<a href="#3062" id="3062">3062</a>
+<a href="#3063" id="3063">3063</a>
+<a href="#3064" id="3064">3064</a>
+<a href="#3065" id="3065">3065</a>
+<a href="#3066" id="3066">3066</a>
+<a href="#3067" id="3067">3067</a>
+<a href="#3068" id="3068">3068</a>
+<a href="#3069" id="3069">3069</a>
+<a href="#3070" id="3070">3070</a>
+<a href="#3071" id="3071">3071</a>
+<a href="#3072" id="3072">3072</a>
+<a href="#3073" id="3073">3073</a>
+<a href="#3074" id="3074">3074</a>
+<a href="#3075" id="3075">3075</a>
+<a href="#3076" id="3076">3076</a>
+<a href="#3077" id="3077">3077</a>
+<a href="#3078" id="3078">3078</a>
+<a href="#3079" id="3079">3079</a>
+<a href="#3080" id="3080">3080</a>
+<a href="#3081" id="3081">3081</a>
+<a href="#3082" id="3082">3082</a>
+<a href="#3083" id="3083">3083</a>
+<a href="#3084" id="3084">3084</a>
+<a href="#3085" id="3085">3085</a>
+<a href="#3086" id="3086">3086</a>
+<a href="#3087" id="3087">3087</a>
+<a href="#3088" id="3088">3088</a>
+<a href="#3089" id="3089">3089</a>
+<a href="#3090" id="3090">3090</a>
+<a href="#3091" id="3091">3091</a>
+<a href="#3092" id="3092">3092</a>
+<a href="#3093" id="3093">3093</a>
+<a href="#3094" id="3094">3094</a>
+<a href="#3095" id="3095">3095</a>
+<a href="#3096" id="3096">3096</a>
+<a href="#3097" id="3097">3097</a>
+<a href="#3098" id="3098">3098</a>
+<a href="#3099" id="3099">3099</a>
+<a href="#3100" id="3100">3100</a>
+<a href="#3101" id="3101">3101</a>
+<a href="#3102" id="3102">3102</a>
+<a href="#3103" id="3103">3103</a>
+<a href="#3104" id="3104">3104</a>
+<a href="#3105" id="3105">3105</a>
+<a href="#3106" id="3106">3106</a>
+<a href="#3107" id="3107">3107</a>
+<a href="#3108" id="3108">3108</a>
+<a href="#3109" id="3109">3109</a>
+<a href="#3110" id="3110">3110</a>
+<a href="#3111" id="3111">3111</a>
+<a href="#3112" id="3112">3112</a>
+<a href="#3113" id="3113">3113</a>
+<a href="#3114" id="3114">3114</a>
+<a href="#3115" id="3115">3115</a>
+<a href="#3116" id="3116">3116</a>
+<a href="#3117" id="3117">3117</a>
+<a href="#3118" id="3118">3118</a>
+<a href="#3119" id="3119">3119</a>
+<a href="#3120" id="3120">3120</a>
+<a href="#3121" id="3121">3121</a>
+<a href="#3122" id="3122">3122</a>
+<a href="#3123" id="3123">3123</a>
+<a href="#3124" id="3124">3124</a>
+<a href="#3125" id="3125">3125</a>
+<a href="#3126" id="3126">3126</a>
+<a href="#3127" id="3127">3127</a>
+<a href="#3128" id="3128">3128</a>
+<a href="#3129" id="3129">3129</a>
+<a href="#3130" id="3130">3130</a>
+<a href="#3131" id="3131">3131</a>
+<a href="#3132" id="3132">3132</a>
+<a href="#3133" id="3133">3133</a>
+<a href="#3134" id="3134">3134</a>
+<a href="#3135" id="3135">3135</a>
+<a href="#3136" id="3136">3136</a>
+<a href="#3137" id="3137">3137</a>
+<a href="#3138" id="3138">3138</a>
+<a href="#3139" id="3139">3139</a>
+<a href="#3140" id="3140">3140</a>
+<a href="#3141" id="3141">3141</a>
+<a href="#3142" id="3142">3142</a>
+<a href="#3143" id="3143">3143</a>
+<a href="#3144" id="3144">3144</a>
+<a href="#3145" id="3145">3145</a>
+<a href="#3146" id="3146">3146</a>
+<a href="#3147" id="3147">3147</a>
+<a href="#3148" id="3148">3148</a>
+<a href="#3149" id="3149">3149</a>
+<a href="#3150" id="3150">3150</a>
+<a href="#3151" id="3151">3151</a>
+<a href="#3152" id="3152">3152</a>
+<a href="#3153" id="3153">3153</a>
+<a href="#3154" id="3154">3154</a>
+<a href="#3155" id="3155">3155</a>
+<a href="#3156" id="3156">3156</a>
+<a href="#3157" id="3157">3157</a>
+<a href="#3158" id="3158">3158</a>
+<a href="#3159" id="3159">3159</a>
+<a href="#3160" id="3160">3160</a>
+<a href="#3161" id="3161">3161</a>
+<a href="#3162" id="3162">3162</a>
+<a href="#3163" id="3163">3163</a>
+<a href="#3164" id="3164">3164</a>
+<a href="#3165" id="3165">3165</a>
+<a href="#3166" id="3166">3166</a>
+<a href="#3167" id="3167">3167</a>
+<a href="#3168" id="3168">3168</a>
+<a href="#3169" id="3169">3169</a>
+<a href="#3170" id="3170">3170</a>
+<a href="#3171" id="3171">3171</a>
+<a href="#3172" id="3172">3172</a>
+<a href="#3173" id="3173">3173</a>
+<a href="#3174" id="3174">3174</a>
+<a href="#3175" id="3175">3175</a>
+<a href="#3176" id="3176">3176</a>
+<a href="#3177" id="3177">3177</a>
+<a href="#3178" id="3178">3178</a>
+<a href="#3179" id="3179">3179</a>
+<a href="#3180" id="3180">3180</a>
+<a href="#3181" id="3181">3181</a>
+<a href="#3182" id="3182">3182</a>
+<a href="#3183" id="3183">3183</a>
+<a href="#3184" id="3184">3184</a>
+<a href="#3185" id="3185">3185</a>
+<a href="#3186" id="3186">3186</a>
+<a href="#3187" id="3187">3187</a>
+<a href="#3188" id="3188">3188</a>
+<a href="#3189" id="3189">3189</a>
+<a href="#3190" id="3190">3190</a>
+<a href="#3191" id="3191">3191</a>
+<a href="#3192" id="3192">3192</a>
+<a href="#3193" id="3193">3193</a>
+<a href="#3194" id="3194">3194</a>
+<a href="#3195" id="3195">3195</a>
+<a href="#3196" id="3196">3196</a>
+<a href="#3197" id="3197">3197</a>
+<a href="#3198" id="3198">3198</a>
+<a href="#3199" id="3199">3199</a>
+<a href="#3200" id="3200">3200</a>
+<a href="#3201" id="3201">3201</a>
+<a href="#3202" id="3202">3202</a>
+<a href="#3203" id="3203">3203</a>
+<a href="#3204" id="3204">3204</a>
+<a href="#3205" id="3205">3205</a>
+<a href="#3206" id="3206">3206</a>
+<a href="#3207" id="3207">3207</a>
+<a href="#3208" id="3208">3208</a>
+<a href="#3209" id="3209">3209</a>
+<a href="#3210" id="3210">3210</a>
+<a href="#3211" id="3211">3211</a>
+<a href="#3212" id="3212">3212</a>
+<a href="#3213" id="3213">3213</a>
+<a href="#3214" id="3214">3214</a>
+<a href="#3215" id="3215">3215</a>
+<a href="#3216" id="3216">3216</a>
+<a href="#3217" id="3217">3217</a>
+<a href="#3218" id="3218">3218</a>
+<a href="#3219" id="3219">3219</a>
+<a href="#3220" id="3220">3220</a>
+<a href="#3221" id="3221">3221</a>
+<a href="#3222" id="3222">3222</a>
+<a href="#3223" id="3223">3223</a>
+<a href="#3224" id="3224">3224</a>
+<a href="#3225" id="3225">3225</a>
+<a href="#3226" id="3226">3226</a>
+<a href="#3227" id="3227">3227</a>
+<a href="#3228" id="3228">3228</a>
+<a href="#3229" id="3229">3229</a>
+<a href="#3230" id="3230">3230</a>
+<a href="#3231" id="3231">3231</a>
+<a href="#3232" id="3232">3232</a>
+<a href="#3233" id="3233">3233</a>
+<a href="#3234" id="3234">3234</a>
+<a href="#3235" id="3235">3235</a>
+<a href="#3236" id="3236">3236</a>
+<a href="#3237" id="3237">3237</a>
+<a href="#3238" id="3238">3238</a>
+<a href="#3239" id="3239">3239</a>
+<a href="#3240" id="3240">3240</a>
+<a href="#3241" id="3241">3241</a>
+<a href="#3242" id="3242">3242</a>
+<a href="#3243" id="3243">3243</a>
+<a href="#3244" id="3244">3244</a>
+<a href="#3245" id="3245">3245</a>
+<a href="#3246" id="3246">3246</a>
+<a href="#3247" id="3247">3247</a>
+<a href="#3248" id="3248">3248</a>
+<a href="#3249" id="3249">3249</a>
+<a href="#3250" id="3250">3250</a>
+<a href="#3251" id="3251">3251</a>
+<a href="#3252" id="3252">3252</a>
+<a href="#3253" id="3253">3253</a>
+<a href="#3254" id="3254">3254</a>
+<a href="#3255" id="3255">3255</a>
+<a href="#3256" id="3256">3256</a>
+<a href="#3257" id="3257">3257</a>
+<a href="#3258" id="3258">3258</a>
+<a href="#3259" id="3259">3259</a>
+<a href="#3260" id="3260">3260</a>
+<a href="#3261" id="3261">3261</a>
+<a href="#3262" id="3262">3262</a>
+<a href="#3263" id="3263">3263</a>
+<a href="#3264" id="3264">3264</a>
+<a href="#3265" id="3265">3265</a>
+<a href="#3266" id="3266">3266</a>
+<a href="#3267" id="3267">3267</a>
+<a href="#3268" id="3268">3268</a>
+<a href="#3269" id="3269">3269</a>
+<a href="#3270" id="3270">3270</a>
+<a href="#3271" id="3271">3271</a>
+<a href="#3272" id="3272">3272</a>
+<a href="#3273" id="3273">3273</a>
+<a href="#3274" id="3274">3274</a>
+<a href="#3275" id="3275">3275</a>
+<a href="#3276" id="3276">3276</a>
+<a href="#3277" id="3277">3277</a>
+<a href="#3278" id="3278">3278</a>
+<a href="#3279" id="3279">3279</a>
+<a href="#3280" id="3280">3280</a>
+<a href="#3281" id="3281">3281</a>
+<a href="#3282" id="3282">3282</a>
+<a href="#3283" id="3283">3283</a>
+<a href="#3284" id="3284">3284</a>
+<a href="#3285" id="3285">3285</a>
+<a href="#3286" id="3286">3286</a>
+<a href="#3287" id="3287">3287</a>
+<a href="#3288" id="3288">3288</a>
+<a href="#3289" id="3289">3289</a>
+<a href="#3290" id="3290">3290</a>
+<a href="#3291" id="3291">3291</a>
+<a href="#3292" id="3292">3292</a>
+<a href="#3293" id="3293">3293</a>
+<a href="#3294" id="3294">3294</a>
+<a href="#3295" id="3295">3295</a>
+<a href="#3296" id="3296">3296</a>
+<a href="#3297" id="3297">3297</a>
+<a href="#3298" id="3298">3298</a>
+<a href="#3299" id="3299">3299</a>
+<a href="#3300" id="3300">3300</a>
+<a href="#3301" id="3301">3301</a>
+<a href="#3302" id="3302">3302</a>
+<a href="#3303" id="3303">3303</a>
+<a href="#3304" id="3304">3304</a>
+<a href="#3305" id="3305">3305</a>
+<a href="#3306" id="3306">3306</a>
+<a href="#3307" id="3307">3307</a>
+<a href="#3308" id="3308">3308</a>
+<a href="#3309" id="3309">3309</a>
+<a href="#3310" id="3310">3310</a>
+<a href="#3311" id="3311">3311</a>
+<a href="#3312" id="3312">3312</a>
+<a href="#3313" id="3313">3313</a>
+<a href="#3314" id="3314">3314</a>
+<a href="#3315" id="3315">3315</a>
+<a href="#3316" id="3316">3316</a>
+<a href="#3317" id="3317">3317</a>
+<a href="#3318" id="3318">3318</a>
+<a href="#3319" id="3319">3319</a>
+<a href="#3320" id="3320">3320</a>
+<a href="#3321" id="3321">3321</a>
+<a href="#3322" id="3322">3322</a>
+<a href="#3323" id="3323">3323</a>
+<a href="#3324" id="3324">3324</a>
+<a href="#3325" id="3325">3325</a>
+<a href="#3326" id="3326">3326</a>
+<a href="#3327" id="3327">3327</a>
+<a href="#3328" id="3328">3328</a>
+<a href="#3329" id="3329">3329</a>
+<a href="#3330" id="3330">3330</a>
+<a href="#3331" id="3331">3331</a>
+<a href="#3332" id="3332">3332</a>
+<a href="#3333" id="3333">3333</a>
+<a href="#3334" id="3334">3334</a>
+<a href="#3335" id="3335">3335</a>
+<a href="#3336" id="3336">3336</a>
+<a href="#3337" id="3337">3337</a>
+<a href="#3338" id="3338">3338</a>
+<a href="#3339" id="3339">3339</a>
+<a href="#3340" id="3340">3340</a>
+<a href="#3341" id="3341">3341</a>
+<a href="#3342" id="3342">3342</a>
+<a href="#3343" id="3343">3343</a>
+<a href="#3344" id="3344">3344</a>
+<a href="#3345" id="3345">3345</a>
+<a href="#3346" id="3346">3346</a>
+<a href="#3347" id="3347">3347</a>
+<a href="#3348" id="3348">3348</a>
+<a href="#3349" id="3349">3349</a>
+<a href="#3350" id="3350">3350</a>
+<a href="#3351" id="3351">3351</a>
+<a href="#3352" id="3352">3352</a>
+<a href="#3353" id="3353">3353</a>
+<a href="#3354" id="3354">3354</a>
+<a href="#3355" id="3355">3355</a>
+<a href="#3356" id="3356">3356</a>
+<a href="#3357" id="3357">3357</a>
+<a href="#3358" id="3358">3358</a>
+<a href="#3359" id="3359">3359</a>
+<a href="#3360" id="3360">3360</a>
+<a href="#3361" id="3361">3361</a>
+<a href="#3362" id="3362">3362</a>
+<a href="#3363" id="3363">3363</a>
+<a href="#3364" id="3364">3364</a>
+<a href="#3365" id="3365">3365</a>
+<a href="#3366" id="3366">3366</a>
+<a href="#3367" id="3367">3367</a>
+<a href="#3368" id="3368">3368</a>
+<a href="#3369" id="3369">3369</a>
+<a href="#3370" id="3370">3370</a>
+<a href="#3371" id="3371">3371</a>
+<a href="#3372" id="3372">3372</a>
+<a href="#3373" id="3373">3373</a>
+<a href="#3374" id="3374">3374</a>
+<a href="#3375" id="3375">3375</a>
+<a href="#3376" id="3376">3376</a>
+<a href="#3377" id="3377">3377</a>
+<a href="#3378" id="3378">3378</a>
+<a href="#3379" id="3379">3379</a>
+<a href="#3380" id="3380">3380</a>
+<a href="#3381" id="3381">3381</a>
+<a href="#3382" id="3382">3382</a>
+<a href="#3383" id="3383">3383</a>
+<a href="#3384" id="3384">3384</a>
+<a href="#3385" id="3385">3385</a>
+<a href="#3386" id="3386">3386</a>
+<a href="#3387" id="3387">3387</a>
+<a href="#3388" id="3388">3388</a>
+<a href="#3389" id="3389">3389</a>
+<a href="#3390" id="3390">3390</a>
+<a href="#3391" id="3391">3391</a>
+<a href="#3392" id="3392">3392</a>
+<a href="#3393" id="3393">3393</a>
+<a href="#3394" id="3394">3394</a>
+<a href="#3395" id="3395">3395</a>
+<a href="#3396" id="3396">3396</a>
+<a href="#3397" id="3397">3397</a>
+<a href="#3398" id="3398">3398</a>
+<a href="#3399" id="3399">3399</a>
+<a href="#3400" id="3400">3400</a>
+<a href="#3401" id="3401">3401</a>
+<a href="#3402" id="3402">3402</a>
+<a href="#3403" id="3403">3403</a>
+<a href="#3404" id="3404">3404</a>
+<a href="#3405" id="3405">3405</a>
+<a href="#3406" id="3406">3406</a>
+<a href="#3407" id="3407">3407</a>
+<a href="#3408" id="3408">3408</a>
+<a href="#3409" id="3409">3409</a>
+<a href="#3410" id="3410">3410</a>
+<a href="#3411" id="3411">3411</a>
+<a href="#3412" id="3412">3412</a>
+<a href="#3413" id="3413">3413</a>
+<a href="#3414" id="3414">3414</a>
+<a href="#3415" id="3415">3415</a>
+<a href="#3416" id="3416">3416</a>
+<a href="#3417" id="3417">3417</a>
+<a href="#3418" id="3418">3418</a>
+<a href="#3419" id="3419">3419</a>
+<a href="#3420" id="3420">3420</a>
+<a href="#3421" id="3421">3421</a>
+<a href="#3422" id="3422">3422</a>
+<a href="#3423" id="3423">3423</a>
+<a href="#3424" id="3424">3424</a>
+<a href="#3425" id="3425">3425</a>
+<a href="#3426" id="3426">3426</a>
+<a href="#3427" id="3427">3427</a>
+<a href="#3428" id="3428">3428</a>
+<a href="#3429" id="3429">3429</a>
+<a href="#3430" id="3430">3430</a>
+<a href="#3431" id="3431">3431</a>
+<a href="#3432" id="3432">3432</a>
+<a href="#3433" id="3433">3433</a>
+<a href="#3434" id="3434">3434</a>
+<a href="#3435" id="3435">3435</a>
+<a href="#3436" id="3436">3436</a>
+<a href="#3437" id="3437">3437</a>
+<a href="#3438" id="3438">3438</a>
+<a href="#3439" id="3439">3439</a>
+<a href="#3440" id="3440">3440</a>
+<a href="#3441" id="3441">3441</a>
+<a href="#3442" id="3442">3442</a>
+<a href="#3443" id="3443">3443</a>
+<a href="#3444" id="3444">3444</a>
+<a href="#3445" id="3445">3445</a>
+<a href="#3446" id="3446">3446</a>
+<a href="#3447" id="3447">3447</a>
+<a href="#3448" id="3448">3448</a>
+<a href="#3449" id="3449">3449</a>
+<a href="#3450" id="3450">3450</a>
+<a href="#3451" id="3451">3451</a>
+<a href="#3452" id="3452">3452</a>
+<a href="#3453" id="3453">3453</a>
+<a href="#3454" id="3454">3454</a>
+<a href="#3455" id="3455">3455</a>
+<a href="#3456" id="3456">3456</a>
+<a href="#3457" id="3457">3457</a>
+<a href="#3458" id="3458">3458</a>
+<a href="#3459" id="3459">3459</a>
+<a href="#3460" id="3460">3460</a>
+<a href="#3461" id="3461">3461</a>
+<a href="#3462" id="3462">3462</a>
+<a href="#3463" id="3463">3463</a>
+<a href="#3464" id="3464">3464</a>
+<a href="#3465" id="3465">3465</a>
+<a href="#3466" id="3466">3466</a>
+<a href="#3467" id="3467">3467</a>
+<a href="#3468" id="3468">3468</a>
+<a href="#3469" id="3469">3469</a>
+<a href="#3470" id="3470">3470</a>
+<a href="#3471" id="3471">3471</a>
+<a href="#3472" id="3472">3472</a>
+<a href="#3473" id="3473">3473</a>
+<a href="#3474" id="3474">3474</a>
+<a href="#3475" id="3475">3475</a>
+<a href="#3476" id="3476">3476</a>
+<a href="#3477" id="3477">3477</a>
+<a href="#3478" id="3478">3478</a>
+<a href="#3479" id="3479">3479</a>
+<a href="#3480" id="3480">3480</a>
+<a href="#3481" id="3481">3481</a>
+<a href="#3482" id="3482">3482</a>
+<a href="#3483" id="3483">3483</a>
+<a href="#3484" id="3484">3484</a>
+<a href="#3485" id="3485">3485</a>
+<a href="#3486" id="3486">3486</a>
+<a href="#3487" id="3487">3487</a>
+<a href="#3488" id="3488">3488</a>
+<a href="#3489" id="3489">3489</a>
+<a href="#3490" id="3490">3490</a>
+<a href="#3491" id="3491">3491</a>
+<a href="#3492" id="3492">3492</a>
+<a href="#3493" id="3493">3493</a>
+<a href="#3494" id="3494">3494</a>
+<a href="#3495" id="3495">3495</a>
+<a href="#3496" id="3496">3496</a>
+<a href="#3497" id="3497">3497</a>
+<a href="#3498" id="3498">3498</a>
+<a href="#3499" id="3499">3499</a>
+<a href="#3500" id="3500">3500</a>
+<a href="#3501" id="3501">3501</a>
+<a href="#3502" id="3502">3502</a>
+<a href="#3503" id="3503">3503</a>
+<a href="#3504" id="3504">3504</a>
+<a href="#3505" id="3505">3505</a>
+<a href="#3506" id="3506">3506</a>
+<a href="#3507" id="3507">3507</a>
+<a href="#3508" id="3508">3508</a>
+<a href="#3509" id="3509">3509</a>
+<a href="#3510" id="3510">3510</a>
+<a href="#3511" id="3511">3511</a>
+<a href="#3512" id="3512">3512</a>
+<a href="#3513" id="3513">3513</a>
+<a href="#3514" id="3514">3514</a>
+<a href="#3515" id="3515">3515</a>
+<a href="#3516" id="3516">3516</a>
+<a href="#3517" id="3517">3517</a>
+<a href="#3518" id="3518">3518</a>
+<a href="#3519" id="3519">3519</a>
+<a href="#3520" id="3520">3520</a>
+<a href="#3521" id="3521">3521</a>
+<a href="#3522" id="3522">3522</a>
+<a href="#3523" id="3523">3523</a>
+<a href="#3524" id="3524">3524</a>
+<a href="#3525" id="3525">3525</a>
+<a href="#3526" id="3526">3526</a>
+<a href="#3527" id="3527">3527</a>
+<a href="#3528" id="3528">3528</a>
+<a href="#3529" id="3529">3529</a>
+<a href="#3530" id="3530">3530</a>
+<a href="#3531" id="3531">3531</a>
+<a href="#3532" id="3532">3532</a>
+<a href="#3533" id="3533">3533</a>
+<a href="#3534" id="3534">3534</a>
+<a href="#3535" id="3535">3535</a>
+<a href="#3536" id="3536">3536</a>
+<a href="#3537" id="3537">3537</a>
+<a href="#3538" id="3538">3538</a>
+<a href="#3539" id="3539">3539</a>
+<a href="#3540" id="3540">3540</a>
+<a href="#3541" id="3541">3541</a>
+<a href="#3542" id="3542">3542</a>
+<a href="#3543" id="3543">3543</a>
+<a href="#3544" id="3544">3544</a>
+<a href="#3545" id="3545">3545</a>
+<a href="#3546" id="3546">3546</a>
+<a href="#3547" id="3547">3547</a>
+<a href="#3548" id="3548">3548</a>
+<a href="#3549" id="3549">3549</a>
+<a href="#3550" id="3550">3550</a>
+<a href="#3551" id="3551">3551</a>
+<a href="#3552" id="3552">3552</a>
+<a href="#3553" id="3553">3553</a>
+<a href="#3554" id="3554">3554</a>
+<a href="#3555" id="3555">3555</a>
+<a href="#3556" id="3556">3556</a>
+<a href="#3557" id="3557">3557</a>
+<a href="#3558" id="3558">3558</a>
+<a href="#3559" id="3559">3559</a>
+<a href="#3560" id="3560">3560</a>
+<a href="#3561" id="3561">3561</a>
+<a href="#3562" id="3562">3562</a>
+<a href="#3563" id="3563">3563</a>
+<a href="#3564" id="3564">3564</a>
+<a href="#3565" id="3565">3565</a>
+<a href="#3566" id="3566">3566</a>
+<a href="#3567" id="3567">3567</a>
+<a href="#3568" id="3568">3568</a>
+<a href="#3569" id="3569">3569</a>
+<a href="#3570" id="3570">3570</a>
+<a href="#3571" id="3571">3571</a>
+<a href="#3572" id="3572">3572</a>
+<a href="#3573" id="3573">3573</a>
+<a href="#3574" id="3574">3574</a>
+<a href="#3575" id="3575">3575</a>
+<a href="#3576" id="3576">3576</a>
+<a href="#3577" id="3577">3577</a>
+<a href="#3578" id="3578">3578</a>
+<a href="#3579" id="3579">3579</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::assembly::Assembly;
 <span class="kw">use </span><span class="kw">super</span>::memory::{word_to_instruction, Address, Instruction, MemoryIndex, <span class="kw-2">*</span>};
 <span class="kw">use </span><span class="kw">super</span>::result::{Error, <span class="prelude-ty">Result</span>};
 
+<span class="kw">use </span>num_enum::TryFromPrimitive;
+
 <span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::collections::HashMap;
+<span class="kw">use </span>std::fs::OpenOptions;
 <span class="kw">use </span>std::io::{<span class="self">self</span>, Read, Write};
+<span class="kw">use </span>std::path::Path;
 <span class="kw">use </span>std::rc::Rc;
 
-<span class="kw">pub struct </span>Executor {
+<span class="kw">pub struct </span>Executor&lt;<span class="lifetime">'a</span>&gt; {
     ec: ExecutionContext,
+    halted: bool,
     stdin: Rc&lt;RefCell&lt;<span class="kw">dyn </span>Read&gt;&gt;,
     stdout: Rc&lt;RefCell&lt;<span class="kw">dyn </span>Write&gt;&gt;,
+    trace: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Path&gt;,
 }
 
-<span class="kw">impl </span>Executor {
-    <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; Executor&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">pub fn </span>new(trace: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Path&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>stdin = Rc::new(RefCell::new(io::stdin()));
         <span class="kw">let </span>stdout = Rc::new(RefCell::new(io::stdout()));
-        <span class="self">Self</span>::with_io(stdin, stdout)
+        <span class="self">Self</span>::with_io(stdin, stdout, trace)
     }
 
-    <span class="kw">pub fn </span>with_io&lt;R, W&gt;(stdin: Rc&lt;RefCell&lt;R&gt;&gt;, stdout: Rc&lt;RefCell&lt;W&gt;&gt;) -&gt; <span class="self">Self
+    <span class="kw">pub fn </span>with_io&lt;R, W&gt;(
+        stdin: Rc&lt;RefCell&lt;R&gt;&gt;,
+        stdout: Rc&lt;RefCell&lt;W&gt;&gt;,
+        trace: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>Path&gt;,
+    ) -&gt; <span class="self">Self
     </span><span class="kw">where
         </span>R: Read + <span class="lifetime">'static</span>,
         W: Write + <span class="lifetime">'static</span>,
     {
         <span class="self">Self </span>{
             ec: ExecutionContext::default(),
+            halted: <span class="bool-val">false</span>,
             stdin,
             stdout,
+            trace,
+        }
+    }
+
+    <span class="kw">fn </span>trace(<span class="kw-2">&amp;</span><span class="self">self</span>, text: <span class="kw-2">&amp;</span>str) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = <span class="self">self</span>.trace {
+            <span class="kw">let </span>format = time::format_description::parse(
+                <span class="string">"[year]-[month]-[day] [hour repr:24]:[minute]:[second]:[subsecond digits:9]+[offset_hour]:[offset_minute]"</span>,
+            )
+            .unwrap();
+            <span class="kw">let </span>now = time::OffsetDateTime::now_utc();
+            <span class="kw">let </span>offset = time::UtcOffset::local_offset_at(now).unwrap();
+            <span class="kw">let </span>now = now.to_offset(offset).format(<span class="kw-2">&amp;</span>format).unwrap().to_string();
+            <span class="kw">let </span><span class="kw-2">mut </span>file = OpenOptions::new()
+                .create(<span class="bool-val">true</span>)
+                .append(<span class="bool-val">true</span>)
+                .open(path)
+                .unwrap();
+            <span class="kw">let </span>text = <span class="macro">format!</span>(<span class="string">"{}  -      {}\n"</span>, now, text);
+            file.write_all(text.as_bytes()).unwrap();
+            file.flush().unwrap();
+        };
+    }
+
+    <span class="kw">fn </span>trace_detail(<span class="kw-2">&amp;</span><span class="self">self</span>, pre_post_indicator: <span class="kw-2">&amp;</span>str, instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="self">self</span>.trace(pre_post_indicator);
+        <span class="kw">let </span>acc = instruction.accumulator();
+        <span class="self">self</span>.trace(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"  acc:      {}   {}"</span>, acc, <span class="self">self</span>.ec[acc]));
+        <span class="kw">let </span>address = instruction.address();
+        <span class="self">self</span>.trace(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"  address:  {}   {}"</span>, address, <span class="self">self</span>.ec[address]));
+        <span class="kw">let </span>(address, operand) = <span class="self">self</span>.operand(instruction).unwrap();
+        <span class="kw">if </span>instruction.is_indirect() {
+            <span class="self">self</span>.trace(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                <span class="string">"  indirect: {}   {} =&gt; {}"</span>,
+                address,
+                operand,
+                word_to_instruction(<span class="kw-2">&amp;</span>operand).map_or(<span class="string">"Not a PWORD"</span>.to_string(), |i| i.to_string())
+            ));
+        }
+        <span class="kw">let </span>index_register = instruction.index_register();
+        <span class="kw">if </span>index_register.is_indexable() {
+            <span class="self">self</span>.trace(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                <span class="string">"  ireg:     {}    {}"</span>,
+                index_register, <span class="self">self</span>.ec[index_register]
+            ));
+            <span class="self">self</span>.trace(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"  indexed:  {}   {}"</span>, address, <span class="self">self</span>.ec[address]));
         }
     }
 
     <span class="kw">pub fn </span>execute(<span class="kw-2">mut </span><span class="self">self</span>, assembly: <span class="kw-2">&amp;</span>Assembly) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionContext&gt; {
         <span class="self">self</span>.ec = assembly.clone().try_into()<span class="question-mark">?</span>;
-
-        <span class="kw">while </span><span class="self">self</span>.can_step() {
+        <span class="self">self</span>.halted = <span class="bool-val">false</span>;
+        <span class="kw">while </span><span class="self">self</span>.can_step() &amp;&amp; !<span class="self">self</span>.halted {
             <span class="self">self</span>.step()<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.ec.clone())
@@ -3014,13 +3689,17 @@
         <span class="kw">let </span>content = <span class="self">self</span>.ec[pc];
         <span class="kw">let </span>instruction = word_to_instruction(<span class="kw-2">&amp;</span>content)
             .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))<span class="question-mark">?</span>;
-        <span class="macro">println!</span>(<span class="string">"Exec: {:?} -&gt; {:?}"</span>, <span class="self">self</span>.ec.pc - <span class="number">1</span>, instruction);
-        <span class="self">self</span>.step_word(<span class="kw-2">&amp;</span>instruction);
+
+        <span class="self">self</span>.trace(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:&lt;06}      {}"</span>, pc.memory_index(), instruction));
+        <span class="self">self</span>.trace_detail(<span class="string">"&gt;&gt;"</span>, <span class="kw-2">&amp;</span>instruction);
+        <span class="self">self</span>.step_word(<span class="kw-2">&amp;</span>instruction.clone());
+        <span class="self">self</span>.trace_detail(<span class="string">"&lt;&lt;"</span>, <span class="kw-2">&amp;</span>instruction);
+
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="kw">fn </span>step_word(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">type </span>ExecFn = <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>Executor, <span class="kw-2">&amp;</span>Instruction);
+        <span class="kw">type </span>ExecFn&lt;<span class="lifetime">'a</span>&gt; = <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>Executor&lt;<span class="lifetime">'a</span>&gt;, <span class="kw-2">&amp;</span>Instruction);
         <span class="kw">let </span>execution: HashMap&lt;Function, ExecFn&gt; = <span class="macro">vec!</span>[
             (Function::NIL, Executor::exec_nil <span class="kw">as </span>ExecFn),
             (Function::OR, Executor::exec_or <span class="kw">as </span>ExecFn),
@@ -3074,6 +3753,10 @@
             (Function::JGZ, Executor::exec_jgz <span class="kw">as </span>ExecFn),
             (Function::JZD, Executor::exec_jzd <span class="kw">as </span>ExecFn),
             (Function::JZI, Executor::exec_jzi <span class="kw">as </span>ExecFn),
+            (Function::DECR, Executor::exec_decr <span class="kw">as </span>ExecFn),
+            (Function::INCR, Executor::exec_incr <span class="kw">as </span>ExecFn),
+            (Function::EXEC, Executor::exec_exec <span class="kw">as </span>ExecFn),
+            (Function::EXTRA, Executor::exec_extra <span class="kw">as </span>ExecFn),
         ]
         .into_iter()
         .collect();
@@ -3084,7 +3767,7 @@
         f(<span class="self">self</span>, instruction)
     }
 
-    <span class="kw">fn </span>operand(<span class="kw-2">&amp;</span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) -&gt; <span class="prelude-ty">Result</span>&lt;Word&gt; {
+    <span class="kw">fn </span>operand(<span class="kw-2">&amp;</span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) -&gt; <span class="prelude-ty">Result</span>&lt;(Address, Word)&gt; {
         <span class="kw">let </span>ec = <span class="kw-2">&amp;</span><span class="self">self</span>.ec;
 
         <span class="kw">let </span>index_register = instruction.index_register();
@@ -3103,92 +3786,86 @@
             address += index <span class="kw">as </span>isize;
         }
 
-        <span class="prelude-val">Ok</span>(ec[address])
+        <span class="prelude-val">Ok</span>((address, ec[address]))
     }
 
-    <span class="kw">fn </span>acc_and_operand(<span class="kw-2">&amp;</span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) -&gt; (Accumulator, Word) {
+    <span class="kw">fn </span>extract_operands(<span class="kw-2">&amp;</span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) -&gt; (Accumulator, Address, Word) {
         <span class="kw">let </span>acc = instruction.accumulator();
-        <span class="kw">let </span>operand = <span class="self">self</span>.operand(instruction).expect(<span class="string">"Invalid operand"</span>);
-        (acc, operand)
-    }
-
-    <span class="kw">fn </span>acc_and_address(<span class="kw-2">&amp;</span>instruction: <span class="kw-2">&amp;</span>Instruction) -&gt; (Accumulator, Address) {
-        <span class="kw">let </span>acc = instruction.accumulator();
-        <span class="kw">let </span>address = instruction.address();
-        (acc, address)
+        <span class="kw">let </span>(address, operand) = <span class="self">self</span>.operand(instruction).expect(<span class="string">"Invalid operand"</span>);
+        (acc, address, operand)
     }
 
     <span class="kw">fn </span>exec_nil(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _instruction: <span class="kw-2">&amp;</span>Instruction) {}
 
     <span class="kw">fn </span>exec_or(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] |= operand;
     }
 
     <span class="kw">fn </span>exec_neqv(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] ^= operand;
     }
 
     <span class="kw">fn </span>exec_and(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] &amp;= operand;
     }
 
     <span class="kw">fn </span>exec_add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] += operand;
     }
 
     <span class="kw">fn </span>exec_subt(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] -= operand;
     }
 
     <span class="kw">fn </span>exec_mult(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] <span class="kw-2">*</span>= operand;
     }
 
     <span class="kw">fn </span>exec_dvd(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] /= operand;
     }
 
     <span class="kw">fn </span>exec_take(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] = operand;
     }
 
     <span class="kw">fn </span>exec_tstr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>value = operand.as_i64().expect(<span class="string">"TSTR invalid operand"</span>);
         <span class="self">self</span>.ec[acc] = operand;
         <span class="self">self</span>.ec[acc - <span class="number">1</span>] = (<span class="kw">if </span>value &lt; <span class="number">1 </span>{ -<span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>}).try_into().unwrap();
     }
 
     <span class="kw">fn </span>exec_tneg(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] = -operand;
     }
 
     <span class="kw">fn </span>exec_tnot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] = !operand;
     }
 
     <span class="kw">fn </span>exec_ttyp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] = operand.word_type();
     }
 
     <span class="kw">fn </span>exec_ttyz(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] = operand.word_bits();
     }
 
     <span class="kw">fn </span>exec_tout(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(_acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(_acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>chars = <span class="macro">vec!</span>[operand.as_char().expect(<span class="string">"TOUT invalid operand"</span>)];
         <span class="kw">let </span><span class="kw-2">mut </span>stdout = (<span class="kw-2">*</span><span class="self">self</span>.stdout).borrow_mut();
         stdout.write_all(<span class="kw-2">&amp;</span>chars).unwrap();
@@ -3199,21 +3876,21 @@
     }
 
     <span class="kw">fn </span>exec_skae(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">if </span><span class="self">self</span>.ec[acc] == operand {
             <span class="self">self</span>.ec.pc += <span class="number">1</span>;
         }
     }
 
     <span class="kw">fn </span>exec_skan(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">if </span><span class="self">self</span>.ec[acc] != operand {
             <span class="self">self</span>.ec.pc += <span class="number">1</span>;
         }
     }
 
     <span class="kw">fn </span>exec_sket(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>same_type = <span class="self">self</span>.ec[acc].word_type() == operand.word_type();
         <span class="kw">if </span>same_type {
             <span class="self">self</span>.ec.pc += <span class="number">1</span>;
@@ -3221,21 +3898,21 @@
     }
 
     <span class="kw">fn </span>exec_skal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">if </span><span class="self">self</span>.ec[acc] &lt; operand {
             <span class="self">self</span>.ec.pc += <span class="number">1
         </span>}
     }
 
     <span class="kw">fn </span>exec_skag(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">if </span><span class="self">self</span>.ec[acc] &gt; operand {
             <span class="self">self</span>.ec.pc += <span class="number">1
         </span>}
     }
 
     <span class="kw">fn </span>exec_sked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">if </span><span class="self">self</span>.ec[acc] == operand {
             <span class="self">self</span>.ec.pc += <span class="number">1
         </span>} <span class="kw">else </span>{
@@ -3244,7 +3921,7 @@
     }
 
     <span class="kw">fn </span>exec_skei(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">if </span><span class="self">self</span>.ec[acc] == operand {
             <span class="self">self</span>.ec.pc += <span class="number">1
         </span>} <span class="kw">else </span>{
@@ -3253,55 +3930,55 @@
     }
 
     <span class="kw">fn </span>exec_shl(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] &lt;&lt;= operand;
     }
 
     <span class="kw">fn </span>exec_rot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc].rotate(operand.as_i64().unwrap());
     }
 
     <span class="kw">fn </span>exec_dshl(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>(msw, lsw) = double_shift_left(<span class="kw-2">&amp;</span><span class="self">self</span>.ec[acc - <span class="number">1</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.ec[acc], <span class="kw-2">&amp;</span>operand).unwrap();
         <span class="self">self</span>.ec[acc - <span class="number">1</span>].set_word_bits(<span class="kw-2">&amp;</span>msw);
         <span class="self">self</span>.ec[acc].set_word_bits(<span class="kw-2">&amp;</span>lsw);
     }
 
     <span class="kw">fn </span>exec_drot(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>(msw, lsw) = double_rotate_left(<span class="kw-2">&amp;</span><span class="self">self</span>.ec[acc - <span class="number">1</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.ec[acc], <span class="kw-2">&amp;</span>operand).unwrap();
         <span class="self">self</span>.ec[acc - <span class="number">1</span>].set_word_bits(<span class="kw-2">&amp;</span>msw);
         <span class="self">self</span>.ec[acc].set_word_bits(<span class="kw-2">&amp;</span>lsw);
     }
 
     <span class="kw">fn </span>exec_powr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc].power(<span class="kw-2">&amp;</span>operand);
     }
 
     <span class="kw">fn </span>exec_dmult(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>(msw, lsw) = double_mult(<span class="kw-2">&amp;</span><span class="self">self</span>.ec[acc - <span class="number">1</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.ec[acc], <span class="kw-2">&amp;</span>operand).unwrap();
         <span class="self">self</span>.ec[acc - <span class="number">1</span>].set_word_bits(<span class="kw-2">&amp;</span>msw);
         <span class="self">self</span>.ec[acc].set_word_bits(<span class="kw-2">&amp;</span>lsw);
     }
 
     <span class="kw">fn </span>exec_div(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="self">self</span>.ec[acc] /= operand;
     }
 
     <span class="kw">fn </span>exec_ddiv(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>(msw, lsw) = double_div(<span class="kw-2">&amp;</span><span class="self">self</span>.ec[acc - <span class="number">1</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.ec[acc], <span class="kw-2">&amp;</span>operand).unwrap();
         <span class="self">self</span>.ec[acc - <span class="number">1</span>].set_word_bits(<span class="kw-2">&amp;</span>msw);
         <span class="self">self</span>.ec[acc].set_word_bits(<span class="kw-2">&amp;</span>lsw);
     }
 
     <span class="kw">fn </span>exec_nilx(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, operand) = <span class="self">self</span>.acc_and_operand(instruction);
+        <span class="kw">let </span>(acc, <span class="kw">_</span>, operand) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="kw">let </span>operand_address = instruction.address();
         <span class="self">self</span>.ec[acc] = operand;
@@ -3339,13 +4016,13 @@
     }
 
     <span class="kw">fn </span>exec_put(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, address) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="self">self</span>.ec[address] = acc_value;
     }
 
     <span class="kw">fn </span>exec_psqu(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, address) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>msw0 = <span class="self">self</span>.ec[acc - <span class="number">1</span>];
         <span class="kw">let </span>lsw0 = <span class="self">self</span>.ec[acc];
         <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw-2">mut </span>lsw1) = squash(<span class="kw-2">&amp;</span>msw0, <span class="kw-2">&amp;</span>lsw0).unwrap();
@@ -3354,19 +4031,19 @@
     }
 
     <span class="kw">fn </span>exec_pneg(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, address) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="self">self</span>.ec[address] = -acc_value;
     }
 
     <span class="kw">fn </span>exec_ptyp(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, address) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="self">self</span>.ec[address].set_word_type(<span class="kw-2">&amp;</span>acc_value);
     }
 
     <span class="kw">fn </span>exec_ptyz(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, address) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="kw">let </span><span class="kw-2">mut </span>result: Word = <span class="number">0</span>.try_into().unwrap();
         result.set_word_bits(<span class="kw-2">&amp;</span>acc_value);
@@ -3374,7 +4051,7 @@
     }
 
     <span class="kw">fn </span>exec_pin(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(_acc, address) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(_acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
 
         <span class="kw">let </span><span class="kw-2">mut </span>stdin = (<span class="kw-2">*</span><span class="self">self</span>.stdin).borrow_mut();
         <span class="kw">let </span><span class="kw-2">mut </span>stdout = (<span class="kw-2">*</span><span class="self">self</span>.stdout).borrow_mut();
@@ -3400,74 +4077,242 @@
 
     <span class="kw">fn </span>exec_jump(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
         <span class="kw">let </span>pc = <span class="self">self</span>.ec.pc - <span class="number">1</span>;
-        <span class="kw">let </span>(acc, address) = <span class="self">Self</span>::acc_and_address(instruction);
-        <span class="self">self</span>.ec[acc - <span class="number">1</span>] = (pc.memory_index() <span class="kw">as </span>i64).try_into().unwrap();
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
+        <span class="kw">if </span>acc != <span class="number">0</span>.try_into().unwrap() {
+            <span class="self">self</span>.ec[acc - <span class="number">1</span>] = (pc.memory_index() <span class="kw">as </span>i64).try_into().unwrap();
+        }
         <span class="self">self</span>.ec.pc = address;
     }
 
     <span class="kw">fn </span>exec_jez(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, <span class="kw">_</span>) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="kw">if </span>acc_value.word_bits() == Word::new(WordType::IWord, <span class="number">0</span>) {
-            <span class="self">self</span>.exec_jump(instruction)
+            <span class="self">self</span>.ec.pc = address;
         }
     }
 
     <span class="kw">fn </span>exec_jnz(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, <span class="kw">_</span>) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="kw">if </span>acc_value.word_bits() != Word::new(WordType::IWord, <span class="number">0</span>) {
-            <span class="self">self</span>.exec_jump(instruction)
+            <span class="self">self</span>.ec.pc = address;
         }
     }
 
     <span class="kw">fn </span>exec_jat(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, <span class="kw">_</span>) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc].word_type();
         <span class="kw">if </span>acc_value == Word::new(WordType::IWord, <span class="number">0</span>) || acc_value == Word::new(WordType::IWord, <span class="number">1</span>)
         {
-            <span class="self">self</span>.exec_jump(instruction)
+            <span class="self">self</span>.ec.pc = address;
         }
     }
 
     <span class="kw">fn </span>exec_jlz(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, <span class="kw">_</span>) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="kw">if </span>acc_value.word_bits() &lt; Word::new(WordType::IWord, <span class="number">0</span>) {
-            <span class="self">self</span>.exec_jump(instruction)
+            <span class="self">self</span>.ec.pc = address;
         }
     }
 
     <span class="kw">fn </span>exec_jgz(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, <span class="kw">_</span>) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="kw">if </span>acc_value.word_bits() &gt; Word::new(WordType::IWord, <span class="number">0</span>) {
-            <span class="self">self</span>.exec_jump(instruction)
+            <span class="self">self</span>.ec.pc = address;
         }
     }
 
     <span class="kw">fn </span>exec_jzd(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, <span class="kw">_</span>) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="kw">if </span>acc_value.word_bits() == Word::new(WordType::IWord, <span class="number">0</span>) {
-            <span class="self">self</span>.exec_jump(instruction)
+            <span class="self">self</span>.ec.pc = address;
         } <span class="kw">else </span>{
             <span class="self">self</span>.ec[acc] -= <span class="number">1</span>.try_into().unwrap();
         }
     }
 
     <span class="kw">fn </span>exec_jzi(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
-        <span class="kw">let </span>(acc, <span class="kw">_</span>) = <span class="self">Self</span>::acc_and_address(instruction);
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
         <span class="kw">let </span>acc_value = <span class="self">self</span>.ec[acc];
         <span class="kw">if </span>acc_value.word_bits() == Word::new(WordType::IWord, <span class="number">0</span>) {
-            <span class="self">self</span>.exec_jump(instruction)
+            <span class="self">self</span>.ec.pc = address;
         } <span class="kw">else </span>{
             <span class="self">self</span>.ec[acc] += <span class="number">1</span>.try_into().unwrap();
         }
     }
+
+    <span class="kw">fn </span>exec_decr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
+        decrement(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ec[address]);
+        <span class="self">self</span>.ec[acc] = <span class="self">self</span>.ec[address];
+    }
+
+    <span class="kw">fn </span>exec_incr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="kw">let </span>(acc, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
+        increment(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ec[address]);
+        <span class="self">self</span>.ec[acc] = <span class="self">self</span>.ec[address];
+    }
+
+    <span class="kw">fn </span>exec_exec(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="kw">let </span>(<span class="kw">_</span>, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
+        <span class="kw">let </span>word = <span class="self">self</span>.ec[address];
+        <span class="kw">let </span>instruction = word_to_instruction(<span class="kw-2">&amp;</span>word).unwrap();
+        <span class="self">self</span>.step_word(<span class="kw-2">&amp;</span>instruction);
+    }
+
+    <span class="kw">fn </span>exec_extra(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="kw">let </span>(<span class="kw">_</span>, address, <span class="kw">_</span>) = <span class="self">self</span>.extract_operands(instruction);
+        <span class="kw">let </span>code = address.memory_index() <span class="kw">as </span>u32 + Function::EXTRA <span class="kw">as </span>u32;
+        <span class="kw">let </span>function = Function::try_from_primitive(code).unwrap();
+
+        <span class="kw">match </span>function {
+            Function::SQRT | Function::LN | Function::EXP =&gt; <span class="macro">unimplemented!</span>(<span class="string">"{:?}"</span>, function),
+            Function::READ =&gt; <span class="self">self</span>.exec_extra_read(instruction),
+            Function::PRINT =&gt; <span class="self">self</span>.exec_extra_print(instruction),
+            Function::SIN | Function::COS | Function::TAN | Function::ATN =&gt; {
+                <span class="macro">unimplemented!</span>(<span class="string">"{:?}"</span>, function)
+            }
+            Function::STOP =&gt; <span class="self">self</span>.exec_extra_stop(instruction),
+            Function::LINE | Function::INT | Function::FRAC | Function::FLOAT =&gt; {
+                <span class="macro">unimplemented!</span>(<span class="string">"{:?}"</span>, function)
+            }
+            Function::CAPN =&gt; <span class="self">self</span>.exec_extra_capn(instruction),
+            Function::PAGE | Function::RND | Function::ABS =&gt; <span class="macro">unimplemented!</span>(<span class="string">"{:?}"</span>, function),
+            other =&gt; <span class="macro">panic!</span>(<span class="string">"Invalid EXTRA code {:?}"</span>, other),
+        }
+    }
+
+    <span class="kw">fn </span>exec_extra_read(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="kw">let </span><span class="kw-2">mut </span>stdout = (<span class="kw-2">*</span><span class="self">self</span>.stdout).borrow_mut();
+        stdout.flush().expect(<span class="string">"stdout not flushed"</span>);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>stdin = (<span class="kw-2">*</span><span class="self">self</span>.stdin).borrow_mut();
+
+        <span class="kw">let </span>acc = instruction.accumulator();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>buffer = [<span class="number">0u8</span>; <span class="number">1</span>];
+        <span class="kw">let </span><span class="kw-2">mut </span>result = String::new();
+
+        <span class="kw">if </span><span class="self">self</span>.ec.quote_marker {
+            <span class="comment">// Read until 4 characters, a newline, or a quote
+            </span><span class="kw">while </span>result.len() &lt; <span class="number">4 </span>{
+                <span class="kw">if </span>stdin.read(<span class="kw-2">&amp;mut </span>buffer).unwrap_or(<span class="number">0</span>) == <span class="number">0 </span>{
+                    <span class="kw">break</span>;
+                }
+                <span class="kw">let </span>c = buffer[<span class="number">0</span>] <span class="kw">as </span>char;
+
+                <span class="kw">if </span>c == <span class="string">'\n' </span>{
+                    <span class="kw">break</span>;
+                }
+
+                <span class="kw">if </span>c == <span class="string">'"' </span>{
+                    <span class="self">self</span>.ec.quote_marker = !<span class="self">self</span>.ec.quote_marker;
+                    <span class="kw">break</span>;
+                }
+                result.push(c);
+            }
+
+            <span class="self">self</span>.ec[acc] = result.as_str().try_into().unwrap();
+            <span class="kw">return</span>;
+        }
+
+        <span class="kw">while </span>stdin.read(<span class="kw-2">&amp;mut </span>buffer).is_ok() {
+            <span class="kw">let </span>c = buffer[<span class="number">0</span>] <span class="kw">as </span>char;
+            <span class="kw">if </span>!c.is_whitespace() &amp;&amp; c != <span class="string">',' </span>{
+                result.push(c);
+                <span class="kw">break</span>;
+            }
+        }
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(first_char) = result.chars().next() {
+            <span class="kw">if </span>first_char.is_alphabetic() {
+                <span class="comment">// Read up to 4 more alphanumeric characters
+                </span><span class="kw">while </span>result.len() &lt; <span class="number">5 </span>{
+                    <span class="kw">if </span>stdin.read(<span class="kw-2">&amp;mut </span>buffer).unwrap_or(<span class="number">0</span>) == <span class="number">0 </span>{
+                        <span class="kw">break</span>;
+                    }
+                    <span class="kw">let </span>c = buffer[<span class="number">0</span>] <span class="kw">as </span>char;
+                    <span class="kw">if </span>c.is_alphanumeric() {
+                        result.push(c);
+                    } <span class="kw">else </span>{
+                        <span class="kw">break</span>;
+                    }
+                }
+                <span class="self">self</span>.ec[acc] = result.as_str().try_into().unwrap();
+                <span class="kw">return</span>;
+            } <span class="kw">else if </span>first_char.is_numeric() || <span class="string">"+-."</span>.contains(first_char) {
+                <span class="comment">// Read numeric characters, including '@' for exponential
+                </span><span class="kw">while </span>stdin.read(<span class="kw-2">&amp;mut </span>buffer).is_ok() {
+                    <span class="kw">let </span>c = buffer[<span class="number">0</span>] <span class="kw">as </span>char;
+                    <span class="kw">if </span>!<span class="string">"+-0123456789.@"</span>.contains(c) {
+                        <span class="kw">break</span>;
+                    }
+                    result.push(c);
+                }
+
+                <span class="comment">// Try to interpret as integer or float
+                </span><span class="kw">if </span>result.chars().all(|c| <span class="string">"+-0123456789"</span>.contains(c)) {
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(int_value) = result.parse::&lt;i64&gt;() {
+                        <span class="self">self</span>.ec[acc] = int_value.try_into().unwrap();
+                        <span class="kw">return</span>;
+                    }
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>normalized = result.replace(<span class="string">'@'</span>, <span class="string">"e"</span>);
+                    <span class="kw">if let </span><span class="prelude-val">Ok</span>(float_value) = normalized.parse::&lt;f64&gt;() {
+                        <span class="self">self</span>.ec[acc] = float_value.try_into().unwrap();
+                        <span class="kw">return</span>;
+                    }
+                }
+            }
+        }
+
+        <span class="comment">// If no match, return a String Word with whatever was read
+        </span><span class="self">self</span>.ec[acc] = result.as_str().try_into().unwrap();
+    }
+
+    <span class="kw">fn </span>exec_extra_print(<span class="kw-2">&amp;mut </span><span class="self">self</span>, instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="kw">let </span>acc = instruction.accumulator();
+        <span class="kw">let </span>word = <span class="self">self</span>.ec[acc];
+        <span class="kw">let </span>word_type = word.word_type().as_i64().unwrap();
+
+        <span class="kw">let </span>text = <span class="kw">match </span>word_type {
+            <span class="number">0 </span>=&gt; <span class="macro">format!</span>(<span class="string">"{: &gt;8} "</span>, word.as_i64().unwrap()),
+            <span class="number">1 </span>=&gt; <span class="macro">format!</span>(<span class="string">"{: &gt;0.4} "</span>, word.as_f64().unwrap()),
+            <span class="number">2 </span>=&gt; word.as_string().unwrap(),
+            <span class="number">3 </span>=&gt; word_to_instruction(<span class="kw-2">&amp;</span>word).unwrap().to_string(),
+            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Unexpected word_type value"</span>),
+        };
+        <span class="kw">let </span>text = text.as_bytes();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>stdout = (<span class="kw-2">*</span><span class="self">self</span>.stdout).borrow_mut();
+        stdout.write_all(text).expect(<span class="string">"stdout write error"</span>);
+    }
+
+    <span class="kw">fn </span>exec_extra_stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="comment">// let mut stdout = (*self.stdout).borrow_mut();
+        // stdout.flush().expect("stdout flush error");
+        </span><span class="self">self</span>.halted = <span class="bool-val">true</span>;
+    }
+
+    <span class="kw">fn </span>exec_extra_capn(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _instruction: <span class="kw-2">&amp;</span>Instruction) {
+        <span class="kw">let </span><span class="kw-2">mut </span>stdout = (<span class="kw-2">*</span><span class="self">self</span>.stdout).borrow_mut();
+        <span class="kw">while </span><span class="self">self</span>.ec[<span class="self">self</span>.ec.pc].is_sword() {
+            <span class="kw">let </span>chars = <span class="self">self</span>.ec[<span class="self">self</span>.ec.pc]
+                .as_string()
+                .expect(<span class="string">"CAPN invalid operand"</span>);
+            stdout
+                .write_all(chars.as_bytes())
+                .expect(<span class="string">"stdout write error"</span>);
+            <span class="self">self</span>.ec.pc += <span class="number">1</span>;
+        }
+    }
 }
 
-<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>Executor {
+<span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>Executor&lt;<span class="lifetime">'_</span>&gt; {
     <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
         f.debug_struct(<span class="string">"Executor"</span>)
             .field(<span class="string">"execution_context"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.ec)
@@ -3477,7 +4322,7 @@
     }
 }
 
-<span class="kw">impl </span>PartialEq <span class="kw">for </span>Executor {
+<span class="kw">impl </span>PartialEq <span class="kw">for </span>Executor&lt;<span class="lifetime">'_</span>&gt; {
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="self">self</span>.ec.eq(<span class="kw-2">&amp;</span>other.ec)
     }
@@ -3486,6 +4331,7 @@
 <span class="attr">#[derive(Clone, Debug, Default, PartialEq)]
 </span><span class="kw">pub struct </span>ExecutionContext {
     pc: Address,
+    quote_marker: bool,
     memory: Memory,
 }
 
@@ -3537,6 +4383,7 @@
 
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             pc: program_counter.try_into().unwrap(),
+            quote_marker: <span class="bool-val">false</span>,
             memory,
         })
     }
@@ -3609,7 +4456,7 @@
     <span class="kw">use </span><span class="kw">crate</span>::bbcx::parser::<span class="kw-2">*</span>;
 
     <span class="kw">fn </span>execute(input: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;ExecutionContext&gt; {
-        <span class="kw">let </span>executor = Executor::new();
+        <span class="kw">let </span>executor = Executor::new(<span class="prelude-val">None</span>);
         do_execute(input, executor)
     }
 
@@ -3621,7 +4468,7 @@
         <span class="kw">let </span>stdout_buffer = Vec::new();
         <span class="kw">let </span>stdout = Rc::new(RefCell::new(std::io::BufWriter::new(stdout_buffer)));
 
-        <span class="kw">let </span>executor = Executor::with_io(stdin, stdout.clone());
+        <span class="kw">let </span>executor = Executor::with_io(stdin, stdout.clone(), <span class="prelude-val">None</span>);
         <span class="kw">let </span>ec = do_execute(input, executor).unwrap().clone();
 
         <span class="kw">let </span>stdout = stdout.borrow();
@@ -3648,13 +4495,26 @@
         <span class="prelude-val">Ok</span>(ec.clone())
     }
 
+    <span class="kw">fn </span>test_result(actual: <span class="kw-2">&amp;</span>ExecutionContext, expected: <span class="kw-2">&amp;</span>ExecutionContext) {
+        <span class="macro">assert_eq!</span>(actual.pc, expected.pc);
+        <span class="macro">assert_eq!</span>(actual.quote_marker, expected.quote_marker);
+        <span class="kw">let </span>(actual, expected): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = actual
+            .memory
+            .iter()
+            .enumerate()
+            .zip(expected.memory.iter().enumerate())
+            .filter_map(|(a, e)| (a != e).then_some((a, e)))
+            .unzip();
+        <span class="macro">assert_eq!</span>(actual, expected);
+    }
+
     <span class="attr">#[test]
     </span><span class="kw">fn </span>default_execution_context() {
         <span class="kw">let </span>program = <span class="string">r#"
 "#</span>;
         <span class="kw">let </span>actual = execute(program).ok().unwrap();
         <span class="kw">let </span>expected = ExecutionContext::default().with_program_counter(<span class="number">0</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3675,7 +4535,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">3.14</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">2.71</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3696,7 +4556,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">14</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">10</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3717,7 +4577,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">6</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">10</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3738,7 +4598,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">8</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">10</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3759,7 +4619,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">22</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">10</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3791,7 +4651,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">10</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">12</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3812,7 +4672,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">120</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">10</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3833,7 +4693,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">2</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">6</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3884,7 +4744,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="string">"ABCD"</span>)
             .with_memory_word(<span class="number">110</span>, <span class="number">2.718</span>)
             .with_program_counter(<span class="number">104</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3916,7 +4776,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">2</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, -<span class="number">2</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3946,7 +4806,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">6</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, -<span class="number">6</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -3976,7 +4836,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">5592405</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, -<span class="number">5592406</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4025,7 +4885,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">3.14</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="string">"ABCD"</span>)
             .with_program_counter(<span class="number">104</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4055,7 +4915,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">42</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="string">"ABCD"</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4087,7 +4947,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">1</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="string">"ABCD"</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4119,7 +4979,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">1</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">1</span>)
             .with_program_counter(<span class="number">103</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4187,7 +5047,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">5</span>, <span class="number">2</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">6</span>, <span class="number">1</span>)
             .with_program_counter(<span class="number">106</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4255,7 +5115,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">5</span>, <span class="number">2</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">6</span>, <span class="number">1</span>)
             .with_program_counter(<span class="number">106</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4321,7 +5181,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">5</span>, <span class="number">1</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">6</span>, <span class="number">1.0</span>)
             .with_program_counter(<span class="number">106</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4415,7 +5275,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">8</span>, <span class="number">1.0</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">9</span>, <span class="number">1.0</span>)
             .with_program_counter(<span class="number">109</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4509,7 +5369,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">8</span>, <span class="number">1.0</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">9</span>, <span class="number">1.0</span>)
             .with_program_counter(<span class="number">109</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4559,7 +5419,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">1</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">42</span>)
             .with_program_counter(<span class="number">105</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4609,7 +5469,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">1</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">42</span>)
             .with_program_counter(<span class="number">105</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4652,7 +5512,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">1</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">6</span>)
             .with_program_counter(<span class="number">103</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4695,7 +5555,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">1</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">6</span>)
             .with_program_counter(<span class="number">103</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4731,7 +5591,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">25</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">12</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4767,7 +5627,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">25</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">12</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4799,7 +5659,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">3</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">3.0</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4822,7 +5682,7 @@
             .with_memory_word(<span class="number">2</span>, -<span class="number">7450624</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">12000</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4854,7 +5714,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">7</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">7</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4877,7 +5737,7 @@
             .with_memory_word(<span class="number">2</span>, <span class="number">16000</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, -<span class="number">12000</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4898,7 +5758,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">2.71</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">3.14</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4919,7 +5779,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">10</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">14</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4940,7 +5800,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">10</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">6</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4961,7 +5821,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">10</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">22</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -4993,7 +5853,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">2</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, -<span class="number">2</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5014,7 +5874,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">10</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">120</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5035,7 +5895,7 @@
             .with_memory_word(<span class="number">1</span>, <span class="number">6</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">1</span>, <span class="number">2</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5090,7 +5950,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="string">"ABCD"</span>)
             .with_memory_word(<span class="number">110</span>, <span class="number">2.718</span>)
             .with_program_counter(<span class="number">104</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5114,7 +5974,7 @@
             .with_memory_word(<span class="number">2</span>, -<span class="number">12</span>)
             .with_memory_word(<span class="number">110</span>, -<span class="number">12</span>)
             .with_program_counter(<span class="number">101</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5148,7 +6008,7 @@
             .with_memory_word(<span class="number">110</span>, -<span class="number">3</span>)
             .with_memory_word(<span class="number">111</span>, <span class="number">3.14</span>)
             .with_program_counter(<span class="number">102</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5220,7 +6080,7 @@
             .with_memory_word(<span class="number">112</span>, <span class="number">0o01020304</span>)
             .with_memory_word(<span class="number">113</span>, <span class="number">0o10400147</span>)
             .with_program_counter(<span class="number">105</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5259,7 +6119,7 @@
             )
             .with_memory_word(<span class="number">110</span>, <span class="string">"2"</span>)
             .with_program_counter(<span class="number">103</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5322,7 +6182,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">2</span>, <span class="number">2</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">3</span>)
             .with_program_counter(<span class="number">121</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5407,7 +6267,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">3</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">4</span>)
             .with_program_counter(<span class="number">123</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5492,7 +6352,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">3</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">4</span>)
             .with_program_counter(<span class="number">123</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5577,7 +6437,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">3</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">4</span>)
             .with_program_counter(<span class="number">123</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5662,7 +6522,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">3</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">4</span>)
             .with_program_counter(<span class="number">123</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5747,7 +6607,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">3</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">4</span>)
             .with_program_counter(<span class="number">123</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5832,7 +6692,7 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">3</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">4</span>)
             .with_program_counter(<span class="number">123</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
 
     <span class="attr">#[test]
@@ -5917,7 +6777,383 @@
             .with_memory_word(MEMORY_SIZE - <span class="number">3</span>, <span class="number">3</span>)
             .with_memory_word(MEMORY_SIZE - <span class="number">4</span>, <span class="number">4</span>)
             .with_program_counter(<span class="number">123</span>);
-        <span class="macro">assert_eq!</span>(actual, expected)
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
     }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_decr() {
+        <span class="kw">let </span>program = <span class="string">r#"
+0100    DECR    110
+0101    DECR    111
+0102    DECR    102
+0110    +3
+0111    +3.14
+"#</span>;
+        <span class="kw">let </span>actual = execute(program).ok().unwrap();
+        <span class="kw">let </span>expected = ExecutionContext::default()
+            .with_instruction(
+                <span class="number">100</span>,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(<span class="number">110</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">101</span>,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(<span class="number">111</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">102</span>,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(<span class="number">101</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">0</span>,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(<span class="number">101</span>)
+                    .build(),
+            )
+            .with_memory_word(<span class="number">110</span>, <span class="number">2</span>)
+            .with_memory_word(<span class="number">111</span>, <span class="number">2.14</span>)
+            .with_program_counter(<span class="number">103</span>);
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_incr() {
+        <span class="kw">let </span>program = <span class="string">r#"
+0100    INCR    110
+0101    INCR    111
+0102    INCR    102
+0110    +3
+0111    +3.14
+"#</span>;
+        <span class="kw">let </span>actual = execute(program).ok().unwrap();
+        <span class="kw">let </span>expected = ExecutionContext::default()
+            .with_instruction(
+                <span class="number">100</span>,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(<span class="number">110</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">101</span>,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(<span class="number">111</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">102</span>,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(<span class="number">103</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">0</span>,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(<span class="number">103</span>)
+                    .build(),
+            )
+            .with_memory_word(<span class="number">110</span>, <span class="number">4</span>)
+            .with_memory_word(<span class="number">111</span>, <span class="number">4.14</span>)
+            .with_program_counter(<span class="number">103</span>);
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
+    }
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_mockp() {
+        <span class="comment">// MOCKP is not an executable instruction. It is used with indirection,
+        // however the complexities behind its usage are not dealt with in this
+        // implementation.
+        // "When MOCKP is used the bits within the accumulator field are used
+        // to define the byte code and the bits within the index field the
+        // byte number. The byte code specifies th byte size according to the
+        // following table:
+        // | Byte code | No. bytes per word | No. bits per byte |
+        // |     0     |          1         |         24        |
+        // |     1     |          2         |         12        |
+        // |     2     |          3         |          8        |
+        // |     3     |          4         |          6        |
+        // |     4     |          6         |          4        |
+        // |     5     |          8         |          3        |
+        // |     6     |         12*        |          2        |
+        // |     7     |         24*        |          1        |
+        // (*) Only the first eight are accessible since the byte number
+        // cannot exceed 7."
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_mocks() {
+        <span class="comment">// MOCKS is not an executable instruction. It is used with indirection,
+        // however the complexities behind its usage are not dealt with in this
+        // implementation.
+        // "When MOCKS is used as a pointer the result is the same as it is when
+        // MOCKP is used. However, as a separate operation, the MOCKS P-Word
+        // iself is modified so that it points to the next byte or whole word."
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_dbyte() {
+        <span class="comment">// DBYTE uses MOCKP and MOCKS, which are not implemented, so neither is DBYTE.
+    </span>}
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_exec() {
+        <span class="kw">let </span>program = <span class="string">r#"
+0100    EXEC    110
+0110    INCR    111
+0111    +3.14
+"#</span>;
+        <span class="kw">let </span>actual = execute(program).ok().unwrap();
+        <span class="kw">let </span>expected = ExecutionContext::default()
+            .with_instruction(
+                <span class="number">100</span>,
+                InstructionBuilder::new(Function::EXEC)
+                    .with_address(<span class="number">110</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">110</span>,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(<span class="number">111</span>)
+                    .build(),
+            )
+            .with_memory_word(<span class="number">0</span>, <span class="number">4.14</span>)
+            .with_memory_word(<span class="number">111</span>, <span class="number">4.14</span>)
+            .with_program_counter(<span class="number">101</span>);
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
+    }
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_sqrt() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_ln() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_exp() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_extra_read() {
+        <span class="kw">let </span>program = <span class="string">r#"
+0100    EXTRA   1, 4
+0101    READ    3
+0102    READ    5
+"#</span>;
+        <span class="kw">let </span>actual = execute_io(program, <span class="string">"1,3.14,ABC"</span>, <span class="string">""</span>).ok().unwrap();
+        <span class="kw">let </span>expected = ExecutionContext::default()
+            .with_instruction(
+                <span class="number">100</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(<span class="number">1</span>)
+                    .with_address(<span class="number">4</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">101</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(<span class="number">3</span>)
+                    .with_address(<span class="number">4</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">102</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(<span class="number">5</span>)
+                    .with_address(<span class="number">4</span>)
+                    .build(),
+            )
+            .with_memory_word(<span class="number">1</span>, <span class="number">1</span>)
+            .with_memory_word(<span class="number">3</span>, <span class="number">3.14</span>)
+            .with_memory_word(<span class="number">5</span>, <span class="string">"ABC"</span>)
+            .with_program_counter(<span class="number">103</span>);
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_extra_print() {
+        <span class="kw">let </span>program = <span class="string">r#"
+0001    -42
+0002    +3.14
+0003    "ABC"
+0004    +0
+0100    EXTRA   1, 5
+0101    PRINT   2
+0102    PRINT   3
+0103    TAKE    4, 100
+0104    PRINT   4
+"#</span>;
+        <span class="kw">let </span>actual = execute_io(program, <span class="string">""</span>, <span class="string">"     -42 3.1400 ABCEXTRA  0001, 0005"</span>)
+            .ok()
+            .unwrap();
+        <span class="kw">let </span>expected = ExecutionContext::default()
+            .with_instruction(
+                <span class="number">100</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(<span class="number">1</span>)
+                    .with_address(<span class="number">5</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">101</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(<span class="number">2</span>)
+                    .with_address(<span class="number">5</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">102</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(<span class="number">3</span>)
+                    .with_address(<span class="number">5</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">103</span>,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(<span class="number">4</span>)
+                    .with_address(<span class="number">100</span>)
+                    .build(),
+            )
+            .with_instruction(
+                <span class="number">104</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(<span class="number">4</span>)
+                    .with_address(<span class="number">5</span>)
+                    .build(),
+            )
+            .with_memory_word(<span class="number">1</span>, -<span class="number">42</span>)
+            .with_memory_word(<span class="number">2</span>, <span class="number">3.14</span>)
+            .with_memory_word(<span class="number">3</span>, <span class="string">"ABC"</span>)
+            .with_instruction(
+                <span class="number">4</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(<span class="number">1</span>)
+                    .with_address(<span class="number">5</span>)
+                    .build(),
+            )
+            .with_program_counter(<span class="number">105</span>);
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
+    }
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_sin() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_cos() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_tan() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_atn() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_stop() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_line() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_int() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_frac() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_float() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_extra_capn() {
+        <span class="kw">let </span>program = <span class="string">r#"
+0100    EXTRA   15
+0101    "ABCD"
+0102    "EFGH"
+0103    CAPN
+0104    "QRST"
+0105    "UVWX"
+0106    "YZ"
+"#</span>;
+        <span class="kw">let </span>actual = execute_io(program, <span class="string">""</span>, <span class="string">"ABCDEFGHQRSTUVWXYZ"</span>).ok().unwrap();
+        <span class="kw">let </span>expected = ExecutionContext::default()
+            .with_instruction(
+                <span class="number">100</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_address(<span class="number">15</span>)
+                    .build(),
+            )
+            .with_memory_word(<span class="number">101</span>, <span class="string">"ABCD"</span>)
+            .with_memory_word(<span class="number">102</span>, <span class="string">"EFGH"</span>)
+            .with_instruction(
+                <span class="number">103</span>,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_address(<span class="number">15</span>)
+                    .build(),
+            )
+            .with_memory_word(<span class="number">104</span>, <span class="string">"QRST"</span>)
+            .with_memory_word(<span class="number">105</span>, <span class="string">"UVWX"</span>)
+            .with_memory_word(<span class="number">106</span>, <span class="string">"YZ"</span>)
+            .with_program_counter(<span class="number">107</span>);
+        test_result(<span class="kw-2">&amp;</span>actual, <span class="kw-2">&amp;</span>expected)
+    }
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_page() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_rnd() {
+        <span class="comment">// Will implement if required.
+    </span>}
+
+    <span class="attr">#[test]
+    #[ignore]
+    </span><span class="kw">fn </span>test_extra_abs() {
+        <span class="comment">// Will implement if required.
+    </span>}
 }
 </code></pre></div></section></main></body></html>

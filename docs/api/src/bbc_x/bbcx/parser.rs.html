@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/bbcx/parser.rs`."><title>parser.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-492a78a4a87dcc01.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="bbc_x" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0 (f6e511eec 2024-10-15)" data-channel="1.82.0" data-search-js="search-a99f1315e7cc5121.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-921df33f47b8780c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/bbcx/parser.rs`."><title>parser.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="bbc_x" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0 (90b35a623 2024-11-26)" data-channel="1.83.0" data-search-js="search-f0d225181b97f9a4.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../../../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">bbc_x/bbcx/</div>parser.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -567,8 +568,7 @@
 <a href="#567" id="567">567</a>
 <a href="#568" id="568">568</a>
 <a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ast::<span class="kw-2">*</span>;
+<a href="#570" id="570">570</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::ast::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">super</span>::grammar::<span class="kw-2">*</span>;
 
 <span class="kw">use </span><span class="kw">crate</span>::result::{Error, <span class="prelude-ty">Result</span>};
@@ -606,7 +606,7 @@
                 <span class="prelude-val">Ok</span>(SourceLine::new(
                     i + <span class="number">1</span>,
                     Label::from(<span class="prelude-val">None</span>),
-                    SourceWord::PWord(p.clone()),
+                    <span class="prelude-val">Some</span>(SourceWord::PWord(p.clone())),
                     <span class="string">""</span>.into(),
                 ))
             })
@@ -626,25 +626,25 @@
             <span class="prelude-val">Ok</span>(SourceLine::new(
                 <span class="number">1</span>,
                 Label::from(<span class="prelude-val">None</span>),
-                SourceWord::SWord(<span class="string">"    "</span>.into()),
+                <span class="prelude-val">Some</span>(SourceWord::SWord(<span class="string">"    "</span>.into())),
                 <span class="string">""</span>.into(),
             )),
             <span class="prelude-val">Ok</span>(SourceLine::new(
                 <span class="number">2</span>,
                 Label::from(<span class="prelude-val">None</span>),
-                SourceWord::SWord(<span class="string">"  C1"</span>.into()),
+                <span class="prelude-val">Some</span>(SourceWord::SWord(<span class="string">"  C1"</span>.into())),
                 <span class="string">"; Comment 1"</span>.into(),
             )),
             <span class="prelude-val">Ok</span>(SourceLine::new(
                 <span class="number">3</span>,
                 Label::from(<span class="string">"LABEL1"</span>.to_string()),
-                SourceWord::SWord(<span class="string">"    "</span>.into()),
+                <span class="prelude-val">Some</span>(SourceWord::SWord(<span class="string">"    "</span>.into())),
                 <span class="string">""</span>.into(),
             )),
             <span class="prelude-val">Ok</span>(SourceLine::new(
                 <span class="number">4</span>,
                 Label::from(<span class="string">"LABEL2"</span>.to_string()),
-                SourceWord::SWord(<span class="string">"  C2"</span>.into()),
+                <span class="prelude-val">Some</span>(SourceWord::SWord(<span class="string">"  C2"</span>.into())),
                 <span class="string">"; Comment 2"</span>.into(),
             )),
         ]
@@ -661,7 +661,7 @@
         <span class="kw">let </span>expected = <span class="macro">vec!</span>[<span class="prelude-val">Ok</span>(SourceLine::new(
             <span class="number">1</span>,
             Label::from(<span class="prelude-val">None</span>),
-            SourceWord::SWord(<span class="string">"TEXT"</span>.into()),
+            <span class="prelude-val">Some</span>(SourceWord::SWord(<span class="string">"TEXT"</span>.into())),
             <span class="string">""</span>.into(),
         ))]
         .into_iter()
@@ -771,7 +771,7 @@
 0012    INT
 0013    FRAC
 0014    FLOAT
-0015    CAPTN
+0015    CAPN
 0016    PAGE
 0017    RND
 0018    ABS
@@ -792,7 +792,7 @@
             PWord::new(Mnemonic::INT, <span class="prelude-val">None</span>.into(), StoreOperand::None),
             PWord::new(Mnemonic::FRAC, <span class="prelude-val">None</span>.into(), StoreOperand::None),
             PWord::new(Mnemonic::FLOAT, <span class="prelude-val">None</span>.into(), StoreOperand::None),
-            PWord::new(Mnemonic::CAPTN, <span class="prelude-val">None</span>.into(), StoreOperand::None),
+            PWord::new(Mnemonic::CAPN, <span class="prelude-val">None</span>.into(), StoreOperand::None),
             PWord::new(Mnemonic::PAGE, <span class="prelude-val">None</span>.into(), StoreOperand::None),
             PWord::new(Mnemonic::RND, <span class="prelude-val">None</span>.into(), StoreOperand::None),
             PWord::new(Mnemonic::ABS, <span class="prelude-val">None</span>.into(), StoreOperand::None),
@@ -810,7 +810,7 @@
         <span class="kw">let </span>expected = <span class="macro">vec!</span>[<span class="prelude-val">Ok</span>(SourceLine::new(
             <span class="number">1</span>,
             <span class="prelude-val">None</span>.into(),
-            SourceWord::FWord(<span class="number">3.14</span>),
+            <span class="prelude-val">Some</span>(SourceWord::FWord(<span class="number">3.14</span>)),
             <span class="string">""</span>.into(),
         ))];
         <span class="macro">assert_eq!</span>(actual[<span class="number">1</span>..], expected)
@@ -825,7 +825,7 @@
         <span class="kw">let </span>expected = <span class="macro">vec!</span>[<span class="prelude-val">Ok</span>(SourceLine::new(
             <span class="number">1</span>,
             <span class="prelude-val">None</span>.into(),
-            SourceWord::IWord(<span class="number">42</span>),
+            <span class="prelude-val">Some</span>(SourceWord::IWord(<span class="number">42</span>)),
             <span class="string">""</span>.into(),
         ))];
         <span class="macro">assert_eq!</span>(actual[<span class="number">1</span>..], expected)
@@ -835,9 +835,9 @@
     </span><span class="kw">fn </span>addressing_modes() {
         <span class="kw">let </span>program = <span class="string">r#"
 0001    ADD     ADDR1
-0002    ADD2,   ADDR2[42]
+0002    ADD2,   ADDR2(2)
 0003    ADD     *ADDR3
-0004    ADD2,   *ADDR4[42]
+0004    ADD2,   *ADDR4(2)
 0005    ADD     512
 0006    ADD     -42
 0007    ADD2,   +3.14
@@ -858,7 +858,7 @@
                 <span class="string">'2'</span>.into(),
                 StoreOperand::AddressOperand(AddressOperand::new(
                     SimpleAddressOperand::DirectAddress(Address::Identifier(<span class="string">"ADDR2"</span>.into())),
-                    <span class="prelude-val">Some</span>(<span class="number">42</span>),
+                    <span class="prelude-val">Some</span>(<span class="number">2</span>),
                 )),
             ),
             PWord::new(
@@ -874,7 +874,7 @@
                 <span class="string">'2'</span>.into(),
                 StoreOperand::AddressOperand(AddressOperand::new(
                     SimpleAddressOperand::IndirectAddress(Address::Identifier(<span class="string">"ADDR4"</span>.into())),
-                    <span class="prelude-val">Some</span>(<span class="number">42</span>),
+                    <span class="prelude-val">Some</span>(<span class="number">2</span>),
                 )),
             ),
             PWord::new(
@@ -989,7 +989,7 @@
 0079    INT
 0080    FRAC
 0081    FLOAT
-0082    CAPTN
+0082    CAPN
 0083    PAGE
 0084    RND
 0085    ABS
@@ -1093,7 +1093,7 @@
             Mnemonic::INT,
             Mnemonic::FRAC,
             Mnemonic::FLOAT,
-            Mnemonic::CAPTN,
+            Mnemonic::CAPN,
             Mnemonic::PAGE,
             Mnemonic::RND,
             Mnemonic::ABS,

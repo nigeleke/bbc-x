@@ -13,6 +13,7 @@ use std::rc::Rc;
 
 pub struct Executor<'a> {
     ec: ExecutionContext,
+    halted: bool,
     stdin: Rc<RefCell<dyn Read>>,
     stdout: Rc<RefCell<dyn Write>>,
     trace: Option<&'a Path>,
@@ -36,6 +37,7 @@ impl<'a> Executor<'a> {
     {
         Self {
             ec: ExecutionContext::default(),
+            halted: false,
             stdin,
             stdout,
             trace,
@@ -89,7 +91,8 @@ impl<'a> Executor<'a> {
 
     pub fn execute(mut self, assembly: &Assembly) -> Result<ExecutionContext> {
         self.ec = assembly.clone().try_into()?;
-        while self.can_step() {
+        self.halted = false;
+        while self.can_step() && !self.halted {
             self.step()?;
         }
         Ok(self.ec.clone())
@@ -496,7 +499,9 @@ impl<'a> Executor<'a> {
     fn exec_jump(&mut self, instruction: &Instruction) {
         let pc = self.ec.pc - 1;
         let (acc, address, _) = self.extract_operands(instruction);
-        self.ec[acc - 1] = (pc.memory_index() as i64).try_into().unwrap();
+        if acc != 0.try_into().unwrap() {
+            self.ec[acc - 1] = (pc.memory_index() as i64).try_into().unwrap();
+        }
         self.ec.pc = address;
     }
 
@@ -588,16 +593,14 @@ impl<'a> Executor<'a> {
         match function {
             Function::SQRT | Function::LN | Function::EXP => unimplemented!("{:?}", function),
             Function::READ => self.exec_extra_read(instruction),
-            Function::PRINT
-            | Function::SIN
-            | Function::COS
-            | Function::TAN
-            | Function::ATN
-            | Function::STOP
-            | Function::LINE
-            | Function::INT
-            | Function::FRAC
-            | Function::FLOAT => unimplemented!("{:?}", function),
+            Function::PRINT => self.exec_extra_print(instruction),
+            Function::SIN | Function::COS | Function::TAN | Function::ATN => {
+                unimplemented!("{:?}", function)
+            }
+            Function::STOP => self.exec_extra_stop(instruction),
+            Function::LINE | Function::INT | Function::FRAC | Function::FLOAT => {
+                unimplemented!("{:?}", function)
+            }
             Function::CAPN => self.exec_extra_capn(instruction),
             Function::PAGE | Function::RND | Function::ABS => unimplemented!("{:?}", function),
             other => panic!("Invalid EXTRA code {:?}", other),
@@ -692,13 +695,39 @@ impl<'a> Executor<'a> {
         self.ec[acc] = result.as_str().try_into().unwrap();
     }
 
+    fn exec_extra_print(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let word = self.ec[acc];
+        let word_type = word.word_type().as_i64().unwrap();
+
+        let text = match word_type {
+            0 => format!("{: >8} ", word.as_i64().unwrap()),
+            1 => format!("{: >0.4} ", word.as_f64().unwrap()),
+            2 => word.as_string().unwrap(),
+            3 => word_to_instruction(&word).unwrap().to_string(),
+            _ => panic!("Unexpected word_type value"),
+        };
+        let text = text.as_bytes();
+
+        let mut stdout = (*self.stdout).borrow_mut();
+        stdout.write_all(text).expect("stdout write error");
+    }
+
+    fn exec_extra_stop(&mut self, _instruction: &Instruction) {
+        // let mut stdout = (*self.stdout).borrow_mut();
+        // stdout.flush().expect("stdout flush error");
+        self.halted = true;
+    }
+
     fn exec_extra_capn(&mut self, _instruction: &Instruction) {
         let mut stdout = (*self.stdout).borrow_mut();
         while self.ec[self.ec.pc].is_sword() {
             let chars = self.ec[self.ec.pc]
                 .as_string()
                 .expect("CAPN invalid operand");
-            stdout.write_all(chars.as_bytes()).unwrap();
+            stdout
+                .write_all(chars.as_bytes())
+                .expect("stdout write error");
             self.ec.pc += 1;
         }
     }
@@ -3377,9 +3406,69 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn test_extra_print() {
-        // Will implement if required.
+        let program = r#"
+0001    -42
+0002    +3.14
+0003    "ABC"
+0004    +0
+0100    EXTRA   1, 5
+0101    PRINT   2
+0102    PRINT   3
+0103    TAKE    4, 100
+0104    PRINT   4
+"#;
+        let actual = execute_io(program, "", "     -42 3.1400 ABCEXTRA  0001, 0005")
+            .ok()
+            .unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(1)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(2)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(3)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_instruction(
+                103,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(100)
+                    .build(),
+            )
+            .with_instruction(
+                104,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(4)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_memory_word(1, -42)
+            .with_memory_word(2, 3.14)
+            .with_memory_word(3, "ABC")
+            .with_instruction(
+                4,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(1)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_program_counter(105);
+        test_result(&actual, &expected)
     }
 
     #[test]

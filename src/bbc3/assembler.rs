@@ -52,7 +52,7 @@ fn validate_ast(ast: &[SourceProgramLine]) -> Result<()> {
             "Same location(s) used multiple times: {}",
             invalid_locations
         );
-        Err(Error::FailedToAssemble(error))
+        Err(Error::FailedToAssemble(vec![error]))
     }
 }
 
@@ -126,7 +126,7 @@ mod test {
         let result = Assembler::assemble(&program).err().unwrap();
         assert_eq!(
             result,
-            Error::FailedToAssemble("Same location(s) used multiple times: 1, 2".into())
+            Error::FailedToAssemble(vec!["Same location(s) used multiple times: 1, 2".into()])
         );
     }
 

@@ -2,40 +2,97 @@ use super::assembly::Assembly;
 use super::memory::{word_to_instruction, Address, Instruction, MemoryIndex, *};
 use super::result::{Error, Result};
 
+use num_enum::TryFromPrimitive;
+
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fs::OpenOptions;
 use std::io::{self, Read, Write};
+use std::path::Path;
 use std::rc::Rc;
 
-pub struct Executor {
+pub struct Executor<'a> {
     ec: ExecutionContext,
+    halted: bool,
     stdin: Rc<RefCell<dyn Read>>,
     stdout: Rc<RefCell<dyn Write>>,
+    trace: Option<&'a Path>,
 }
 
-impl Executor {
-    pub fn new() -> Self {
+impl<'a> Executor<'a> {
+    pub fn new(trace: Option<&'a Path>) -> Self {
         let stdin = Rc::new(RefCell::new(io::stdin()));
         let stdout = Rc::new(RefCell::new(io::stdout()));
-        Self::with_io(stdin, stdout)
+        Self::with_io(stdin, stdout, trace)
     }
 
-    pub fn with_io<R, W>(stdin: Rc<RefCell<R>>, stdout: Rc<RefCell<W>>) -> Self
+    pub fn with_io<R, W>(
+        stdin: Rc<RefCell<R>>,
+        stdout: Rc<RefCell<W>>,
+        trace: Option<&'a Path>,
+    ) -> Self
     where
         R: Read + 'static,
         W: Write + 'static,
     {
         Self {
             ec: ExecutionContext::default(),
+            halted: false,
             stdin,
             stdout,
+            trace,
+        }
+    }
+
+    fn trace(&self, text: &str) {
+        if let Some(path) = self.trace {
+            let format = time::format_description::parse(
+                "[year]-[month]-[day] [hour repr:24]:[minute]:[second]:[subsecond digits:9]+[offset_hour]:[offset_minute]",
+            )
+            .unwrap();
+            let now = time::OffsetDateTime::now_utc();
+            let offset = time::UtcOffset::local_offset_at(now).unwrap();
+            let now = now.to_offset(offset).format(&format).unwrap().to_string();
+            let mut file = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)
+                .unwrap();
+            let text = format!("{}  -      {}\n", now, text);
+            file.write_all(text.as_bytes()).unwrap();
+            file.flush().unwrap();
+        };
+    }
+
+    fn trace_detail(&self, pre_post_indicator: &str, instruction: &Instruction) {
+        self.trace(pre_post_indicator);
+        let acc = instruction.accumulator();
+        self.trace(&format!("  acc:      {}   {}", acc, self.ec[acc]));
+        let address = instruction.address();
+        self.trace(&format!("  address:  {}   {}", address, self.ec[address]));
+        let (address, operand) = self.operand(instruction).unwrap();
+        if instruction.is_indirect() {
+            self.trace(&format!(
+                "  indirect: {}   {} => {}",
+                address,
+                operand,
+                word_to_instruction(&operand).map_or("Not a PWORD".to_string(), |i| i.to_string())
+            ));
+        }
+        let index_register = instruction.index_register();
+        if index_register.is_indexable() {
+            self.trace(&format!(
+                "  ireg:     {}    {}",
+                index_register, self.ec[index_register]
+            ));
+            self.trace(&format!("  indexed:  {}   {}", address, self.ec[address]));
         }
     }
 
     pub fn execute(mut self, assembly: &Assembly) -> Result<ExecutionContext> {
         self.ec = assembly.clone().try_into()?;
-
-        while self.can_step() {
+        self.halted = false;
+        while self.can_step() && !self.halted {
             self.step()?;
         }
         Ok(self.ec.clone())
@@ -53,13 +110,17 @@ impl Executor {
         let content = self.ec[pc];
         let instruction = word_to_instruction(&content)
             .map_err(|err| Error::CannotConvertWordToInstruction(err.to_string()))?;
-        println!("Exec: {:?} -> {:?}", self.ec.pc - 1, instruction);
-        self.step_word(&instruction);
+
+        self.trace(&format!("{:<06}      {}", pc.memory_index(), instruction));
+        self.trace_detail(">>", &instruction);
+        self.step_word(&instruction.clone());
+        self.trace_detail("<<", &instruction);
+
         Ok(())
     }
 
     fn step_word(&mut self, instruction: &Instruction) {
-        type ExecFn = fn(&mut Executor, &Instruction);
+        type ExecFn<'a> = fn(&mut Executor<'a>, &Instruction);
         let execution: HashMap<Function, ExecFn> = vec![
             (Function::NIL, Executor::exec_nil as ExecFn),
             (Function::OR, Executor::exec_or as ExecFn),
@@ -113,6 +174,10 @@ impl Executor {
             (Function::JGZ, Executor::exec_jgz as ExecFn),
             (Function::JZD, Executor::exec_jzd as ExecFn),
             (Function::JZI, Executor::exec_jzi as ExecFn),
+            (Function::DECR, Executor::exec_decr as ExecFn),
+            (Function::INCR, Executor::exec_incr as ExecFn),
+            (Function::EXEC, Executor::exec_exec as ExecFn),
+            (Function::EXTRA, Executor::exec_extra as ExecFn),
         ]
         .into_iter()
         .collect();
@@ -123,7 +188,7 @@ impl Executor {
         f(self, instruction)
     }
 
-    fn operand(&self, instruction: &Instruction) -> Result<Word> {
+    fn operand(&self, instruction: &Instruction) -> Result<(Address, Word)> {
         let ec = &self.ec;
 
         let index_register = instruction.index_register();
@@ -142,92 +207,86 @@ impl Executor {
             address += index as isize;
         }
 
-        Ok(ec[address])
+        Ok((address, ec[address]))
     }
 
-    fn acc_and_operand(&self, instruction: &Instruction) -> (Accumulator, Word) {
+    fn extract_operands(&self, instruction: &Instruction) -> (Accumulator, Address, Word) {
         let acc = instruction.accumulator();
-        let operand = self.operand(instruction).expect("Invalid operand");
-        (acc, operand)
-    }
-
-    fn acc_and_address(&instruction: &Instruction) -> (Accumulator, Address) {
-        let acc = instruction.accumulator();
-        let address = instruction.address();
-        (acc, address)
+        let (address, operand) = self.operand(instruction).expect("Invalid operand");
+        (acc, address, operand)
     }
 
     fn exec_nil(&mut self, _instruction: &Instruction) {}
 
     fn exec_or(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] |= operand;
     }
 
     fn exec_neqv(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] ^= operand;
     }
 
     fn exec_and(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] &= operand;
     }
 
     fn exec_add(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] += operand;
     }
 
     fn exec_subt(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] -= operand;
     }
 
     fn exec_mult(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] *= operand;
     }
 
     fn exec_dvd(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] /= operand;
     }
 
     fn exec_take(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = operand;
     }
 
     fn exec_tstr(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let value = operand.as_i64().expect("TSTR invalid operand");
         self.ec[acc] = operand;
         self.ec[acc - 1] = (if value < 1 { -1 } else { 0 }).try_into().unwrap();
     }
 
     fn exec_tneg(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = -operand;
     }
 
     fn exec_tnot(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = !operand;
     }
 
     fn exec_ttyp(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = operand.word_type();
     }
 
     fn exec_ttyz(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] = operand.word_bits();
     }
 
     fn exec_tout(&mut self, instruction: &Instruction) {
-        let (_acc, operand) = self.acc_and_operand(instruction);
+        let (_acc, _, operand) = self.extract_operands(instruction);
         let chars = vec![operand.as_char().expect("TOUT invalid operand")];
         let mut stdout = (*self.stdout).borrow_mut();
         stdout.write_all(&chars).unwrap();
@@ -238,21 +297,21 @@ impl Executor {
     }
 
     fn exec_skae(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] == operand {
             self.ec.pc += 1;
         }
     }
 
     fn exec_skan(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] != operand {
             self.ec.pc += 1;
         }
     }
 
     fn exec_sket(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let same_type = self.ec[acc].word_type() == operand.word_type();
         if same_type {
             self.ec.pc += 1;
@@ -260,21 +319,21 @@ impl Executor {
     }
 
     fn exec_skal(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] < operand {
             self.ec.pc += 1
         }
     }
 
     fn exec_skag(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] > operand {
             self.ec.pc += 1
         }
     }
 
     fn exec_sked(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] == operand {
             self.ec.pc += 1
         } else {
@@ -283,7 +342,7 @@ impl Executor {
     }
 
     fn exec_skei(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         if self.ec[acc] == operand {
             self.ec.pc += 1
         } else {
@@ -292,55 +351,55 @@ impl Executor {
     }
 
     fn exec_shl(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] <<= operand;
     }
 
     fn exec_rot(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc].rotate(operand.as_i64().unwrap());
     }
 
     fn exec_dshl(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let (msw, lsw) = double_shift_left(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
         self.ec[acc - 1].set_word_bits(&msw);
         self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_drot(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let (msw, lsw) = double_rotate_left(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
         self.ec[acc - 1].set_word_bits(&msw);
         self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_powr(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc].power(&operand);
     }
 
     fn exec_dmult(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let (msw, lsw) = double_mult(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
         self.ec[acc - 1].set_word_bits(&msw);
         self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_div(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         self.ec[acc] /= operand;
     }
 
     fn exec_ddiv(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let (msw, lsw) = double_div(&self.ec[acc - 1], &self.ec[acc], &operand).unwrap();
         self.ec[acc - 1].set_word_bits(&msw);
         self.ec[acc].set_word_bits(&lsw);
     }
 
     fn exec_nilx(&mut self, instruction: &Instruction) {
-        let (acc, operand) = self.acc_and_operand(instruction);
+        let (acc, _, operand) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         let operand_address = instruction.address();
         self.ec[acc] = operand;
@@ -378,13 +437,13 @@ impl Executor {
     }
 
     fn exec_put(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         self.ec[address] = acc_value;
     }
 
     fn exec_psqu(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let msw0 = self.ec[acc - 1];
         let lsw0 = self.ec[acc];
         let (_, mut lsw1) = squash(&msw0, &lsw0).unwrap();
@@ -393,19 +452,19 @@ impl Executor {
     }
 
     fn exec_pneg(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         self.ec[address] = -acc_value;
     }
 
     fn exec_ptyp(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         self.ec[address].set_word_type(&acc_value);
     }
 
     fn exec_ptyz(&mut self, instruction: &Instruction) {
-        let (acc, address) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         let mut result: Word = 0.try_into().unwrap();
         result.set_word_bits(&acc_value);
@@ -413,7 +472,7 @@ impl Executor {
     }
 
     fn exec_pin(&mut self, instruction: &Instruction) {
-        let (_acc, address) = Self::acc_and_address(instruction);
+        let (_acc, address, _) = self.extract_operands(instruction);
 
         let mut stdin = (*self.stdin).borrow_mut();
         let mut stdout = (*self.stdout).borrow_mut();
@@ -439,74 +498,242 @@ impl Executor {
 
     fn exec_jump(&mut self, instruction: &Instruction) {
         let pc = self.ec.pc - 1;
-        let (acc, address) = Self::acc_and_address(instruction);
-        self.ec[acc - 1] = (pc.memory_index() as i64).try_into().unwrap();
+        let (acc, address, _) = self.extract_operands(instruction);
+        if acc != 0.try_into().unwrap() {
+            self.ec[acc - 1] = (pc.memory_index() as i64).try_into().unwrap();
+        }
         self.ec.pc = address;
     }
 
     fn exec_jez(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jnz(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() != Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jat(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc].word_type();
         if acc_value == Word::new(WordType::IWord, 0) || acc_value == Word::new(WordType::IWord, 1)
         {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jlz(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() < Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jgz(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() > Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         }
     }
 
     fn exec_jzd(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         } else {
             self.ec[acc] -= 1.try_into().unwrap();
         }
     }
 
     fn exec_jzi(&mut self, instruction: &Instruction) {
-        let (acc, _) = Self::acc_and_address(instruction);
+        let (acc, address, _) = self.extract_operands(instruction);
         let acc_value = self.ec[acc];
         if acc_value.word_bits() == Word::new(WordType::IWord, 0) {
-            self.exec_jump(instruction)
+            self.ec.pc = address;
         } else {
             self.ec[acc] += 1.try_into().unwrap();
         }
     }
+
+    fn exec_decr(&mut self, instruction: &Instruction) {
+        let (acc, address, _) = self.extract_operands(instruction);
+        decrement(&mut self.ec[address]);
+        self.ec[acc] = self.ec[address];
+    }
+
+    fn exec_incr(&mut self, instruction: &Instruction) {
+        let (acc, address, _) = self.extract_operands(instruction);
+        increment(&mut self.ec[address]);
+        self.ec[acc] = self.ec[address];
+    }
+
+    fn exec_exec(&mut self, instruction: &Instruction) {
+        let (_, address, _) = self.extract_operands(instruction);
+        let word = self.ec[address];
+        let instruction = word_to_instruction(&word).unwrap();
+        self.step_word(&instruction);
+    }
+
+    fn exec_extra(&mut self, instruction: &Instruction) {
+        let (_, address, _) = self.extract_operands(instruction);
+        let code = address.memory_index() as u32 + Function::EXTRA as u32;
+        let function = Function::try_from_primitive(code).unwrap();
+
+        match function {
+            Function::SQRT | Function::LN | Function::EXP => unimplemented!("{:?}", function),
+            Function::READ => self.exec_extra_read(instruction),
+            Function::PRINT => self.exec_extra_print(instruction),
+            Function::SIN | Function::COS | Function::TAN | Function::ATN => {
+                unimplemented!("{:?}", function)
+            }
+            Function::STOP => self.exec_extra_stop(instruction),
+            Function::LINE | Function::INT | Function::FRAC | Function::FLOAT => {
+                unimplemented!("{:?}", function)
+            }
+            Function::CAPN => self.exec_extra_capn(instruction),
+            Function::PAGE | Function::RND | Function::ABS => unimplemented!("{:?}", function),
+            other => panic!("Invalid EXTRA code {:?}", other),
+        }
+    }
+
+    fn exec_extra_read(&mut self, instruction: &Instruction) {
+        let mut stdout = (*self.stdout).borrow_mut();
+        stdout.flush().expect("stdout not flushed");
+
+        let mut stdin = (*self.stdin).borrow_mut();
+
+        let acc = instruction.accumulator();
+
+        let mut buffer = [0u8; 1];
+        let mut result = String::new();
+
+        if self.ec.quote_marker {
+            // Read until 4 characters, a newline, or a quote
+            while result.len() < 4 {
+                if stdin.read(&mut buffer).unwrap_or(0) == 0 {
+                    break;
+                }
+                let c = buffer[0] as char;
+
+                if c == '\n' {
+                    break;
+                }
+
+                if c == '"' {
+                    self.ec.quote_marker = !self.ec.quote_marker;
+                    break;
+                }
+                result.push(c);
+            }
+
+            self.ec[acc] = result.as_str().try_into().unwrap();
+            return;
+        }
+
+        while stdin.read(&mut buffer).is_ok() {
+            let c = buffer[0] as char;
+            if !c.is_whitespace() && c != ',' {
+                result.push(c);
+                break;
+            }
+        }
+
+        if let Some(first_char) = result.chars().next() {
+            if first_char.is_alphabetic() {
+                // Read up to 4 more alphanumeric characters
+                while result.len() < 5 {
+                    if stdin.read(&mut buffer).unwrap_or(0) == 0 {
+                        break;
+                    }
+                    let c = buffer[0] as char;
+                    if c.is_alphanumeric() {
+                        result.push(c);
+                    } else {
+                        break;
+                    }
+                }
+                self.ec[acc] = result.as_str().try_into().unwrap();
+                return;
+            } else if first_char.is_numeric() || "+-.".contains(first_char) {
+                // Read numeric characters, including '@' for exponential
+                while stdin.read(&mut buffer).is_ok() {
+                    let c = buffer[0] as char;
+                    if !"+-0123456789.@".contains(c) {
+                        break;
+                    }
+                    result.push(c);
+                }
+
+                // Try to interpret as integer or float
+                if result.chars().all(|c| "+-0123456789".contains(c)) {
+                    if let Ok(int_value) = result.parse::<i64>() {
+                        self.ec[acc] = int_value.try_into().unwrap();
+                        return;
+                    }
+                } else {
+                    let normalized = result.replace('@', "e");
+                    if let Ok(float_value) = normalized.parse::<f64>() {
+                        self.ec[acc] = float_value.try_into().unwrap();
+                        return;
+                    }
+                }
+            }
+        }
+
+        // If no match, return a String Word with whatever was read
+        self.ec[acc] = result.as_str().try_into().unwrap();
+    }
+
+    fn exec_extra_print(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let word = self.ec[acc];
+        let word_type = word.word_type().as_i64().unwrap();
+
+        let text = match word_type {
+            0 => format!("{: >8} ", word.as_i64().unwrap()),
+            1 => format!("{: >0.4} ", word.as_f64().unwrap()),
+            2 => word.as_string().unwrap(),
+            3 => word_to_instruction(&word).unwrap().to_string(),
+            _ => panic!("Unexpected word_type value"),
+        };
+        let text = text.as_bytes();
+
+        let mut stdout = (*self.stdout).borrow_mut();
+        stdout.write_all(text).expect("stdout write error");
+    }
+
+    fn exec_extra_stop(&mut self, _instruction: &Instruction) {
+        // let mut stdout = (*self.stdout).borrow_mut();
+        // stdout.flush().expect("stdout flush error");
+        self.halted = true;
+    }
+
+    fn exec_extra_capn(&mut self, _instruction: &Instruction) {
+        let mut stdout = (*self.stdout).borrow_mut();
+        while self.ec[self.ec.pc].is_sword() {
+            let chars = self.ec[self.ec.pc]
+                .as_string()
+                .expect("CAPN invalid operand");
+            stdout
+                .write_all(chars.as_bytes())
+                .expect("stdout write error");
+            self.ec.pc += 1;
+        }
+    }
 }
 
-impl std::fmt::Debug for Executor {
+impl std::fmt::Debug for Executor<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Executor")
             .field("execution_context", &self.ec)
@@ -516,7 +743,7 @@ impl std::fmt::Debug for Executor {
     }
 }
 
-impl PartialEq for Executor {
+impl PartialEq for Executor<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.ec.eq(&other.ec)
     }
@@ -525,6 +752,7 @@ impl PartialEq for Executor {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExecutionContext {
     pc: Address,
+    quote_marker: bool,
     memory: Memory,
 }
 
@@ -576,6 +804,7 @@ impl TryFrom<Assembly> for ExecutionContext {
 
         Ok(Self {
             pc: program_counter.try_into().unwrap(),
+            quote_marker: false,
             memory,
         })
     }
@@ -648,7 +877,7 @@ mod test {
     use crate::bbcx::parser::*;
 
     fn execute(input: &str) -> Result<ExecutionContext> {
-        let executor = Executor::new();
+        let executor = Executor::new(None);
         do_execute(input, executor)
     }
 
@@ -660,7 +889,7 @@ mod test {
         let stdout_buffer = Vec::new();
         let stdout = Rc::new(RefCell::new(std::io::BufWriter::new(stdout_buffer)));
 
-        let executor = Executor::with_io(stdin, stdout.clone());
+        let executor = Executor::with_io(stdin, stdout.clone(), None);
         let ec = do_execute(input, executor).unwrap().clone();
 
         let stdout = stdout.borrow();
@@ -687,13 +916,26 @@ mod test {
         Ok(ec.clone())
     }
 
+    fn test_result(actual: &ExecutionContext, expected: &ExecutionContext) {
+        assert_eq!(actual.pc, expected.pc);
+        assert_eq!(actual.quote_marker, expected.quote_marker);
+        let (actual, expected): (Vec<_>, Vec<_>) = actual
+            .memory
+            .iter()
+            .enumerate()
+            .zip(expected.memory.iter().enumerate())
+            .filter_map(|(a, e)| (a != e).then_some((a, e)))
+            .unzip();
+        assert_eq!(actual, expected);
+    }
+
     #[test]
     fn default_execution_context() {
         let program = r#"
 "#;
         let actual = execute(program).ok().unwrap();
         let expected = ExecutionContext::default().with_program_counter(0);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -714,7 +956,7 @@ mod test {
             .with_memory_word(1, 3.14)
             .with_memory_word(MEMORY_SIZE - 1, 2.71)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -735,7 +977,7 @@ mod test {
             .with_memory_word(1, 14)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -756,7 +998,7 @@ mod test {
             .with_memory_word(1, 6)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -777,7 +1019,7 @@ mod test {
             .with_memory_word(1, 8)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -798,7 +1040,7 @@ mod test {
             .with_memory_word(1, 22)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -830,7 +1072,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -851,7 +1093,7 @@ mod test {
             .with_memory_word(1, 120)
             .with_memory_word(MEMORY_SIZE - 1, 10)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -872,7 +1114,7 @@ mod test {
             .with_memory_word(1, 2)
             .with_memory_word(MEMORY_SIZE - 1, 6)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -923,7 +1165,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, "ABCD")
             .with_memory_word(110, 2.718)
             .with_program_counter(104);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -955,7 +1197,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 2)
             .with_memory_word(MEMORY_SIZE - 2, -2)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -985,7 +1227,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 6)
             .with_memory_word(MEMORY_SIZE - 2, -6)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1015,7 +1257,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 5592405)
             .with_memory_word(MEMORY_SIZE - 2, -5592406)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1064,7 +1306,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, 3.14)
             .with_memory_word(MEMORY_SIZE - 3, "ABCD")
             .with_program_counter(104);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1094,7 +1336,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 42)
             .with_memory_word(MEMORY_SIZE - 2, "ABCD")
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1126,7 +1368,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 1)
             .with_memory_word(MEMORY_SIZE - 2, "ABCD")
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1158,7 +1400,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 1)
             .with_memory_word(MEMORY_SIZE - 2, 1)
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1226,7 +1468,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 5, 2)
             .with_memory_word(MEMORY_SIZE - 6, 1)
             .with_program_counter(106);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1294,7 +1536,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 5, 2)
             .with_memory_word(MEMORY_SIZE - 6, 1)
             .with_program_counter(106);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1360,7 +1602,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 5, 1)
             .with_memory_word(MEMORY_SIZE - 6, 1.0)
             .with_program_counter(106);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1454,7 +1696,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 8, 1.0)
             .with_memory_word(MEMORY_SIZE - 9, 1.0)
             .with_program_counter(109);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1548,7 +1790,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 8, 1.0)
             .with_memory_word(MEMORY_SIZE - 9, 1.0)
             .with_program_counter(109);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1598,7 +1840,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 1)
             .with_memory_word(MEMORY_SIZE - 4, 42)
             .with_program_counter(105);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1648,7 +1890,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 1)
             .with_memory_word(MEMORY_SIZE - 4, 42)
             .with_program_counter(105);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1691,7 +1933,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, 1)
             .with_memory_word(MEMORY_SIZE - 3, 6)
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1734,7 +1976,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, 1)
             .with_memory_word(MEMORY_SIZE - 3, 6)
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1770,7 +2012,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 25)
             .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1806,7 +2048,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 25)
             .with_memory_word(MEMORY_SIZE - 2, 12)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1838,7 +2080,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 3)
             .with_memory_word(MEMORY_SIZE - 2, 3.0)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1861,7 +2103,7 @@ mod test {
             .with_memory_word(2, -7450624)
             .with_memory_word(MEMORY_SIZE - 1, 12000)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1893,7 +2135,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 7)
             .with_memory_word(MEMORY_SIZE - 2, 7)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1916,7 +2158,7 @@ mod test {
             .with_memory_word(2, 16000)
             .with_memory_word(MEMORY_SIZE - 1, -12000)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1937,7 +2179,7 @@ mod test {
             .with_memory_word(1, 2.71)
             .with_memory_word(MEMORY_SIZE - 1, 3.14)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1958,7 +2200,7 @@ mod test {
             .with_memory_word(1, 10)
             .with_memory_word(MEMORY_SIZE - 1, 14)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -1979,7 +2221,7 @@ mod test {
             .with_memory_word(1, 10)
             .with_memory_word(MEMORY_SIZE - 1, 6)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2000,7 +2242,7 @@ mod test {
             .with_memory_word(1, 10)
             .with_memory_word(MEMORY_SIZE - 1, 22)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2032,7 +2274,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 1, 2)
             .with_memory_word(MEMORY_SIZE - 2, -2)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2053,7 +2295,7 @@ mod test {
             .with_memory_word(1, 10)
             .with_memory_word(MEMORY_SIZE - 1, 120)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2074,7 +2316,7 @@ mod test {
             .with_memory_word(1, 6)
             .with_memory_word(MEMORY_SIZE - 1, 2)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2129,7 +2371,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, "ABCD")
             .with_memory_word(110, 2.718)
             .with_program_counter(104);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2153,7 +2395,7 @@ mod test {
             .with_memory_word(2, -12)
             .with_memory_word(110, -12)
             .with_program_counter(101);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2187,7 +2429,7 @@ mod test {
             .with_memory_word(110, -3)
             .with_memory_word(111, 3.14)
             .with_program_counter(102);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2259,7 +2501,7 @@ mod test {
             .with_memory_word(112, 0o01020304)
             .with_memory_word(113, 0o10400147)
             .with_program_counter(105);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2298,7 +2540,7 @@ mod test {
             )
             .with_memory_word(110, "2")
             .with_program_counter(103);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2361,7 +2603,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 2, 2)
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_program_counter(121);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2446,7 +2688,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2531,7 +2773,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2616,7 +2858,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2701,7 +2943,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2786,7 +3028,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2871,7 +3113,7 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -2956,6 +3198,382 @@ mod test {
             .with_memory_word(MEMORY_SIZE - 3, 3)
             .with_memory_word(MEMORY_SIZE - 4, 4)
             .with_program_counter(123);
-        assert_eq!(actual, expected)
+        test_result(&actual, &expected)
+    }
+
+    #[test]
+    fn test_decr() {
+        let program = r#"
+0100    DECR    110
+0101    DECR    111
+0102    DECR    102
+0110    +3
+0111    +3.14
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(111)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(101)
+                    .build(),
+            )
+            .with_instruction(
+                0,
+                InstructionBuilder::new(Function::DECR)
+                    .with_address(101)
+                    .build(),
+            )
+            .with_memory_word(110, 2)
+            .with_memory_word(111, 2.14)
+            .with_program_counter(103);
+        test_result(&actual, &expected)
+    }
+
+    #[test]
+    fn test_incr() {
+        let program = r#"
+0100    INCR    110
+0101    INCR    111
+0102    INCR    102
+0110    +3
+0111    +3.14
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(111)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(103)
+                    .build(),
+            )
+            .with_instruction(
+                0,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(103)
+                    .build(),
+            )
+            .with_memory_word(110, 4)
+            .with_memory_word(111, 4.14)
+            .with_program_counter(103);
+        test_result(&actual, &expected)
+    }
+
+    #[test]
+    #[ignore]
+    fn test_mockp() {
+        // MOCKP is not an executable instruction. It is used with indirection,
+        // however the complexities behind its usage are not dealt with in this
+        // implementation.
+        // "When MOCKP is used the bits within the accumulator field are used
+        // to define the byte code and the bits within the index field the
+        // byte number. The byte code specifies th byte size according to the
+        // following table:
+        // | Byte code | No. bytes per word | No. bits per byte |
+        // |     0     |          1         |         24        |
+        // |     1     |          2         |         12        |
+        // |     2     |          3         |          8        |
+        // |     3     |          4         |          6        |
+        // |     4     |          6         |          4        |
+        // |     5     |          8         |          3        |
+        // |     6     |         12*        |          2        |
+        // |     7     |         24*        |          1        |
+        // (*) Only the first eight are accessible since the byte number
+        // cannot exceed 7."
+    }
+
+    #[test]
+    #[ignore]
+    fn test_mocks() {
+        // MOCKS is not an executable instruction. It is used with indirection,
+        // however the complexities behind its usage are not dealt with in this
+        // implementation.
+        // "When MOCKS is used as a pointer the result is the same as it is when
+        // MOCKP is used. However, as a separate operation, the MOCKS P-Word
+        // iself is modified so that it points to the next byte or whole word."
+    }
+
+    #[test]
+    #[ignore]
+    fn test_dbyte() {
+        // DBYTE uses MOCKP and MOCKS, which are not implemented, so neither is DBYTE.
+    }
+
+    #[test]
+    fn test_exec() {
+        let program = r#"
+0100    EXEC    110
+0110    INCR    111
+0111    +3.14
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXEC)
+                    .with_address(110)
+                    .build(),
+            )
+            .with_instruction(
+                110,
+                InstructionBuilder::new(Function::INCR)
+                    .with_address(111)
+                    .build(),
+            )
+            .with_memory_word(0, 4.14)
+            .with_memory_word(111, 4.14)
+            .with_program_counter(101);
+        test_result(&actual, &expected)
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_sqrt() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_ln() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_exp() {
+        // Will implement if required.
+    }
+
+    #[test]
+    fn test_extra_read() {
+        let program = r#"
+0100    EXTRA   1, 4
+0101    READ    3
+0102    READ    5
+"#;
+        let actual = execute_io(program, "1,3.14,ABC", "").ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(1)
+                    .with_address(4)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(3)
+                    .with_address(4)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(5)
+                    .with_address(4)
+                    .build(),
+            )
+            .with_memory_word(1, 1)
+            .with_memory_word(3, 3.14)
+            .with_memory_word(5, "ABC")
+            .with_program_counter(103);
+        test_result(&actual, &expected)
+    }
+
+    #[test]
+    fn test_extra_print() {
+        let program = r#"
+0001    -42
+0002    +3.14
+0003    "ABC"
+0004    +0
+0100    EXTRA   1, 5
+0101    PRINT   2
+0102    PRINT   3
+0103    TAKE    4, 100
+0104    PRINT   4
+"#;
+        let actual = execute_io(program, "", "     -42 3.1400 ABCEXTRA  0001, 0005")
+            .ok()
+            .unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(1)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(2)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_instruction(
+                102,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(3)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_instruction(
+                103,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(4)
+                    .with_address(100)
+                    .build(),
+            )
+            .with_instruction(
+                104,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(4)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_memory_word(1, -42)
+            .with_memory_word(2, 3.14)
+            .with_memory_word(3, "ABC")
+            .with_instruction(
+                4,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(1)
+                    .with_address(5)
+                    .build(),
+            )
+            .with_program_counter(105);
+        test_result(&actual, &expected)
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_sin() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_cos() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_tan() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_atn() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_stop() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_line() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_int() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_frac() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_float() {
+        // Will implement if required.
+    }
+
+    #[test]
+    fn test_extra_capn() {
+        let program = r#"
+0100    EXTRA   15
+0101    "ABCD"
+0102    "EFGH"
+0103    CAPN
+0104    "QRST"
+0105    "UVWX"
+0106    "YZ"
+"#;
+        let actual = execute_io(program, "", "ABCDEFGHQRSTUVWXYZ").ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_address(15)
+                    .build(),
+            )
+            .with_memory_word(101, "ABCD")
+            .with_memory_word(102, "EFGH")
+            .with_instruction(
+                103,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_address(15)
+                    .build(),
+            )
+            .with_memory_word(104, "QRST")
+            .with_memory_word(105, "UVWX")
+            .with_memory_word(106, "YZ")
+            .with_program_counter(107);
+        test_result(&actual, &expected)
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_page() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_rnd() {
+        // Will implement if required.
+    }
+
+    #[test]
+    #[ignore]
+    fn test_extra_abs() {
+        // Will implement if required.
     }
 }

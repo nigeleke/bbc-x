@@ -61,13 +61,16 @@ fn validate_ast(ast: &[SourceLine]) -> Result<()> {
             "Multiple definitions: locations: \"{}\", labels: \"{}\"",
             invalid_locations, invalid_labels
         );
-        Err(Error::FailedToAssemble(error))
+        Err(Error::FailedToAssemble(vec![error]))
     }
 }
 
 fn generate_code(ast: &[SourceLine]) -> Code {
     ast.iter()
-        .map(|line| (*line.location(), line.source_program_word().clone()))
+        .filter_map(|line| {
+            line.source_program_word()
+                .map(|spw| (*line.location(), spw.clone()))
+        })
         .collect::<Code>()
 }
 
@@ -139,9 +142,9 @@ mod test {
         let result = Assembler::assemble(&program).err().unwrap();
         assert_eq!(
             result,
-            Error::FailedToAssemble(
+            Error::FailedToAssemble(vec![
                 "Multiple definitions: locations: \"1, 2\", labels: \"\"".into()
-            )
+            ])
         );
     }
 
@@ -170,9 +173,9 @@ mod test {
         let result = result.err().unwrap();
         assert_eq!(
             result,
-            Error::FailedToAssemble(
+            Error::FailedToAssemble(vec![
                 "Multiple definitions: locations: \"\", labels: \"LABEL1:, LABEL2:\"".into()
-            )
+            ])
         );
     }
 

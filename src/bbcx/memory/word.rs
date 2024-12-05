@@ -69,6 +69,10 @@ impl Word {
         self.word_type == WordType::PWord
     }
 
+    pub fn is_sword(&self) -> bool {
+        self.word_type == WordType::SWord
+    }
+
     pub fn pword_function_bits(&self) -> RawBits {
         assert!(self.word_type == WordType::PWord);
         bits::get(self.raw_bits, Word::PWORD_FUNCTION_MASK) as RawBits
@@ -144,6 +148,36 @@ impl Word {
                 Ok(char)
             }
             _ => Err(Error::CannotConvertFromWord(format!("u8 from {}", self))),
+        }
+    }
+
+    pub fn as_string(&self) -> Result<String> {
+        match self.word_type {
+            WordType::SWord => {
+                let extract = |offset| {
+                    let bits = bits::get(self.raw_bits, Word::SWORD_CHAR_MASK << offset);
+                    CharSet::bits_to_char(bits)
+                        .unwrap_or_else(|| panic!("Invalid character {}", bits))
+                };
+
+                let chars = vec![
+                    extract(Word::SWORD_CHAR_SIZE * 3),
+                    extract(Word::SWORD_CHAR_SIZE * 2),
+                    extract(Word::SWORD_CHAR_SIZE),
+                    extract(0),
+                ];
+
+                let string = String::from_iter(
+                    chars
+                        .into_iter()
+                        .filter_map(|c| (c != 0).then_some(c as char)),
+                );
+                Ok(string)
+            }
+            _ => Err(Error::CannotConvertFromWord(format!(
+                "String from {}",
+                self
+            ))),
         }
     }
 

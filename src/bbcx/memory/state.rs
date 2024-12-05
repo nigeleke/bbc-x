@@ -3,7 +3,7 @@ use super::instruction::*;
 use super::result::{Error, Result};
 use super::word::*;
 
-use crate::bbcx::ast::{Location as AstLocation, SourceWord as AstSourceWord};
+use crate::bbcx::ast::{Location as AstLocation, Mnemonic, SourceWord as AstSourceWord};
 use crate::bbcx::Assembly;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -33,13 +33,26 @@ impl State {
                     assembly.address_used_by_store_operand(operand).try_into()?
                 };
 
-                let instruction = Builder::new(pword.mnemonic())
-                    .with_accumulator(pword.accumulator().as_usize())
-                    .with_index_register(pword.index_register())
-                    .with_indirect(pword.indirect())
-                    .with_page(pword.page())
-                    .with_address(address)
-                    .build();
+                let instruction = if pword.mnemonic() as usize <= Mnemonic::EXTRA as usize {
+                    Builder::new(pword.mnemonic())
+                        .with_accumulator(pword.accumulator().as_usize())
+                        .with_index_register(pword.index_register())
+                        .with_indirect(pword.indirect())
+                        .with_page(pword.page())
+                        .with_address(address)
+                        .build()
+                } else {
+                    let pseudo_address = pword.mnemonic() as usize - Mnemonic::EXTRA as usize;
+                    let acc = if pword.accumulator().as_usize() != 0 {
+                        pword.accumulator().as_usize()
+                    } else {
+                        address.memory_index()
+                    };
+                    Builder::new(Mnemonic::EXTRA)
+                        .with_accumulator(acc)
+                        .with_address(pseudo_address)
+                        .build()
+                };
                 self[location] = instruction_to_word(&instruction)?;
             }
             AstSourceWord::SWord(s) => self[location] = s.as_str().try_into()?,
@@ -54,13 +67,20 @@ impl State {
             .and_then(|i| i.try_into().ok())
             .ok_or(Error::OutOfMemory)
     }
+
+    #[cfg(test)]
+    pub fn iter(&self) -> std::slice::Iter<'_, Word> {
+        self.0.iter()
+    }
 }
 
-pub const MEMORY_SIZE: usize = 128; // TODO Change to 1024
+pub const MEMORY_SIZE: usize = 1024;
 
 impl Default for State {
     fn default() -> Self {
-        Self(vec![Word::default(); MEMORY_SIZE])
+        let mut words = vec![Word::new(WordType::IWord, 0)];
+        words.extend(vec![Word::default(); MEMORY_SIZE - 1]);
+        Self(words)
     }
 }
 

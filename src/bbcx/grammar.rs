@@ -27,7 +27,7 @@ impl Grammar {
 fn source_program_line<'a>() -> Parser<'a, SourceLine> {
     let as_source_program_line = |(((l, lbl), w), c)| SourceLine::new(l, lbl, w, c);
 
-    (location() + label() - inline_ws().opt() + source_program_word() - inline_ws().opt()
+    (location() + label() - inline_ws().opt() + source_program_word().opt() - inline_ws().opt()
         + comment()
         - end())
     .map(as_source_program_line)
@@ -210,7 +210,7 @@ fn index<'a>() -> Parser<'a, IndexRegister> {
 }
 
 fn index_ref<'a>() -> Parser<'a, IndexRegister> {
-    (sym('[') * index() - sym(']')).map(|i| i).name("index_ref")
+    (sym('(') * index() - sym(')')).map(|i| i).name("index_ref")
 }
 
 // ****************************************************************************
@@ -377,7 +377,7 @@ fn mnemonic<'a>() -> Parser<'a, Mnemonic> {
         | exact("INT").map(|_| Mnemonic::INT)
         | exact("FRAC").map(|_| Mnemonic::FRAC)
         | exact("FLOAT").map(|_| Mnemonic::FLOAT)
-        | exact("CAPTN").map(|_| Mnemonic::CAPTN)
+        | exact("CAPN").map(|_| Mnemonic::CAPN)
         | exact("PAGE").map(|_| Mnemonic::PAGE)
         | exact("RND").map(|_| Mnemonic::RND)
         | exact("ABS").map(|_| Mnemonic::ABS))

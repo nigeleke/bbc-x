@@ -36,7 +36,7 @@ mod test {
                 Ok(SourceLine::new(
                     i + 1,
                     Label::from(None),
-                    SourceWord::PWord(p.clone()),
+                    Some(SourceWord::PWord(p.clone())),
                     "".into(),
                 ))
             })
@@ -56,25 +56,25 @@ mod test {
             Ok(SourceLine::new(
                 1,
                 Label::from(None),
-                SourceWord::SWord("    ".into()),
+                Some(SourceWord::SWord("    ".into())),
                 "".into(),
             )),
             Ok(SourceLine::new(
                 2,
                 Label::from(None),
-                SourceWord::SWord("  C1".into()),
+                Some(SourceWord::SWord("  C1".into())),
                 "; Comment 1".into(),
             )),
             Ok(SourceLine::new(
                 3,
                 Label::from("LABEL1".to_string()),
-                SourceWord::SWord("    ".into()),
+                Some(SourceWord::SWord("    ".into())),
                 "".into(),
             )),
             Ok(SourceLine::new(
                 4,
                 Label::from("LABEL2".to_string()),
-                SourceWord::SWord("  C2".into()),
+                Some(SourceWord::SWord("  C2".into())),
                 "; Comment 2".into(),
             )),
         ]
@@ -91,7 +91,7 @@ mod test {
         let expected = vec![Ok(SourceLine::new(
             1,
             Label::from(None),
-            SourceWord::SWord("TEXT".into()),
+            Some(SourceWord::SWord("TEXT".into())),
             "".into(),
         ))]
         .into_iter()
@@ -201,7 +201,7 @@ mod test {
 0012    INT
 0013    FRAC
 0014    FLOAT
-0015    CAPTN
+0015    CAPN
 0016    PAGE
 0017    RND
 0018    ABS
@@ -222,7 +222,7 @@ mod test {
             PWord::new(Mnemonic::INT, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::FRAC, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::FLOAT, None.into(), StoreOperand::None),
-            PWord::new(Mnemonic::CAPTN, None.into(), StoreOperand::None),
+            PWord::new(Mnemonic::CAPN, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::PAGE, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::RND, None.into(), StoreOperand::None),
             PWord::new(Mnemonic::ABS, None.into(), StoreOperand::None),
@@ -240,7 +240,7 @@ mod test {
         let expected = vec![Ok(SourceLine::new(
             1,
             None.into(),
-            SourceWord::FWord(3.14),
+            Some(SourceWord::FWord(3.14)),
             "".into(),
         ))];
         assert_eq!(actual[1..], expected)
@@ -255,7 +255,7 @@ mod test {
         let expected = vec![Ok(SourceLine::new(
             1,
             None.into(),
-            SourceWord::IWord(42),
+            Some(SourceWord::IWord(42)),
             "".into(),
         ))];
         assert_eq!(actual[1..], expected)
@@ -265,9 +265,9 @@ mod test {
     fn addressing_modes() {
         let program = r#"
 0001    ADD     ADDR1
-0002    ADD2,   ADDR2[42]
+0002    ADD2,   ADDR2(2)
 0003    ADD     *ADDR3
-0004    ADD2,   *ADDR4[42]
+0004    ADD2,   *ADDR4(2)
 0005    ADD     512
 0006    ADD     -42
 0007    ADD2,   +3.14
@@ -288,7 +288,7 @@ mod test {
                 '2'.into(),
                 StoreOperand::AddressOperand(AddressOperand::new(
                     SimpleAddressOperand::DirectAddress(Address::Identifier("ADDR2".into())),
-                    Some(42),
+                    Some(2),
                 )),
             ),
             PWord::new(
@@ -304,7 +304,7 @@ mod test {
                 '2'.into(),
                 StoreOperand::AddressOperand(AddressOperand::new(
                     SimpleAddressOperand::IndirectAddress(Address::Identifier("ADDR4".into())),
-                    Some(42),
+                    Some(2),
                 )),
             ),
             PWord::new(
@@ -419,7 +419,7 @@ mod test {
 0079    INT
 0080    FRAC
 0081    FLOAT
-0082    CAPTN
+0082    CAPN
 0083    PAGE
 0084    RND
 0085    ABS
@@ -523,7 +523,7 @@ mod test {
             Mnemonic::INT,
             Mnemonic::FRAC,
             Mnemonic::FLOAT,
-            Mnemonic::CAPTN,
+            Mnemonic::CAPN,
             Mnemonic::PAGE,
             Mnemonic::RND,
             Mnemonic::ABS,

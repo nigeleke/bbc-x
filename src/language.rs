@@ -18,10 +18,10 @@ impl Language {
         }
     }
 
-    pub fn run(&self, file: &Path) -> Result<()> {
+    pub fn run(&self, file: &Path, trace: Option<&Path>) -> Result<()> {
         match self {
-            Language::Bbc3(model) => model.run(file),
-            Language::BbcX(model) => model.run(file),
+            Language::Bbc3(model) => model.run(file, trace),
+            Language::BbcX(model) => model.run(file, trace),
         }
     }
 
@@ -31,5 +31,4 @@ impl Language {
             Language::BbcX(model) => model.list(file),
         }
     }
-    
 }

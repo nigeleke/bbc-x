@@ -16,7 +16,7 @@ fn main() {
     let args = std::env::args().collect::<Vec<String>>();
     match bbc_x(args) {
         Ok(_) => {}
-        Err(e) => println!("Error: {:?}", e),
+        Err(e) => println!("Error: {}", e),
     }
 }
 
@@ -30,8 +30,18 @@ mod test {
     use super::*;
 
     #[test]
-    fn invoke_core() {
+    fn invoke_core_bbc3() {
         let args = vec!["bbc-x", "--lang=bbc3", "./examples/test/bbc3/nthg.bbc"]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
+        let result = bbc_x(args);
+        assert!(result.is_ok())
+    }
+
+    #[test]
+    fn invoke_core_bbcx() {
+        let args = vec!["bbc-x", "./examples/test/bbcx/nil.bbc"]
             .into_iter()
             .map(|s| s.to_string())
             .collect();

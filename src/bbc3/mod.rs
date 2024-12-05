@@ -56,13 +56,12 @@ impl Bbc3 {
                     (Err(Error::FailedToParse(e)), l) => format!(" *****  {}\n         {}", l, e),
                     _ => unreachable!(),
                 })
-                .collect::<Vec<_>>()
-                .join("\n");
+                .collect::<Vec<_>>();
             Err(Error::FailedToAssemble(all_results))
         }
     }
 
-    fn impl_run(&self, _path: &Path) -> Result<()> {
+    fn impl_run(&self, _path: &Path, _trace: Option<&Path>) -> Result<()> {
         Err(Error::FailedToRun(
             "BBC-3 run command is not implemented".into(),
         ))
@@ -104,8 +103,8 @@ impl LanguageModel for Bbc3 {
         Ok(())
     }
 
-    fn run(&self, path: &Path) -> Result<()> {
-        self.impl_run(path)?;
+    fn run(&self, path: &Path, trace: Option<&Path>) -> Result<()> {
+        self.impl_run(path, trace)?;
         unreachable!()
     }
 
@@ -119,6 +118,7 @@ impl LanguageModel for Bbc3 {
 mod test {
     use super::*;
     use tempdir::TempDir;
+    use time::util::local_offset::*;
 
     #[test]
     fn will_assemble() {
@@ -145,12 +145,13 @@ mod test {
         .collect();
         let args = Args::from(args);
         let model = Bbc3::new(&args);
-        let result = model.run(&args.files().next().unwrap());
+        let result = model.run(&args.files().next().unwrap(), args.trace_path().as_deref());
         assert!(result.is_err())
     }
 
     #[test]
     fn will_list() {
+        unsafe { set_soundness(Soundness::Unsound) };
         let temp_folder = TempDir::new("bbcx-tests-bbc3").unwrap();
 
         let temp_target = temp_folder.path().join("nthg.bbc");

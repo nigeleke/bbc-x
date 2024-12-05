@@ -8,7 +8,6 @@ pub struct ListWriter {
 }
 
 impl ListWriter {
-
     pub fn new(file: &Path, args: &Args) -> Self {
         let list_file = ListWriter::get_list_file(file, args);
         let listing = Vec::new();
@@ -33,12 +32,12 @@ impl ListWriter {
     fn add_title_to_listing(&mut self, file: &Path) {
         let filename = file.display().to_string();
         let format = time::format_description::parse(
-            "[weekday repr:short] [day] [month repr:short] [year] [hour]:[minute]",)
-            .unwrap();
-        let now = time::OffsetDateTime::now_utc()
-            .format(&format)
-            .unwrap()
-            .to_string();
+            "[weekday repr:short] [day] [month repr:short] [year] [hour]:[minute]",
+        )
+        .unwrap();
+        let now = time::OffsetDateTime::now_utc();
+        let offset = time::UtcOffset::local_offset_at(now).unwrap();
+        let now = now.to_offset(offset).format(&format).unwrap().to_string();
         self.add_line_to_listing(&format!("{:<14}{:<42} {}\n", "", filename, now).to_uppercase());
     }
 
@@ -46,7 +45,7 @@ impl ListWriter {
         let text = text.split('\n');
         text.into_iter().for_each(|s| self.add_line_to_listing(s));
     }
-    
+
     fn add_line_to_listing(&mut self, text: &str) {
         let line_number = self.listing.len() + 1;
         let text = format!("{:>5} {}", line_number, text);
@@ -61,5 +60,4 @@ impl ListWriter {
             Ok(())
         }
     }
-    
 }

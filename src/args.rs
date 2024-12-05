@@ -62,12 +62,22 @@ impl Args {
 
     #[inline]
     pub fn list(&self) -> bool {
-        self.list
+        self.list | self.list_path().is_some()
     }
 
     #[inline]
     pub fn list_path(&self) -> Option<PathBuf> {
         self.list_path.clone()
+    }
+
+    #[inline]
+    pub fn trace(&self) -> bool {
+        self.trace | self.trace_path().is_some()
+    }
+
+    #[inline]
+    pub fn trace_path(&self) -> Option<PathBuf> {
+        self.trace_path.clone()
     }
 
     #[inline]
@@ -77,7 +87,7 @@ impl Args {
 
     #[inline]
     pub fn run(&self) -> bool {
-        self.run
+        self.run | self.trace()
     }
 
     #[cfg(test)]

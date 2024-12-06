@@ -182,7 +182,7 @@ fn numeric_character<'a>() -> Parser<'a, NumericCharacter> {
 // <punctuation> ::= ( | <quote> | <unquote> | <apostrophe> | * | / |
 //                   : | ) | = | ? | ^ | ~ | # | ; | , | <space>
 fn punctuation<'a>() -> Parser<'a, Punctuation> {
-    one_of("<>'*/:)=?^~#;. ").name("punctuation")
+    one_of("<>'*/:()=?^~#;., ").name("punctuation")
 }
 
 fn alpha_numeric<'a>() -> Parser<'a, char> {

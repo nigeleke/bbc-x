@@ -9,8 +9,5 @@ pub use self::instruction::{
     Accumulator, Address, Builder as InstructionBuilder, Function, IndexRegister, Instruction,
     MemoryIndex,
 };
-pub use self::state::State as Memory;
+pub use self::state::{State as Memory, MEMORY_SIZE};
 pub use self::word::{ops::*, *};
-
-#[cfg(test)]
-pub use self::state::MEMORY_SIZE;

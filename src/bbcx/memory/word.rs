@@ -1,6 +1,6 @@
 use super::result::{Error, Result};
 
-use crate::bbcx::charset::CharSet;
+use crate::bbcx::{charset::CharSet, memory::word_to_instruction};
 
 use num_enum::TryFromPrimitive;
 
@@ -106,7 +106,10 @@ impl Word {
     pub fn as_i64(&self) -> Result<i64> {
         (self.word_type == WordType::IWord)
             .then_some((self.raw_bits as i64) << 40 >> 40)
-            .ok_or(Error::CannotConvertFromWord(format!("i64 from {}", self)))
+            .ok_or(Error::CannotConvertFromWord(format!(
+                "i64 from {:?}/{:<08o}",
+                self.word_type, self.raw_bits
+            )))
     }
 
     pub fn as_f64(&self) -> Result<f64> {
@@ -136,7 +139,10 @@ impl Word {
                     0.0
                 }
             })
-            .ok_or(Error::CannotConvertFromWord(format!("f64 from {}", self)))
+            .ok_or(Error::CannotConvertFromWord(format!(
+                "f64 from {:?}/{:<08o}",
+                self.word_type, self.raw_bits
+            )))
     }
 
     pub fn as_char(&self) -> Result<u8> {
@@ -147,7 +153,10 @@ impl Word {
                     .unwrap_or_else(|| panic!("Invalid character {}", bits));
                 Ok(char)
             }
-            _ => Err(Error::CannotConvertFromWord(format!("u8 from {}", self))),
+            _ => Err(Error::CannotConvertFromWord(format!(
+                "u8 from {:?}/{:<08o}",
+                self.word_type, self.raw_bits
+            ))),
         }
     }
 
@@ -175,8 +184,8 @@ impl Word {
                 Ok(string)
             }
             _ => Err(Error::CannotConvertFromWord(format!(
-                "String from {}",
-                self
+                "String from {:?}/{:<08o}",
+                self.word_type, self.raw_bits
             ))),
         }
     }
@@ -264,7 +273,16 @@ impl Word {
 
 impl std::fmt::Display for Word {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} {:#010o}", self.word_type, self.raw_bits)
+        let cooked = match self.word_type {
+            WordType::Undefined => "".to_string(),
+            WordType::IWord => self.as_i64().expect("Word::Display: i64").to_string(),
+            WordType::FWord => self.as_f64().expect("Word::Display: f64").to_string(),
+            WordType::SWord => self.as_string().expect("Word::Display: String"),
+            WordType::PWord => word_to_instruction(self)
+                .expect("Word::Display: Instruction")
+                .to_string(),
+        };
+        write!(f, "{:?} {:#010o} {}", self.word_type, self.raw_bits, cooked)
     }
 }
 

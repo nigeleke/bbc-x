@@ -1,7 +1,7 @@
 use super::assembly::Assembly;
 use super::memory::{
     instruction_to_word, word_to_instruction, Address, Instruction, InstructionBuilder,
-    MemoryIndex, *,
+    MemoryIndex, MEMORY_SIZE, *,
 };
 use super::result::{Error, Result};
 
@@ -75,12 +75,7 @@ impl<'a> Executor<'a> {
         self.trace(&format!("  address:  {}   {}", address, self.ec[address]));
         let (address, operand) = self.operand(instruction).unwrap();
         if instruction.is_indirect() {
-            self.trace(&format!(
-                "  indirect: {}   {} => {}",
-                address,
-                operand,
-                word_to_instruction(&operand).map_or("Not a PWORD".to_string(), |i| i.to_string())
-            ));
+            self.trace(&format!("  indirect: {}   {}", address, operand));
         }
         let index_register = instruction.index_register();
         if index_register.is_indexable() {
@@ -92,12 +87,22 @@ impl<'a> Executor<'a> {
         }
     }
 
+    fn trace_memory(&self) {
+        self.trace("\n\nMemory\n");
+        let memory = &self.ec.memory;
+        let memory = (0..MEMORY_SIZE)
+            .into_iter()
+            .filter_map(|i| (!memory[i].is_undefined()).then_some((i, memory[i])));
+        memory.for_each(|(i, w)| self.trace(&format!("{:>06}  {}", i, w)));
+    }
+
     pub fn execute(mut self, assembly: &Assembly) -> Result<ExecutionContext> {
         self.ec = assembly.clone().try_into()?;
         self.halted = false;
         while self.can_step() && !self.halted {
             self.step()?;
         }
+        self.trace_memory();
         Ok(self.ec.clone())
     }
 
@@ -198,9 +203,11 @@ impl<'a> Executor<'a> {
         let mut address = instruction.address();
 
         if instruction.is_indirect() {
-            let indirect_instruction = word_to_instruction(&ec[address])
-                .map_err(|err| Error::CannotDetermineOperand(err.to_string()))?;
-            address = indirect_instruction.address()
+            let content = ec[address];
+            address = (content.word_bits().as_i64().unwrap() as usize
+                & Word::PWORD_ADDRESS_MASK as usize)
+                .try_into()
+                .unwrap();
         }
 
         if index_register.is_indexable() {
@@ -502,7 +509,7 @@ impl<'a> Executor<'a> {
     fn exec_jump(&mut self, instruction: &Instruction) {
         let pc = self.ec.pc - 1;
         let (acc, address, _) = self.extract_operands(instruction);
-        if acc != 0.try_into().unwrap() {
+        if acc == 7.try_into().unwrap() {
             let return_reference = InstructionBuilder::new(Function::NIL)
                 .with_address(pc + 1)
                 .build();
@@ -575,13 +582,17 @@ impl<'a> Executor<'a> {
     fn exec_decr(&mut self, instruction: &Instruction) {
         let (acc, address, _) = self.extract_operands(instruction);
         decrement(&mut self.ec[address]);
-        self.ec[acc] = self.ec[address];
+        if acc.memory_index() != 0 {
+            self.ec[acc] = self.ec[address];
+        }
     }
 
     fn exec_incr(&mut self, instruction: &Instruction) {
         let (acc, address, _) = self.extract_operands(instruction);
         increment(&mut self.ec[address]);
-        self.ec[acc] = self.ec[address];
+        if acc.memory_index() != 0 {
+            self.ec[acc] = self.ec[address];
+        }
     }
 
     fn exec_exec(&mut self, instruction: &Instruction) {
@@ -730,6 +741,8 @@ impl<'a> Executor<'a> {
         let acc = instruction.accumulator();
         let word = self.ec[acc];
         let word_type = word.word_type().as_i64().unwrap();
+
+        self.trace(&format!("extra_print {} => {}", instruction, word));
 
         let text = match word_type {
             0 => format!("{: >8} ", word.as_i64().unwrap()),

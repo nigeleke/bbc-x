@@ -1,0 +1,77 @@
+0009    ;"SQRT"
+0010    ;MOCKP    1009
+0011    ;MOCKP    16
+0016    EXTRA   11          ; LINE
+0017    EXTRA   15          ; CAPN
+0018    "SQUA"
+0019    "RE R"
+0020    "OOTS"
+0021    "."
+0022    EXTRA   11          ; LINE
+0023    EXTRA   15          ; CAPN
+0024    "WHIC"
+0025    "H NU"
+0026    "MBER"
+0027    " DO "
+0028    "YOU "
+0029    "WISH"
+0030    " TO "
+0031    "FIND"
+0032    " THE"
+0033    " SQU"
+0034    "ARE "
+0035    "ROOT"
+0036    " OF "
+0037     "?..."
+0038    EXTRA   2, 4        ; READ
+0039    TTYP    2
+0040    SUBT    1023        ; IDENTIFIER/LITERAL
+0041    JGZ     *1020       ; IDENTIFIER/LITERAL
+0042    PUT     2, 6
+0043    JLZ     2, *1018    ; IDENTIFIER/LITERAL
+0044    JNZ     2, *1016    ; IDENTIFIER/LITERAL
+0045    EXTRA   0, 5        ; PRINT
+0046    EXTRA   10          ; STOP
+0047    EXTRA   0, 5        ; PRINT
+0048    MULT    2, 1022     ; IDENTIFIER/LITERAL
+0049    PUT     2, 4
+0050    DVD     4, 1015     ; IDENTIFIER/LITERAL
+0051    TAKE    2
+0052    DVD     4
+0053    ADD     4
+0054    DVD     1014        ; IDENTIFIER/LITERAL
+0055    SUBT    4
+0056    JEZ     *1010       ; IDENTIFIER/LITERAL
+0057    ADD     4
+0058    PUT     4
+0059    JUMP    *1012       ; IDENTIFIER/LITERAL
+0060    EXTRA   4, 5        ; PRINT
+0061    EXTRA   15          ; CAPN
+0062    "IS T"
+0063    "HE S"
+0064    "QUAR"
+0065    "E RO"
+0066    "OT O"
+0067    "F "
+0068    EXTRA   6, 5        ; PRINT
+0069    EXTRA   10          ; STOP
+0070    EXTRA   15          ; CAPN
+0071    "ERRO"
+0072    "R IN"
+0073    " INP"
+0074    "UT.."
+0075    EXTRA   10          ; STOP
+1010    NIL     60
+1011    "FIN"
+1012    NIL     51
+1013    "NUM"
+1014    +2
+1015    +4
+1016    NIL     49
+1017    "WORK"
+1018    NIL     47
+1019    "IMAG"
+1020    NIL     70
+1021    "ERR"
+1022    -1
+1023    +1

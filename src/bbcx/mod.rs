@@ -125,7 +125,6 @@ impl LanguageModel for BbcX {
 mod test {
     use super::*;
     use tempdir::TempDir;
-    use time::util::local_offset::*;
 
     #[test]
     fn will_assemble() {
@@ -158,7 +157,6 @@ mod test {
 
     #[test]
     fn will_list() {
-        unsafe { set_soundness(Soundness::Unsound) };
         let temp_folder = TempDir::new("bbcx-tests-bbcx").unwrap();
 
         let temp_target = temp_folder.path().join("nthg.bbc");
@@ -180,7 +178,6 @@ mod test {
 
     #[test]
     fn will_trace() {
-        unsafe { set_soundness(Soundness::Unsound) };
         let temp_folder = TempDir::new("bbcx-tests-bbcx").unwrap();
 
         let temp_target = temp_folder.path().join("nil.bbc");

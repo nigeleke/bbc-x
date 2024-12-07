@@ -78,6 +78,18 @@ For the coders out there - don't look too carefully at the implementation; I wou
 is over-engineered in some respects (strong typing), under-engineered in other respects (error handling / panics!) and ugly in other respects
 (type conversions).
 
+Finally - with respect to my original programs; the listings that I had probably weren't the proginal source but,
+rather, an assembled listing, as there are no labels or identifiers.  These could be reverse engineered, but
+I've used the assembled versions instead.
+
+| Program     | Purpose | Result |
+|-------------|---------|--------|
+| alph.bbc    | Count letters from a sentence. | OK. |
+| area.bbc    | Finds area of object given three coordinates. | Runs, but believe the calculated area was never correct. |
+| base.bbc    | Convert from base ten to binary, octal and (possibly) hex. | Loops on output. Believed to be error in the original program, but it may be something related to the emulation that is different from the original.
+| sort.bbc    | Sorts numbers into order. | OK. |
+| sqrt.bbc    | Finds square root of number. | OK. |
+
 ## Running the program
 
 ```
@@ -112,5 +124,6 @@ Options:
 | 19-Mar-2024 | Added source listing capability; prepped commands for running.                                                                    |                                                                                                             |
 | 20-Mar-2024 | Added Initial BBC-"X"  program                                                                                                    | Unfortunately this proved there are too many differences between BBC-3 and BBC-X.                           |
 | 28-Mar-2024 | Amended parser to reflect original BBC-3 specification. Refactored program in preparation for BBC-X.                              |                                                                                                             |
-| 26-May-2024 | Added BBC-X Specification and S-Level submission. | Received from Clare Tagg. |
-| 01-Dec-2024 | Completed emulation of most of the instruction set |
+| 26-May-2024 | Added BBC-X Specification and S-Level submission.                                                                                 | Received from Clare Tagg.                                                                                   |
+| 01-Dec-2024 | Completed emulation of most of the instruction set.                                                                               |                                                                                                             |
+| 07-Dec-2024 | Added original BBC-X programs, and updated instruction set to run them.                                                           | Original programs executing. Probably a defect in the original version of base.bbc results in a loop.       |

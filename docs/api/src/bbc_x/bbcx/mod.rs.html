@@ -201,10 +201,7 @@
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a></pre></div><pre class="rust"><code><span class="kw">mod </span>assembler;
+<a href="#203" id="203">203</a></pre></div><pre class="rust"><code><span class="kw">mod </span>assembler;
 <span class="kw">mod </span>assembly;
 <span class="kw">mod </span>ast;
 <span class="kw">mod </span>charset;
@@ -331,7 +328,6 @@
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>tempdir::TempDir;
-    <span class="kw">use </span>time::util::local_offset::<span class="kw-2">*</span>;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>will_assemble() {
@@ -364,7 +360,6 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>will_list() {
-        <span class="kw">unsafe </span>{ set_soundness(Soundness::Unsound) };
         <span class="kw">let </span>temp_folder = TempDir::new(<span class="string">"bbcx-tests-bbcx"</span>).unwrap();
 
         <span class="kw">let </span>temp_target = temp_folder.path().join(<span class="string">"nthg.bbc"</span>);
@@ -386,7 +381,6 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>will_trace() {
-        <span class="kw">unsafe </span>{ set_soundness(Soundness::Unsound) };
         <span class="kw">let </span>temp_folder = TempDir::new(<span class="string">"bbcx-tests-bbcx"</span>).unwrap();
 
         <span class="kw">let </span>temp_target = temp_folder.path().join(<span class="string">"nil.bbc"</span>);

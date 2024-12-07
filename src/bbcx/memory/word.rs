@@ -269,6 +269,28 @@ impl Word {
             (lhs, rhs) => panic!("Operation not supported between {:?} and {:?}", lhs, rhs),
         };
     }
+
+    pub fn int(&mut self) {
+        match self.word_type {
+            WordType::IWord => {}
+            WordType::FWord => *self = (self.as_f64().unwrap() as i64).try_into().unwrap(),
+            _ => panic!("INT not supported for {:?}", self),
+        }
+    }
+
+    pub fn frac(&mut self) {
+        match self.word_type {
+            WordType::FWord => *self = (self.as_f64().unwrap().fract()).try_into().unwrap(),
+            _ => panic!("INT not supported for {:?}", self),
+        }
+    }
+
+    pub fn float(&mut self) {
+        match self.word_type {
+            WordType::IWord => *self = (self.as_i64().unwrap() as f64).try_into().unwrap(),
+            _ => panic!("INT not supported for {:?}", self),
+        }
+    }
 }
 
 impl std::fmt::Display for Word {

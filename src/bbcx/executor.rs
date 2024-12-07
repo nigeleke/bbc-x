@@ -90,9 +90,8 @@ impl<'a> Executor<'a> {
     fn trace_memory(&self) {
         self.trace("\n\nMemory\n");
         let memory = &self.ec.memory;
-        let memory = (0..MEMORY_SIZE)
-            .into_iter()
-            .filter_map(|i| (!memory[i].is_undefined()).then_some((i, memory[i])));
+        let memory =
+            (0..MEMORY_SIZE).filter_map(|i| (!memory[i].is_undefined()).then_some((i, memory[i])));
         memory.for_each(|(i, w)| self.trace(&format!("{:>06}  {}", i, w)));
     }
 
@@ -614,6 +613,9 @@ impl<'a> Executor<'a> {
             Function::PRINT => self.exec_extra_print(instruction),
             Function::STOP => self.exec_extra_stop(instruction),
             Function::LINE => self.exec_extra_line(instruction),
+            Function::INT => self.exec_extra_int(instruction),
+            Function::FRAC => self.exec_extra_frac(instruction),
+            Function::FLOAT => self.exec_extra_float(instruction),
             Function::CAPN => self.exec_extra_capn(instruction),
             Function::LN
             | Function::EXP
@@ -621,9 +623,6 @@ impl<'a> Executor<'a> {
             | Function::COS
             | Function::TAN
             | Function::ATN
-            | Function::INT
-            | Function::FRAC
-            | Function::FLOAT
             | Function::PAGE
             | Function::RND
             | Function::ABS => unimplemented!("Unsupported {:?}", function),
@@ -765,6 +764,21 @@ impl<'a> Executor<'a> {
         let mut stdout = (*self.stdout).borrow_mut();
         let newline = vec![b'\n'];
         stdout.write_all(&newline).expect("stdout write error");
+    }
+
+    fn exec_extra_int(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        self.ec[acc].int();
+    }
+
+    fn exec_extra_frac(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        self.ec[acc].frac();
+    }
+
+    fn exec_extra_float(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        self.ec[acc].float();
     }
 
     fn exec_extra_capn(&mut self, _instruction: &Instruction) {
@@ -2645,12 +2659,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 3)
                     .build(),
             )
-            .with_instruction(
-                0,
-                InstructionBuilder::new(Function::NIL)
-                    .with_address(112)
-                    .build(),
-            )
             .with_memory_word(2, 2)
             .with_memory_word(MEMORY_SIZE - 1, 1)
             .with_memory_word(MEMORY_SIZE - 2, 2)
@@ -2729,12 +2737,6 @@ mod test {
                 InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(4)
                     .with_address(MEMORY_SIZE - 4)
-                    .build(),
-            )
-            .with_instruction(
-                0,
-                InstructionBuilder::new(Function::NIL)
-                    .with_address(112)
                     .build(),
             )
             .with_memory_word(1, 0)
@@ -2821,12 +2823,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_instruction(
-                0,
-                InstructionBuilder::new(Function::NIL)
-                    .with_address(112)
-                    .build(),
-            )
             .with_memory_word(1, 1)
             .with_memory_word(2, 2)
             .with_memory_word(3, 0)
@@ -2909,12 +2905,6 @@ mod test {
                 InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(4)
                     .with_address(MEMORY_SIZE - 4)
-                    .build(),
-            )
-            .with_instruction(
-                0,
-                InstructionBuilder::new(Function::NIL)
-                    .with_address(112)
                     .build(),
             )
             .with_memory_word(1, 1)
@@ -3001,12 +2991,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_instruction(
-                0,
-                InstructionBuilder::new(Function::NIL)
-                    .with_address(112)
-                    .build(),
-            )
             .with_memory_word(1, -1)
             .with_memory_word(2, 2)
             .with_memory_word(3, 0)
@@ -3089,12 +3073,6 @@ mod test {
                 InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(4)
                     .with_address(MEMORY_SIZE - 4)
-                    .build(),
-            )
-            .with_instruction(
-                0,
-                InstructionBuilder::new(Function::NIL)
-                    .with_address(112)
                     .build(),
             )
             .with_memory_word(1, 1)
@@ -3181,12 +3159,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_instruction(
-                0,
-                InstructionBuilder::new(Function::NIL)
-                    .with_address(112)
-                    .build(),
-            )
             .with_memory_word(1, 0)
             .with_memory_word(2, 2)
             .with_memory_word(3, 0)
@@ -3269,12 +3241,6 @@ mod test {
                 InstructionBuilder::new(Function::TAKE)
                     .with_accumulator(4)
                     .with_address(MEMORY_SIZE - 4)
-                    .build(),
-            )
-            .with_instruction(
-                0,
-                InstructionBuilder::new(Function::NIL)
-                    .with_address(112)
                     .build(),
             )
             .with_memory_word(1, 0)

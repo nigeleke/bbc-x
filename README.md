@@ -78,9 +78,9 @@ For the coders out there - don't look too carefully at the implementation; I wou
 is over-engineered in some respects (strong typing), under-engineered in other respects (error handling / panics!) and ugly in other respects
 (type conversions).
 
-Finally - with respect to my original programs; the listings that I had probably weren't the proginal source but,
+Finally - with respect to my original programs; the listings that I had probably weren't the original source but,
 rather, an assembled listing, as there are no labels or identifiers.  These could be reverse engineered, but
-I've used the assembled versions instead.
+I've used these assembled versions instead.
 
 | Program     | Purpose | Result |
 |-------------|---------|--------|

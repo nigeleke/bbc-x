@@ -581,7 +581,7 @@
 <span class="comment">// &lt;punctuation&gt; ::= ( | &lt;quote&gt; | &lt;unquote&gt; | &lt;apostrophe&gt; | * | / |
 //                   : | ) | = | ? | ^ | ~ | # | ; | , | &lt;space&gt;
 </span><span class="kw">fn </span>punctuation&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, Punctuation&gt; {
-    one_of(<span class="string">"&lt;&gt;'*/:)=?^~#;. "</span>).name(<span class="string">"punctuation"</span>)
+    one_of(<span class="string">"&lt;&gt;'*/:()=?^~#;., "</span>).name(<span class="string">"punctuation"</span>)
 }
 
 <span class="kw">fn </span>alpha_numeric&lt;<span class="lifetime">'a</span>&gt;() -&gt; Parser&lt;<span class="lifetime">'a</span>, char&gt; {

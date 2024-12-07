@@ -594,7 +594,7 @@
 
 <span class="kw">impl </span>Acc {
     <span class="kw">pub fn </span>as_usize(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
-        <span class="self">self</span>.<span class="number">0</span>.map_or(<span class="number">0</span>, |a| (a <span class="kw">as </span>u8) - <span class="string">b'0'</span>) <span class="kw">as </span>usize
+        <span class="self">self</span>.<span class="number">0</span>.map_or(<span class="number">1</span>, |a| (a <span class="kw">as </span>u8) - <span class="string">b'0'</span>) <span class="kw">as </span>usize
     }
 }
 

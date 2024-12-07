@@ -327,7 +327,24 @@
 <a href="#326" id="326">326</a>
 <a href="#327" id="327">327</a>
 <a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::result::{Error, <span class="prelude-ty">Result</span>};
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::result::{Error, <span class="prelude-ty">Result</span>};
 
 <span class="kw">pub type </span>Function = <span class="kw">crate</span>::bbcx::ast::Mnemonic;
 
@@ -339,8 +356,18 @@
     <span class="kw">fn </span>bits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32;
 }
 
-<span class="attr">#[derive(Clone, Copy, Debug, Default, PartialEq)]
+<span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
 </span><span class="kw">pub struct </span>Accumulator(Address);
+
+<span class="kw">impl </span>Accumulator {
+    <span class="kw">const </span>DEFAULT: usize = <span class="number">1</span>;
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>Accumulator {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::DEFAULT.try_into().unwrap()
+    }
+}
 
 <span class="kw">impl </span>MemoryIndex <span class="kw">for </span>Accumulator {
     <span class="kw">fn </span>memory_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
@@ -387,13 +414,19 @@
     }
 }
 
-<span class="attr">#[derive(Clone, Copy, Debug, Default, PartialEq)]
+<span class="attr">#[derive(Clone, Copy, Debug, PartialEq)]
 </span><span class="kw">pub struct </span>IndexRegister(Accumulator);
 
 <span class="kw">impl </span>IndexRegister {
     <span class="kw">pub fn </span>is_indexable(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="kw">let </span>zero = <span class="number">0</span>.try_into().unwrap();
         <span class="self">self</span>.<span class="number">0 </span>!= zero
+    }
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>IndexRegister {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>(<span class="number">0</span>.try_into().unwrap())
     }
 }
 
@@ -601,7 +634,8 @@
 
 <span class="kw">impl </span>Builder {
     <span class="kw">pub fn </span>new(function: Function) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>instruction = Instruction::new(function);
+        <span class="kw">let </span><span class="kw-2">mut </span>instruction = Instruction::new(function);
+        instruction.accumulator = Accumulator::default();
         <span class="self">Self </span>{ instruction }
     }
 

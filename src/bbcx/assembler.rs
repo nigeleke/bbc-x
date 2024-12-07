@@ -212,4 +212,26 @@ mod test {
         );
         assert_eq!(assembly.content(3), None);
     }
+
+    #[test]
+    fn fix_can_assemble_sword_with_bracket() {
+        let program = r#"
+0001    "AB(D"
+"#;
+        let program = parse(program);
+        let assembly = Assembler::assemble(&program).unwrap();
+        assert_eq!(assembly.content(0), None);
+        assert_eq!(assembly.content(1), Some(SourceWord::SWord("AB(D".into())));
+    }
+
+    #[test]
+    fn fix_can_assemble_sword_with_comma() {
+        let program = r#"
+0001    "AB,D"
+"#;
+        let program = parse(program);
+        let assembly = Assembler::assemble(&program).unwrap();
+        assert_eq!(assembly.content(0), None);
+        assert_eq!(assembly.content(1), Some(SourceWord::SWord("AB,D".into())));
+    }
 }

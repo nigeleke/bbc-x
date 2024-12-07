@@ -1,0 +1,117 @@
+0009    ;"AREA"
+0010    ;MOCP    1001
+0011    ;MOCP    16
+0016    TAKE    5, 1023     ; IDENTIFIER/LITERAL
+0017    PUT     0, 1020
+0018    EXTRA   15          ; CAPN
+0019    "INPU"
+0020    "T CO"
+0021    "-ORD"
+0022    "INAT"
+0023    "ES ("
+0024    "X1,Y"
+0025    "1),("
+0026    "X2,Y"
+0027    "2),("
+0028    "X3,Y"
+0029    "3) A"
+0030    "S "
+0031    EXTRA   2, 4        ; READ
+0032    TTYP    2
+0033    SUBT    1022        ; IDENTIFIER/LITERAL
+0034    JGZ     *1018       ; IDENTIFIER/LITERAL
+0035    PUT     2, 200(5)
+0036    DECR    5
+0037    JNZ     *1016       ; IDENTIFIER/LITERAL
+0038    TAKE    2, 206
+0039    TAKE    3, 205
+0040    TAKE    4, 204
+0041    TAKE    5, 203
+0042    JUMP    7, *1014    ; IDENTIFIER/LITERAL
+0043    PUT     1012        ; IDENTIFIER/LITERAL
+0044    TAKE    2, 204
+0045    TAKE    3, 203
+0046    TAKE    4, 202
+0047    TAKE    5, 201
+0048    JUMP    7, *1014    ; IDENTIFIER/LITERAL
+0049    PUT     1010        ; IDENTIFIER/LITERAL
+0050    TAKE    2, 206
+0051    TAKE    3, 205
+0052    TAKE    4, 202
+0053    TAKE    5, 201
+0054    JUMP    7, *1014    ; IDENTIFIER/LITERAL
+0055    PUT     1008        ; IDENTIFIER/LITERAL
+0056    TAKE    6, 1012     ; IDENTIFIER/LITERAL
+0057    ADD     6, 1010     ; IDENTIFIER/LITERAL
+0058    ADD     6, 1008     ; IDENTIFIER/LITERAL
+0059    DVD     6, 1007     ; IDENTIFIER/LITERAL
+0060    PUT     6, 1020     ; IDENTIFIER/LITERAL
+0061    TAKE    6, 1020     ; IDENTIFIER/LITERAL
+0062    TAKE    6, 1020     ; IDENTIFIER/LITERAL
+0063    SUBT    6, 1012     ; IDENTIFIER/LITERAL
+0064    MULT    6, 6
+0065    TAKE    6, 1020     ; IDENTIFIER/LITERAL
+0066    SUBT    6, 1010     ; IDENTIFIER/LITERAL
+0067    MULT    6, 6
+0068    TAKE    6, 1020     ; IDENTIFIER/LITERAL
+0069    SUBT    6, 1008     ; IDENTIFIER/LITERAL
+0070    MULT    6, 6
+0071    EXTRA   6, 1        ; SQRT
+0072    EXTRA   6, 5        ; PRINT
+0073    EXTRA   15          ; CAPN
+0074    "IS T"
+0075    "HE A"
+0076    "REA "
+0077    "ENCL"
+0078    "OSED"
+0079    " BY "
+0080    "THE "
+0081    "THRE"
+0082    "E LI"
+0083    "NES."
+0084    EXTRA   10          ; STOP
+0085    TAKE    2
+0086    SUBT    4
+0087    MULT    1
+0088    PUT     1002        ; IDENTIFIER/LITERAL
+0089    TAKE    3
+0090    SUBT    5
+0091    MULT    1
+0092    ADD     1002        ; IDENTIFIER/LITERAL
+0093    EXTRA   1           ; SQRT
+0094    EXTRA   5           ; PRINT
+0095    EXTRA   15          ; CAPN
+0096    "IS D"
+0097    "ISTA"
+0098    "NCE "
+0099    "BETW"
+0100    "EEN"
+0101    EXTRA   2, 5        ; PRINT
+0102    EXTRA   3, 5        ; PRINT
+0103    EXTRA   15          ; CAPN
+0104    "AND "
+0105    EXTRA   4, 5        ; PRINT
+0106    EXTRA   5, 5        ; PRINT
+0107    EXTRA   11          ; LINE
+0108    JUMP    *6
+0109    EXTRA   15          ; CAPN
+0110    "ERRO"
+0111    "R IN"
+0112    " INP"
+0113    "UT.."
+0114    EXTRA   10          ; STOP
+1003    "TEMP"
+1005    "AR"
+1007    +2
+1009    "C"
+1011    "B"
+1013    "A"
+1014    NIL     85
+1015    "SUB"
+1016    NIL     31
+1017    "INP"
+1018    NIL     109
+1019    "ERR"
+1021    "S"
+1022    +1
+1023    +6

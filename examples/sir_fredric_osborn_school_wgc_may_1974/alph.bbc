@@ -1,0 +1,95 @@
+0009    ;"ALPH"
+0010    ;MOCP    951
+0011    ;MOCP    16
+0016    TAKE    4, 971      ; IDENTIFIER/LITERAL
+0017    DECR    0, 4
+0018    PUT     0, *4
+0019    DECR    4
+0020    SKAE    970         ; IDENTIFIER/LITERAL
+0021    JUMP    17
+0022    TAKE    4, 971      ; IDENTIFIER/LITERAL
+0023    EXTRA   15          ; CAPN
+0024    "INPU"
+0025    "T SE"
+0026    "NTEN"
+0027    "CE. "
+0028    "FULL"
+0029    " STO"
+0030    "P AT"
+0031    " END"
+0032    " PLE"
+0033    "ASE."
+0034    ".."
+0035    EXTRA   11          ; LINE
+0036    PIN     2
+0037    SKAN    2, 967      ; IDENTIFIER/LITERAL
+0038    JUMP    *964        ; IDENTIFIER/LITERAL
+0039    NIL                 ; SHL     2, 963      ; IDENTIFIER/LITERAL
+0040    PUT     2, 3
+0041    NEQV    3, *4
+0042    JEZ     3, *958     ; IDENTIFIER/LITERAL
+0043    DECR    0, 4
+0044    DECR    4
+0045    SKAE    970         ; IDENTIFIER/LITERAL
+0046    JUMP    *960        ; IDENTIFIER/LITERAL
+0047    TAKE    4, 971      ; IDENTIFIER/LITERAL
+0048    JUMP    *968        ; IDENTIFIER/LITERAL
+0049    DECR    0, 4
+0050    INCR    0, *4
+0051    JUMP    *956        ; IDENTIFIER/LITERAL
+0052    TAKE    4, 971      ; IDENTIFIER/LITERAL
+0053    TAKE    3, *4
+0054    DECR    0, 4
+0055    TAKE    2, *4
+0056    JEZ     2, *952     ; IDENTIFIER/LITERAL
+0057    EXTRA   3, 5        ; PRINT
+0058    EXTRA   2, 5        ; PRINT
+0059    EXTRA   11          ; LINE
+0060    DECR    4
+0061    SKAE    970         ; IDENTIFIER/LITERAL
+0062    JUMP    *954        ; IDENTIFIER/LITERAL
+0063    EXTRA   10          ; STOP
+0952    NIL     60
+0953    "CARY"
+0954    NIL     53
+0955    "PNT"
+0956    NIL     47
+0957    "REZT"
+0958    NIL     49
+0959    "COUT"
+0960    NIL     40
+0961    "NXCR"
+0963    +18
+0964    NIL     52
+0965    "END"
+0967    "."
+0968    NIL     36
+0969    "PIN"
+0970    MOCKP   971         ; IDENTIFIER/LITERAL
+0971    MOCKP   1023        ; IDENTIFIER/LITERAL
+0973    "Z"
+0975    "Y"
+0977    "X"
+0979    "W"
+0981    "V"
+0983    "U"
+0985    "T"
+0987    "S"
+0989    "R"
+0991    "Q"
+0993    "P"
+0995    "O"
+0997    "N"
+0999    "M"
+1001    "L"
+1003    "K"
+1005    "J"
+1007    "I"
+1009    "H"
+1011    "G"
+1013    "F"
+1015    "E"
+1017    "D"
+1019    "C"
+1021    "B"
+1023    "A"

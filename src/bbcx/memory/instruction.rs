@@ -10,8 +10,18 @@ pub trait Bits {
     fn bits(&self) -> u32;
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Accumulator(Address);
+
+impl Accumulator {
+    const DEFAULT: usize = 1;
+}
+
+impl Default for Accumulator {
+    fn default() -> Self {
+        Self::DEFAULT.try_into().unwrap()
+    }
+}
 
 impl MemoryIndex for Accumulator {
     fn memory_index(&self) -> usize {
@@ -58,13 +68,19 @@ impl std::fmt::Display for Accumulator {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct IndexRegister(Accumulator);
 
 impl IndexRegister {
     pub fn is_indexable(&self) -> bool {
         let zero = 0.try_into().unwrap();
         self.0 != zero
+    }
+}
+
+impl Default for IndexRegister {
+    fn default() -> Self {
+        Self(0.try_into().unwrap())
     }
 }
 
@@ -272,7 +288,8 @@ pub struct Builder {
 
 impl Builder {
     pub fn new(function: Function) -> Self {
-        let instruction = Instruction::new(function);
+        let mut instruction = Instruction::new(function);
+        instruction.accumulator = Accumulator::default();
         Self { instruction }
     }
 

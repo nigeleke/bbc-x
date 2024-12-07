@@ -1,5 +1,8 @@
 use super::assembly::Assembly;
-use super::memory::{word_to_instruction, Address, Instruction, MemoryIndex, *};
+use super::memory::{
+    instruction_to_word, word_to_instruction, Address, Instruction, InstructionBuilder,
+    MemoryIndex, MEMORY_SIZE, *,
+};
 use super::result::{Error, Result};
 
 use num_enum::TryFromPrimitive;
@@ -72,12 +75,7 @@ impl<'a> Executor<'a> {
         self.trace(&format!("  address:  {}   {}", address, self.ec[address]));
         let (address, operand) = self.operand(instruction).unwrap();
         if instruction.is_indirect() {
-            self.trace(&format!(
-                "  indirect: {}   {} => {}",
-                address,
-                operand,
-                word_to_instruction(&operand).map_or("Not a PWORD".to_string(), |i| i.to_string())
-            ));
+            self.trace(&format!("  indirect: {}   {}", address, operand));
         }
         let index_register = instruction.index_register();
         if index_register.is_indexable() {
@@ -89,12 +87,21 @@ impl<'a> Executor<'a> {
         }
     }
 
+    fn trace_memory(&self) {
+        self.trace("\n\nMemory\n");
+        let memory = &self.ec.memory;
+        let memory =
+            (0..MEMORY_SIZE).filter_map(|i| (!memory[i].is_undefined()).then_some((i, memory[i])));
+        memory.for_each(|(i, w)| self.trace(&format!("{:>06}  {}", i, w)));
+    }
+
     pub fn execute(mut self, assembly: &Assembly) -> Result<ExecutionContext> {
         self.ec = assembly.clone().try_into()?;
         self.halted = false;
         while self.can_step() && !self.halted {
             self.step()?;
         }
+        self.trace_memory();
         Ok(self.ec.clone())
     }
 
@@ -195,9 +202,11 @@ impl<'a> Executor<'a> {
         let mut address = instruction.address();
 
         if instruction.is_indirect() {
-            let indirect_instruction = word_to_instruction(&ec[address])
-                .map_err(|err| Error::CannotDetermineOperand(err.to_string()))?;
-            address = indirect_instruction.address()
+            let content = ec[address];
+            address = (content.word_bits().as_i64().unwrap() as usize
+                & Word::PWORD_ADDRESS_MASK as usize)
+                .try_into()
+                .unwrap();
         }
 
         if index_register.is_indexable() {
@@ -499,8 +508,11 @@ impl<'a> Executor<'a> {
     fn exec_jump(&mut self, instruction: &Instruction) {
         let pc = self.ec.pc - 1;
         let (acc, address, _) = self.extract_operands(instruction);
-        if acc != 0.try_into().unwrap() {
-            self.ec[acc - 1] = (pc.memory_index() as i64).try_into().unwrap();
+        if acc == 7.try_into().unwrap() {
+            let return_reference = InstructionBuilder::new(Function::NIL)
+                .with_address(pc + 1)
+                .build();
+            self.ec[acc - 1] = instruction_to_word(&return_reference).unwrap();
         }
         self.ec.pc = address;
     }
@@ -569,13 +581,17 @@ impl<'a> Executor<'a> {
     fn exec_decr(&mut self, instruction: &Instruction) {
         let (acc, address, _) = self.extract_operands(instruction);
         decrement(&mut self.ec[address]);
-        self.ec[acc] = self.ec[address];
+        if acc.memory_index() != 0 {
+            self.ec[acc] = self.ec[address];
+        }
     }
 
     fn exec_incr(&mut self, instruction: &Instruction) {
         let (acc, address, _) = self.extract_operands(instruction);
         increment(&mut self.ec[address]);
-        self.ec[acc] = self.ec[address];
+        if acc.memory_index() != 0 {
+            self.ec[acc] = self.ec[address];
+        }
     }
 
     fn exec_exec(&mut self, instruction: &Instruction) {
@@ -587,23 +603,48 @@ impl<'a> Executor<'a> {
 
     fn exec_extra(&mut self, instruction: &Instruction) {
         let (_, address, _) = self.extract_operands(instruction);
-        let code = address.memory_index() as u32 + Function::EXTRA as u32;
+
+        let code = Function::EXTRA as u32 + address.memory_index() as u32;
         let function = Function::try_from_primitive(code).unwrap();
 
         match function {
-            Function::SQRT | Function::LN | Function::EXP => unimplemented!("{:?}", function),
+            Function::SQRT => self.exec_extra_sqrt(instruction),
             Function::READ => self.exec_extra_read(instruction),
             Function::PRINT => self.exec_extra_print(instruction),
-            Function::SIN | Function::COS | Function::TAN | Function::ATN => {
-                unimplemented!("{:?}", function)
-            }
             Function::STOP => self.exec_extra_stop(instruction),
-            Function::LINE | Function::INT | Function::FRAC | Function::FLOAT => {
-                unimplemented!("{:?}", function)
-            }
+            Function::LINE => self.exec_extra_line(instruction),
+            Function::INT => self.exec_extra_int(instruction),
+            Function::FRAC => self.exec_extra_frac(instruction),
+            Function::FLOAT => self.exec_extra_float(instruction),
             Function::CAPN => self.exec_extra_capn(instruction),
-            Function::PAGE | Function::RND | Function::ABS => unimplemented!("{:?}", function),
+            Function::LN
+            | Function::EXP
+            | Function::SIN
+            | Function::COS
+            | Function::TAN
+            | Function::ATN
+            | Function::PAGE
+            | Function::RND
+            | Function::ABS => unimplemented!("Unsupported {:?}", function),
             other => panic!("Invalid EXTRA code {:?}", other),
+        }
+    }
+
+    fn exec_extra_sqrt(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        let acc_value = self.ec[acc];
+        match acc_value.word_type().as_i64().unwrap() {
+            0 => {
+                self.ec[acc] = ((acc_value.as_i64().unwrap() as f32).sqrt() as f64)
+                    .try_into()
+                    .unwrap()
+            }
+            1 => {
+                self.ec[acc] = ((acc_value.as_f64().unwrap() as f32).sqrt() as f64)
+                    .try_into()
+                    .unwrap()
+            }
+            _ => panic!("SQRT: Invalid operand {}", acc_value),
         }
     }
 
@@ -700,6 +741,8 @@ impl<'a> Executor<'a> {
         let word = self.ec[acc];
         let word_type = word.word_type().as_i64().unwrap();
 
+        self.trace(&format!("extra_print {} => {}", instruction, word));
+
         let text = match word_type {
             0 => format!("{: >8} ", word.as_i64().unwrap()),
             1 => format!("{: >0.4} ", word.as_f64().unwrap()),
@@ -714,9 +757,28 @@ impl<'a> Executor<'a> {
     }
 
     fn exec_extra_stop(&mut self, _instruction: &Instruction) {
-        // let mut stdout = (*self.stdout).borrow_mut();
-        // stdout.flush().expect("stdout flush error");
         self.halted = true;
+    }
+
+    fn exec_extra_line(&mut self, _instruction: &Instruction) {
+        let mut stdout = (*self.stdout).borrow_mut();
+        let newline = vec![b'\n'];
+        stdout.write_all(&newline).expect("stdout write error");
+    }
+
+    fn exec_extra_int(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        self.ec[acc].int();
+    }
+
+    fn exec_extra_frac(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        self.ec[acc].frac();
+    }
+
+    fn exec_extra_float(&mut self, instruction: &Instruction) {
+        let acc = instruction.accumulator();
+        self.ec[acc].float();
     }
 
     fn exec_extra_capn(&mut self, _instruction: &Instruction) {
@@ -2597,7 +2659,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 3)
                     .build(),
             )
-            .with_memory_word(0, 111)
             .with_memory_word(2, 2)
             .with_memory_word(MEMORY_SIZE - 1, 1)
             .with_memory_word(MEMORY_SIZE - 2, 2)
@@ -2678,7 +2739,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_memory_word(0, 111)
             .with_memory_word(1, 0)
             .with_memory_word(2, 2)
             .with_memory_word(3, 1)
@@ -2763,7 +2823,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_memory_word(0, 111)
             .with_memory_word(1, 1)
             .with_memory_word(2, 2)
             .with_memory_word(3, 0)
@@ -2848,7 +2907,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_memory_word(0, 111)
             .with_memory_word(1, 1)
             .with_memory_word(2, 2)
             .with_memory_word(3, "ABCD")
@@ -2933,7 +2991,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_memory_word(0, 111)
             .with_memory_word(1, -1)
             .with_memory_word(2, 2)
             .with_memory_word(3, 0)
@@ -3018,7 +3075,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_memory_word(0, 111)
             .with_memory_word(1, 1)
             .with_memory_word(2, 2)
             .with_memory_word(3, 0)
@@ -3103,7 +3159,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_memory_word(0, 111)
             .with_memory_word(1, 0)
             .with_memory_word(2, 2)
             .with_memory_word(3, 0)
@@ -3188,7 +3243,6 @@ mod test {
                     .with_address(MEMORY_SIZE - 4)
                     .build(),
             )
-            .with_memory_word(0, 111)
             .with_memory_word(1, 0)
             .with_memory_word(2, 2)
             .with_memory_word(3, 2)
@@ -3231,7 +3285,7 @@ mod test {
                     .build(),
             )
             .with_instruction(
-                0,
+                1,
                 InstructionBuilder::new(Function::DECR)
                     .with_address(101)
                     .build(),
@@ -3272,7 +3326,7 @@ mod test {
                     .build(),
             )
             .with_instruction(
-                0,
+                1,
                 InstructionBuilder::new(Function::INCR)
                     .with_address(103)
                     .build(),
@@ -3344,16 +3398,40 @@ mod test {
                     .with_address(111)
                     .build(),
             )
-            .with_memory_word(0, 4.14)
+            .with_memory_word(1, 4.14)
             .with_memory_word(111, 4.14)
             .with_program_counter(101);
         test_result(&actual, &expected)
     }
 
     #[test]
-    #[ignore]
     fn test_extra_sqrt() {
-        // Will implement if required.
+        let program = r#"
+0001    +4
+0002    +4.0
+0100    EXTRA   1, 1
+0101    SQRT    2
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(1)
+                    .with_address(1)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(2)
+                    .with_address(1)
+                    .build(),
+            )
+            .with_memory_word(1, 2.0) // Spec dictate this should be IWord if whole.
+            .with_memory_word(2, 2.0)
+            .with_program_counter(102);
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -3496,15 +3574,47 @@ mod test {
     }
 
     #[test]
-    #[ignore]
     fn test_extra_stop() {
-        // Will implement if required.
+        let program = r#"
+0100    STOP
+0101    TAKE 1, 101
+"#;
+        let actual = execute(program).ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(0)
+                    .with_address(10)
+                    .build(),
+            )
+            .with_instruction(
+                101,
+                InstructionBuilder::new(Function::TAKE)
+                    .with_accumulator(1)
+                    .with_address(101)
+                    .build(),
+            )
+            .with_program_counter(101);
+        test_result(&actual, &expected)
     }
 
     #[test]
-    #[ignore]
     fn test_extra_line() {
-        // Will implement if required.
+        let program = r#"
+0100    LINE
+"#;
+        let actual = execute_io(program, "", "\n").ok().unwrap();
+        let expected = ExecutionContext::default()
+            .with_instruction(
+                100,
+                InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(0)
+                    .with_address(11)
+                    .build(),
+            )
+            .with_program_counter(101);
+        test_result(&actual, &expected)
     }
 
     #[test]
@@ -3549,6 +3659,7 @@ mod test {
             .with_instruction(
                 103,
                 InstructionBuilder::new(Function::EXTRA)
+                    .with_accumulator(0)
                     .with_address(15)
                     .build(),
             )

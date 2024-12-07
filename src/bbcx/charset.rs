@@ -36,8 +36,8 @@ static CHAR_TO_BITS: Lazy<HashMap<u8, Bits>> = Lazy::new(|| {
         (b'\'', 27),
         (b'<', 28),
         (b'>', 29),
-        // (b'<=', 30), // Not parsed
-        // (b'>=', 31), // Not parsed
+        (b'z', 30), // (b'<=', 30), // Not parsed
+        (b'y', 31), // (b'>=', 31), // Not parsed
         (b'0', 32),
         (b'1', 33),
         (b'2', 34),
@@ -59,9 +59,9 @@ static CHAR_TO_BITS: Lazy<HashMap<u8, Bits>> = Lazy::new(|| {
         (b'*', 50),
         (b'/', 51),
         (b'=', 52),
-        // (b'|=', 53), // Not parsed
+        (b'x', 53), // (b'|=', 53), // Not parsed
         (b'^', 54), // Re-interpreted from up-arrow
-        // (b'<-', 55), // Not parsed
+        (b'w', 55), // (b'<-', 55), // Not parsed
         (b'?', 56),
         (b'"', 57),
         (b':', 58),
@@ -69,7 +69,7 @@ static CHAR_TO_BITS: Lazy<HashMap<u8, Bits>> = Lazy::new(|| {
         (b',', 60),
         (b' ', 61),
         (b'\n', 62),
-        // (b'<ctrl>', 63), // Ctrl-? escapes not parsed
+        (b'v', 63), // (b'<ctrl>', 63), // Ctrl-? escapes not parsed
     ])
 });
 

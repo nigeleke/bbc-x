@@ -42,8 +42,26 @@ impl State {
                         .with_address(address)
                         .build()
                 } else {
+                    // The EXTRA format is `EXTRA <acc>, <code>`
+                    // where
+                    //      instruction.accumulator = <acc>
+                    //      instruction.address     = <code>
+                    //
+                    // The other formats are `<MNEMONIC> <acc>`
+                    // where
+                    //      instruction.accumulator = 1 // (defaulted)
+                    //      instruction.address     = <acc>
+                    //      and the <code> is derived from the mnemonic.
+                    //
+                    // This difference is not managed in the grammar, though it should be really.
+                    // It gets tweaked here...
+                    //
+                    // Note: Potential gotcha here when `<MNEMONIC>` is used not specifying the
+                    // accumulator in the address part, because we use the address, which defaults
+                    // to zero rather then one.
+                    //
                     let pseudo_address = pword.mnemonic() as usize - Mnemonic::EXTRA as usize;
-                    let acc = if pword.accumulator().as_usize() != 0 {
+                    let acc = if pseudo_address == 0 {
                         pword.accumulator().as_usize()
                     } else {
                         address.memory_index()

@@ -174,7 +174,7 @@ pub struct Acc(Option<char>);
 
 impl Acc {
     pub fn as_usize(&self) -> usize {
-        self.0.map_or(0, |a| (a as u8) - b'0') as usize
+        self.0.map_or(1, |a| (a as u8) - b'0') as usize
     }
 }
 
